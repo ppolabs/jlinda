@@ -74,9 +74,9 @@ public final class SLCImage {
     // true if it is
 
 //    private static Rectangle originalWindow;       // position and size of the full scene
-    private static Window originalWindow;       // position and size of the full scene
-    private static Window currentWindow;        // position and size of the subset
-    private static Window slaveMasterOffsets;   // overlapping slave window in master coordinates
+    Window originalWindow;       // position and size of the full scene
+    Window currentWindow;        // position and size of the subset
+    Window slaveMasterOffsets;   // overlapping slave window in master coordinates
 
 
     public SLCImage() {
@@ -178,22 +178,22 @@ public final class SLCImage {
     /*---  RANGE CONVERSIONS ----*/
 
     // Convert pixel number to range time (1 is first pixel)
-    public static double pix2tr(double pixel) {
+    public double pix2tr(double pixel) {
         return tRange1 + ((pixel - 1.0) / rsr2x);
     }
 
     // Convert pixel number to range (1 is first pixel)
-    public static double pix2range(double pixel) {
+    public double pix2range(double pixel) {
         return Constants.lightSpeed * pix2tr(pixel);
     }
 
     // Convert range time to pixel number (1 is first pixel)
-    public static double tr2pix(double rangeTime) {
+    public double tr2pix(double rangeTime) {
         return 1.0 + (rsr2x * (rangeTime - tRange1));
     }
 
     // Convert range pixel to fDC (1 is first pixel, can be ovs)
-    public static double pix2fdc(double pixel) {
+    public double pix2fdc(double pixel) {
         double tau = (pixel - 1.0) / (rsr2x / 2.0);// two-way time
         return f_DC_a0 + (f_DC_a1 * tau) + (f_DC_a2 * Math.sqrt(tau));
     }
@@ -201,35 +201,35 @@ public final class SLCImage {
     /*---  AZIMUTH CONVERSIONS ----*/
 
     // Convert line number to azimuth time (1 is first line)
-    public static double line2ta(double line) {
+    public double line2ta(double line) {
         return tAzi1 + ((line - 1.0) / PRF);
     }
 
     // Convert azimuth time to line number (1 is first line)
-    public static double ta2line(double azitime) {
+    public double ta2line(double azitime) {
         return 1.0 + PRF * (azitime - tAzi1);
     }
 
 
     /* Getters and setters for Encapsulation */
 
-    public static double getRadarWavelength() {
+    public double getRadarWavelength() {
         return radar_wavelength;
     }
 
-    public static Point getApproxRadarCentreOriginal() {
+    public Point getApproxRadarCentreOriginal() {
         return approxRadarCentreOriginal;
     }
 
-    public static GeoPos getApproxGeoCentreOriginal() {
+    public GeoPos getApproxGeoCentreOriginal() {
         return approxGeoCentreOriginal;
     }
 
-    public static Point getApproxXYZCentreOriginal() {
+    public Point getApproxXYZCentreOriginal() {
         return approxXYZCentreOriginal;
     }
 
-    public static Window getCurrentWindow() {
+    public Window getCurrentWindow() {
         return currentWindow;
     }
 

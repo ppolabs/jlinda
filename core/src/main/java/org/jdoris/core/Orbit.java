@@ -98,7 +98,7 @@ public final class Orbit {
 
     // TODO: make generic so it can work with arrays of lines as well: see matlab implementation
     // TODO: switch to Cn class
-    public static Point lp2xyz(double line, double pixel, SLCImage slcimage, Orbit orbits) {
+    public Point lp2xyz(double line, double pixel, SLCImage slcimage, Orbit orbits) {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -174,7 +174,7 @@ public final class Orbit {
         return ellipsoidPosition;
     }
 
-    public static Point lp2xyz(Point sarPixel, SLCImage slcImage, Orbit orbit) {
+    public Point lp2xyz(Point sarPixel, SLCImage slcImage, Orbit orbit) {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -253,7 +253,7 @@ public final class Orbit {
         return ellipsoidPosition;
     }
 
-    public static Point lp2xyz(Point sarPixel, SLCImage slcImage) {
+    public Point lp2xyz(Point sarPixel, SLCImage slcImage) {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -332,7 +332,7 @@ public final class Orbit {
         return ellipsoidPosition;
     }
 
-    public static Point xyz2orb(Point pointOnEllips, SLCImage slcimage) {
+    public Point xyz2orb(Point pointOnEllips, SLCImage slcimage) {
 
         // Initial value azimuth time
         Point posSat;
@@ -369,7 +369,7 @@ public final class Orbit {
 
     }
 
-    public static Point xyz2t(Point position, SLCImage slcimage, Orbit orbit) {
+    public Point xyz2t(Point position, SLCImage slcimage, Orbit orbit) {
 
         Point delta;
         Point returnVector = new Point();
@@ -422,7 +422,7 @@ public final class Orbit {
 
     }
 
-    public static Point xyz2t(Point position, SLCImage slcimage) {
+    public Point xyz2t(Point position, SLCImage slcimage) {
 
         Point delta;
         Point returnVector = new Point();
@@ -475,7 +475,7 @@ public final class Orbit {
 
     }
 
-    public static Point xyz2lp(Point position, SLCImage slcimage) {
+    public Point xyz2lp(Point position, SLCImage slcimage) {
 
         Point returnPixel = new Point();
 
@@ -491,21 +491,21 @@ public final class Orbit {
     }
 
     // TODO
-    public static Point ell2lp(GeoPos philamheight, SLCImage slcimage) {
+    public Point ell2lp(GeoPos philamheight, SLCImage slcimage) {
         double[] xyz = new double[3];
         GeoUtils.geo2xyz(philamheight, xyz);
         return xyz2lp(new Point(xyz), slcimage);
     }
 
     // TODO
-    public static GeoPos lp2ell(Point position, SLCImage slcimage) {
+    public GeoPos lp2ell(Point position, SLCImage slcimage) {
         GeoPos returnPos = new GeoPos();
         Point xyz = lp2xyz(position, slcimage);
         GeoUtils.xyz2geo(xyz.toArray(), returnPos);
         return returnPos;
     }
 
-    public static Point[][] dumpOrbit() {
+    public Point[][] dumpOrbit() {
 
         if (numStateVectors == 0) {
             System.out.println("Exiting Orbit.dumporbit(), no orbit data available.");
@@ -554,7 +554,7 @@ public final class Orbit {
 
     }
 
-    public static void showOrbit() {
+    public void showOrbit() {
         System.out.println("Time of orbit ephemerides: " + time.toString());
         System.out.println("Orbit ephemerides x:" + data_X.toString());
         System.out.println("Orbit ephemerides y:" + data_Y.toString());
@@ -569,7 +569,7 @@ public final class Orbit {
 
     }
 
-    private static Point getXYZ(double azTime) {
+    public Point getXYZ(double azTime) {
 
         //TODO: sanity check!
         Point satelliteXYZPosition = new Point();
@@ -584,7 +584,7 @@ public final class Orbit {
         return satelliteXYZPosition;  //To change body of created methods use File | Settings | File Templates.
     }
 
-    private static Point getXYZDot(double azTime) {
+    public Point getXYZDot(double azTime) {
 
         //TODO: sanity check
         Point satelliteVelocity = new Point();
@@ -608,7 +608,7 @@ public final class Orbit {
 
     }
 
-    private static Point getXYZDotDot(double azTime) {
+    public Point getXYZDotDot(double azTime) {
 
         //TODO: sanity check
         Point satelliteAcceleration = new Point();
@@ -629,11 +629,11 @@ public final class Orbit {
 
     }
 
-    public static double eq1_Doppler(Point velocity, Point position) {
+    public double eq1_Doppler(Point velocity, Point position) {
         return velocity.in(position);
     }
 
-    private static double eq1_Doppler_dt(Point dsatP, Point velocity, Point accerelation) {
+    private double eq1_Doppler_dt(Point dsatP, Point velocity, Point accerelation) {
         return accerelation.in(dsatP) - Math.pow(velocity.x, 2) - Math.pow(velocity.y, 2) - Math.pow(velocity.z, 2);
     }
 
@@ -649,6 +649,11 @@ public final class Orbit {
     public double eq3_Ellipsoid(Point P, double semimajor_a, double semiminor_b) {
         return ((Math.pow(P.x, 2) + Math.pow(P.y, 2)) / Math.pow(semimajor_a, 2)) +
                 Math.pow(P.z / semiminor_b, 2) - 1.0;
+    }
+
+    // TODO: implement check on initialization of orbit class: JAVA should have better facility for this
+    public boolean is_initialized() {
+        return true;
     }
 
 }

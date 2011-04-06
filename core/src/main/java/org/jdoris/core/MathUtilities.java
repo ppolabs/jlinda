@@ -154,11 +154,19 @@ public class MathUtilities {
         return matrix;
     }
 
-    public double normalize(double data, int min, int max) {
+    public static double normalize(double data, int min, int max) {
         data -= (float) (0.5 * (min + max));
         data /= (float) (0.25 * (max - min));
         return data;
     }
+
+    public static double normalize(double data, double min, double max) {
+        data -= (0.5 * (min + max));
+        data /= (0.25 * (max - min));
+        return data;
+    }
+
+
 
     public int numberOfCoefficients(int degree) {
 //        return 0;  //To change body of created methods use File | Settings | File Templates.
