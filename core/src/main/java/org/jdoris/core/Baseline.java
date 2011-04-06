@@ -158,16 +158,16 @@ public class Baseline {
     private void model_parameters(final SLCImage master, final SLCImage slave, Orbit masterorbit, Orbit slaveorbit) {
 
         // TODO: with throwables!
-        if (masterorbit.is_initialized() == false) {
+        if (!masterorbit.is_initialized()) {
             logger.debug("Baseline cannot be computed, master orbit not initialized.");
             return;
-        } else if (slaveorbit.is_initialized() == false) {
+        } else if (!slaveorbit.is_initialized()) {
             logger.debug("Baseline cannot be computed, slave orbit not initialized.");
             return;
         }
 
         // --- Get on with it ---------------------------------------
-        if (initialized == true) {
+        if (initialized) {
             logger.warn("baseline already initialized??? (returning)");
             return;
         }
