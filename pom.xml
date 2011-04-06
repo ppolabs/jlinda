@@ -7,7 +7,7 @@
 
     <name>jDoris</name>
     <modules>
-        <module>legacy</module>
+        <!--<module>legacy</module>-->
     </modules>
     <groupId>org.jdoris</groupId>
     <artifactId>jdoris</artifactId>
