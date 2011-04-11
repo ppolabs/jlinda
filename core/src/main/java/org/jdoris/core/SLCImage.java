@@ -73,7 +73,7 @@ public final class SLCImage {
     private static boolean absTimingErrorFlag;   // FALSE if master time is NOT updated,
     // true if it is
 
-//    private static Rectangle originalWindow;       // position and size of the full scene
+    //    private static Rectangle originalWindow;       // position and size of the full scene
     Window originalWindow;       // position and size of the full scene
     Window currentWindow;        // position and size of the subset
     Window slaveMasterOffsets;   // overlapping slave window in master coordinates
@@ -231,6 +231,34 @@ public final class SLCImage {
 
     public Window getCurrentWindow() {
         return currentWindow;
+    }
+
+    public double getRsr2x() {
+        return rsr2x;
+    }
+
+    public double getPRF() {
+        return PRF;
+    }
+
+    public double getAzimuthBandwidth() {
+        return azimuthBandwidth;
+    }
+
+    public double getF_DC_a0() {
+        return f_DC_a0;
+    }
+
+    public double getF_DC_a1() {
+        return f_DC_a1;
+    }
+
+    public double getF_DC_a2() {
+        return f_DC_a2;
+    }
+
+    public int getCoarseOffsetP() {
+        return coarseOffsetP;
     }
 
 }
