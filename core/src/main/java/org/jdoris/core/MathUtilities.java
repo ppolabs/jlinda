@@ -1,6 +1,9 @@
 package org.jdoris.core;
 
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
+import org.apache.log4j.Logger;
 import org.esa.beam.framework.gpf.OperatorException;
+import org.jblas.ComplexDoubleMatrix;
 import org.jblas.Decompose;
 import org.jblas.DoubleMatrix;
 import org.jblas.Solve;
@@ -9,10 +12,10 @@ import java.awt.*;
 
 public class MathUtilities {
 
-    private static int polyDegree;
+    static Logger logger = Logger.getLogger(MathUtilities.class.getName());
 
-    public MathUtilities() {
-    }
+
+    private static int polyDegree;
 
     public static int getPolyDegree() {
         return polyDegree;
@@ -173,7 +176,7 @@ public class MathUtilities {
         return (int) (0.5 * (Math.pow(degree + 1, 2) + degree + 1));
     }
 
-    public int degreeFromCoefficients(int numOfCoefficients) {
+    public static int degreeFromCoefficients(int numOfCoefficients) {
 //        return 0;  //To change body of created methods use File | Settings | File Templates.
         // TODO: validate this?!
         return (int) (0.5 * (-1 + (int) (Math.sqrt(1 + 8 * numOfCoefficients)))) - 1;
@@ -291,7 +294,7 @@ public class MathUtilities {
           return sum;
     }
 
-    public DoubleMatrix polyValOnGrid(DoubleMatrix x, DoubleMatrix y, final DoubleMatrix coeff, int degreee) {
+    public static DoubleMatrix polyValOnGrid(DoubleMatrix x, DoubleMatrix y, final DoubleMatrix coeff, int degreee) {
         if (x.length != x.rows) {
             System.out.println("WARNING: polyal functions require (x) standing data vectors!");
         }
@@ -603,5 +606,248 @@ public class MathUtilities {
 
         return result;
     }
+
+
+    /**
+     * *************************************************************
+     * ifft(A,dim)                                                  *
+     * inverse 1dfft over dim of A is returned in A by reference *
+     * if dim=1 ifft is over all columns of A, if 2 over rows.   *
+     * data is stored major row order in memory, so dim=2 is     *
+     * probably much faster.                                     *
+     * fftlength should be power of 2                            *
+     * Bert Kampes, 22-Mar-2000                                  *
+     * **************************************************************
+     */
+    public static void ifft(ComplexDoubleMatrix A, int dimension) {
+        int i;
+        final int iopt = -1;                        // inverse FFT (scaled)
+
+        switch (dimension) {
+            case 1: {
+                logger.debug("1d ifft over columns");
+                int fftlength = A.rows;
+                for (i = 0; i < A.columns; ++i) {
+                    ComplexDoubleMatrix VECTOR = A.getColumn(i);
+                    four1(VECTOR, fftlength, iopt);
+                    A.putColumn(i, VECTOR);
+                }
+                break;
+            }
+            case 2: {
+                logger.debug("1d ifft over rows");
+                int fftlength = A.columns;
+
+                for (i = 0; i < A.rows; ++i) {
+                    ComplexDoubleMatrix VECTOR = A.getRow(i);
+                    four1(VECTOR, fftlength, iopt);
+                    A.putRow(i, VECTOR);
+                }
+                break;
+            }
+            default:
+                logger.error("ifft: dimension != {1,2}");
+        }
+    } // END ifft
+
+
+    public static void fft(ComplexDoubleMatrix A, int dimension) {
+
+        int i;
+        final int iopt = 1;                         // forward FFT
+        int fftlength;
+        ComplexDoubleMatrix VECTOR = null;
+        switch (dimension) {
+            case 1: {
+                fftlength = A.rows;
+                for (i = 0; i < A.columns; ++i) {
+                    VECTOR = A.getColumn(i);
+                    four1(VECTOR, fftlength, iopt);// but generic.
+                    A.putColumn(i, VECTOR);
+                    // perhaps can be used directly to do this w/o data copying...
+                    // four1(A.getColumn(i), fftlength, iopt);// but generic.
+                }
+                break;
+            }
+            case 2: {
+                fftlength = A.columns;
+                for (i = 0; i < A.rows; ++i) {
+                    VECTOR = A.getRow(i);
+                    four1(VECTOR, fftlength, iopt);// but generic.
+                    A.putRow(i, VECTOR);
+//                    four1(A.getRow(i), fftlength, iopt);
+                }
+                break;
+            }
+            default:
+                logger.error("fft: dimension != {1,2}");
+        }
+
+    }
+
+    /**
+     * *************************************************************
+     * four1(complr4 *, length, isign)                              *
+     * four1(&A[0][0], 128, 1)                                      *
+     * either based on numerical recipes or veclib                  *
+     * helper function for other fft routines, if no veclib         *
+     * cooley-turkey, power 2, replaces input,                      *
+     * isign=1: fft , isign=-1: ifft                                *
+     * handling vectors should be simpler (lying, standing)         *
+     * note that this is not a good implementation, only to get     *
+     * doris software working without veclib.                       *
+     * *
+     * define SAMEASVECIB if you want the order of the coefficients *
+     * of the fft the same as veclib. it seems this is not required *
+     * for a good version of Doris, but in case of problems this    *
+     * may be the solution.                                         *
+     * *
+     * VECLIB defines the FT same as matlab:                        *
+     * N-1                                                 *
+     * X(k) = sum  x(n)*exp(-j*2*pi*k*n/N), 0 <= k <= N-1.        *
+     * n=0                                                 *
+     * *
+     * FFTW defines the same as Matlab, but inv. not normalized.    *
+     * I don't know if the matrix must be allocated somehow, so for *
+     * now we try only 1d ffts to build 2d too.                     *
+     * *
+     * **************************************************************
+     */
+    public static void four1(ComplexDoubleMatrix vector, int fftlength, int direction) {
+
+        DoubleFFT_1D fft = new DoubleFFT_1D(fftlength);
+        double[] tempDoubleArray;
+
+        switch (direction) {
+            case 1:
+                tempDoubleArray = vector.toDoubleArray();
+                fft.complexForward(tempDoubleArray);
+                vector.copy(new ComplexDoubleMatrix(tempDoubleArray));
+
+            case -1:
+                tempDoubleArray = vector.toDoubleArray();
+                fft.complexInverse(tempDoubleArray, false);
+                vector.copy(new ComplexDoubleMatrix(tempDoubleArray));
+        }
+
+    }
+
+    /**
+     * *************************************************************
+     * ifftshift(A)                                                 *
+     * ifftshift of vector A is returned in A by reference       *
+     * undo effect of fftshift. ?p=floor(m/2); A=A[p:m-1 0:p-1]; *
+     * **************************************************************
+     */
+    public static void ifftshift(DoubleMatrix A) throws Exception {
+
+        if (!A.isVector()) {
+            logger.error("ifftshift: only vectors");
+            throw new Exception();
+        }
+
+        DoubleMatrix Res = new DoubleMatrix(A.rows, A.columns);
+        final int start = (int) (Math.floor((float) (A.length) / 2));
+
+        System.arraycopy(A.data, start, Res.data, 0, A.length - start);
+        System.arraycopy(A.data, 0, Res.data, A.length - start, start);
+
+        A.copy(Res);
+
+    } // END ifftshift
+
+    /**
+     * *************************************************************
+     * wshift(A,n)                                                  *
+     * circular shift of vector A by n pixels. positive n for    *
+     * right to left shift.                                      *
+     * implementation: WSHIFT(A,n) == WSHIFT(A,n-sizeA);         *
+     * A is changed itself!                                      *
+     * **************************************************************
+     */
+
+    public static void wshift(DoubleMatrix A, int n) throws Exception {
+
+        if (n >= A.length) {
+            System.err.println("wshift: shift larger than matrix not implemented.");
+            throw new Exception();
+        }
+
+        if (!A.isVector()) {
+            System.err.println("wshift: only vectors");
+            throw new Exception();
+        }
+
+        // positive only, use rem!  n = n%A.nsize;
+        if (n == 0) return;
+        if (n < 0) n += A.length;
+
+        DoubleMatrix Res = new DoubleMatrix(A.rows, A.columns);
+
+        //  n always >0 here
+        System.arraycopy(A.data, n, Res.data, 0, A.length - n);
+        System.arraycopy(A.data, 0, Res.data, A.length - n, n);
+
+        A.copy(Res);
+
+    }
+
+
+    public static DoubleMatrix myrect(DoubleMatrix X) throws Exception {
+
+        if (X.rows != 1) {
+            System.err.println("myrect: only lying vectors.");
+            throw new Exception();
+        }
+
+        DoubleMatrix Res = new DoubleMatrix(1, X.rows);
+
+        for (int i = 0; i < X.rows; ++i) {
+            if (Math.abs(X.get(i)) <= 0.5) {
+                Res.put(i, (float) 1.);
+            }
+        }
+
+        return Res;
+    }
+
+    /**
+     * *************************************************************
+     * myhamming                                                    *
+     * hamming window, lying vector                                 *
+     * w = (a + (1.-a).*cos((2.*pi/fs).*fr)) .* myrect(fr./Br);     *
+     * scale/shift filter by g(x)=f((x-xo)/s)                       *
+     * alpha==1 yields a myrect window                              *
+     * Bert Kampes, 31-Mar-2000                                  *
+     * **************************************************************
+     */
+    public static DoubleMatrix myhamming(final DoubleMatrix fr, double RBW, double RSR, double alpha) throws Exception {
+
+        if (fr.rows != 1) {
+            System.err.println("myhamming: only lying vectors.");
+            throw new Exception();
+//            throw (argument_error);
+        }
+
+        if (alpha < 0.0 || alpha > 1.0) {
+            System.err.println("myhamming: !alpha e{0..1}.");
+            throw new Exception();
+        }
+
+        if (RBW > RSR) {
+            System.err.println("myhamming: RBW>RSR.");
+            throw new Exception();
+        }
+
+        DoubleMatrix Res = new DoubleMatrix(1, fr.columns);
+        for (int i = 0; i < fr.columns; ++i) {
+            if (Math.abs(fr.get(i)) < 0.5) {   // rect window
+                Res.put(i, (float) (alpha + (1 - alpha) * Math.cos((2 * Math.PI / RSR) * fr.get(i))));
+            }
+        }
+        return Res;
+    }
+
+
 
 }
