@@ -2,7 +2,7 @@ package org.jdoris.core;
 
 import java.io.Serializable;
 
-class Window implements Comparable, Cloneable, Serializable {
+public class Window implements Comparable, Cloneable, Serializable {
 
     /**
      * min line coordinate
