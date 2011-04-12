@@ -1,12 +1,10 @@
 package org.jdoris.core;
 
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_2D;
 import org.apache.log4j.Logger;
 import org.esa.beam.framework.gpf.OperatorException;
-import org.jblas.ComplexDoubleMatrix;
-import org.jblas.Decompose;
-import org.jblas.DoubleMatrix;
-import org.jblas.Solve;
+import org.jblas.*;
 
 import java.awt.*;
 
@@ -170,7 +168,6 @@ public class MathUtilities {
     }
 
 
-
     public int numberOfCoefficients(int degree) {
 //        return 0;  //To change body of created methods use File | Settings | File Templates.
         return (int) (0.5 * (Math.pow(degree + 1, 2) + degree + 1));
@@ -286,12 +283,12 @@ public class MathUtilities {
     }
 
     public static double polyVal1d(double x, DoubleMatrix coefficients) {
-            double sum = 0.0;
-          for (int d = coefficients.length - 1; d >= 0; --d) {
-              sum *= x;
-              sum += coefficients.get(d);
-          }
-          return sum;
+        double sum = 0.0;
+        for (int d = coefficients.length - 1; d >= 0; --d) {
+            sum *= x;
+            sum += coefficients.get(d);
+        }
+        return sum;
     }
 
     public static DoubleMatrix polyValOnGrid(DoubleMatrix x, DoubleMatrix y, final DoubleMatrix coeff, int degreee) {
@@ -686,7 +683,6 @@ public class MathUtilities {
     }
 
     /**
-     * *************************************************************
      * four1(complr4 *, length, isign)                              *
      * four1(&A[0][0], 128, 1)                                      *
      * either based on numerical recipes or veclib                  *
@@ -716,18 +712,13 @@ public class MathUtilities {
     public static void four1(ComplexDoubleMatrix vector, int fftlength, int direction) {
 
         DoubleFFT_1D fft = new DoubleFFT_1D(fftlength);
-        double[] tempDoubleArray;
 
         switch (direction) {
             case 1:
-                tempDoubleArray = vector.toDoubleArray();
-                fft.complexForward(tempDoubleArray);
-                vector.copy(new ComplexDoubleMatrix(tempDoubleArray));
+                fft.complexForward(vector.data);
 
             case -1:
-                tempDoubleArray = vector.toDoubleArray();
-                fft.complexInverse(tempDoubleArray, false);
-                vector.copy(new ComplexDoubleMatrix(tempDoubleArray));
+                fft.complexInverse(vector.data, false);
         }
 
     }
@@ -849,5 +840,274 @@ public class MathUtilities {
     }
 
 
+    public static boolean isodd(long value) {
+        return value % 2 == 0;
+    }
 
+    public static boolean ispower2(long value) {
+        return value == 1 || value == 2 || value == 4 || value == 8 || value == 16 ||
+                value == 32 || value == 64 || value == 128 || value == 256 ||
+                value == 512 || value == 1024 || value == 2048 || value == 4096;
+    }
+
+    /**
+     * B=oversample(A, factorrow, factorcol);
+     * 2 factors possible, extrapolation at end.
+     * no vectors possible.
+     */
+    public static ComplexDoubleMatrix oversample(ComplexDoubleMatrix AA, int factorrow, int factorcol) throws Exception {
+
+        ComplexDoubleMatrix A = AA; // copy, AA is changed by in-place fft;
+        final int l = A.rows;
+        final int p = A.columns;
+        final int halfl = l / 2;
+        final int halfp = p / 2;
+        final int L2 = factorrow * l;      // numrows of output matrix
+        final int P2 = factorcol * p;      // columns of output matrix
+
+
+        if (A.isVector()) {
+            logger.error("OVERSAMPLE: only 2d matrices.");
+            throw new Exception();
+        }
+        if (!ispower2(l) && factorrow != 1) {
+            logger.error("OVERSAMPLE: numlines != 2^n.");
+        }
+        if (!ispower2(p) && factorcol != 1) {
+            logger.error("OVERSAMPLE: numcols != 2^n.");
+        }
+
+        final ComplexDouble half = new ComplexDouble(0.5);
+
+        ComplexDoubleMatrix Res = new ComplexDoubleMatrix(L2, P2);
+
+        int i, j;
+        if (factorrow == 1) {
+
+            // 1d fourier transform per row
+            fft(A, 2);
+
+            // divide by 2 because even fftlength
+            A.putColumn(halfp, A.getColumn(halfp).mmuli(half));
+//            for (i=0; i<l; ++i) {
+//                A.put(i, halfp, A.get(i, halfp).mul(half));
+//            }
+
+            // zero padding windows
+            Window winA1 = new Window(0, l - 1, 0, halfp);
+            Window winA2 = new Window(0, l - 1, halfp, p - 1);
+            Window winR2 = new Window(0, l - 1, P2 - halfp, P2 - 1);
+
+            // prepare data
+            setdata(Res, winA1, A, winA1);
+            setdata(Res, winR2, A, winA2);
+
+            // inverse fft per row
+            ifft(Res, 2);
+
+        } else if (factorcol == 1) {
+
+            // 1d fourier transform per column
+            fft(A, 1);
+
+            // divide by 2 'cause even fftlength
+            A.putRow(halfl, A.getRow(halfl).mmuli(half));
+//            for (i=0; i<p; ++i){
+//                A(halfl,i) *= half;
+//            }
+
+            // zero padding windows
+            Window winA1 = new Window(0, halfl, 0, p - 1);
+            Window winA2 = new Window(halfl, l - 1, 0, p - 1);
+            Window winR2 = new Window(L2 - halfl, L2 - 1, 0, p - 1);
+
+            // prepare data
+            setdata(Res, winA1, A, winA1);
+            setdata(Res, winR2, A, winA2);
+
+            // inverse fft per row
+            ifft(Res, 1);
+
+        } else {
+
+            // A=fft2d(A)
+            fft2d(A);
+
+            // divide by 2 'cause even fftlength
+            A.putColumn(halfp, A.getColumn(halfp).mmuli(half));
+            A.putRow(halfl, A.getRow(halfl).mmuli(half));
+//            for (i=0; i<l; ++i) {
+//                A(i,halfp) *= half;
+//            }
+//            for (i=0; i<p; ++i) {
+//                A(halfl,i) *= half;
+//            }
+
+            // zero padding windows
+            Window winA1 = new Window(0, halfl, 0, halfp);   // zero padding windows
+            Window winA2 = new Window(0, halfl, halfp, p - 1);
+            Window winA3 = new Window(halfl, l - 1, 0, halfp);
+            Window winA4 = new Window(halfl, l - 1, halfp, p - 1);
+            Window winR2 = new Window(0, halfl, P2 - halfp, P2 - 1);
+            Window winR3 = new Window(L2 - halfl, L2 - 1, 0, halfp);
+            Window winR4 = new Window(L2 - halfl, L2 - 1, P2 - halfp, P2 - 1);
+
+            // prepare data
+            setdata(Res, winA1, A, winA1);
+            setdata(Res, winR2, A, winA2);
+            setdata(Res, winR3, A, winA3);
+            setdata(Res, winR4, A, winA4);
+
+            // inverse back in 2d
+            ifft2d(Res);
+        }
+
+        // scale
+        Res.mmul((double) (factorrow * factorcol));
+        return Res;
+
+    }
+
+    /**
+     * setdata(B, winB, A, winA):
+     * set winB of B to winA of A
+     * if winB==0 defaults to totalB, winA==0 defaults to totalA
+     * first line matrix =0 (?)
+     */
+    public static void setdata(DoubleMatrix B, Window winB, DoubleMatrix A, Window winA) {
+
+        // Check default request
+        if (winB.linehi == 0 && winB.pixhi == 0) {
+            winB.linehi = B.rows - 1;
+            winB.pixhi = B.columns - 1;
+        }
+        if (winA.linehi == 0 && winA.pixhi == 0) {
+            winA.linehi = A.rows - 1;
+            winA.pixhi = A.columns - 1;
+        }
+
+        // TODO: for now errors only logged, introduce exceptions
+        // More sanity checks
+        if (((winB.linehi - winB.linelo) != (winA.linehi - winA.linelo)) ||
+                ((winB.pixhi - winB.pixlo) != (winA.pixhi - winA.pixlo)))
+            logger.error("setdata: wrong input.");
+
+        if (winB.linehi < winB.linelo || winB.pixhi < winB.pixlo)
+            logger.error("setdata: wrong input.1");
+
+        if ((winB.linehi > B.rows - 1) ||
+                (winB.pixhi > B.columns - 1))
+            logger.error("setdata: wrong input.2");
+
+        if ((winA.linehi > A.rows - 1) ||
+                (winA.pixhi > A.columns - 1))
+            logger.error("setdata: wrong input.3");
+
+        // Fill data
+        int sizeLin = (int) winA.pixels();
+        for (int i = (int) winB.linelo; i <= winB.linehi; i++) {
+
+            int startA = (int) (i * A.columns + winA.pixlo);
+            int startB = (int) (i * B.columns + winB.pixlo);
+
+            System.arraycopy(A.data, startA, B.data, startB, sizeLin);
+
+        }
+    }
+
+    /**
+     * setdata(B, winB, A, winA):
+     * set winB of B to winA of A
+     * if winB==0 defaults to totalB, winA==0 defaults to totalA
+     * first line matrix =0 (?)
+     */
+
+    public static void setdata(ComplexDoubleMatrix B, Window winB, ComplexDoubleMatrix A, Window winA) {
+
+        // Check default request
+        if (winB.linehi == 0 && winB.pixhi == 0) {
+            winB.linehi = B.rows - 1;
+            winB.pixhi = B.columns - 1;
+        }
+        if (winA.linehi == 0 && winA.pixhi == 0) {
+            winA.linehi = A.rows - 1;
+            winA.pixhi = A.columns - 1;
+        }
+
+        // TODO: for now errors only logged, introduce exceptions
+        // More sanity checks
+        if (((winB.linehi - winB.linelo) != (winA.linehi - winA.linelo)) ||
+                ((winB.pixhi - winB.pixlo) != (winA.pixhi - winA.pixlo)))
+            logger.error("setdata: wrong input.");
+
+        if (winB.linehi < winB.linelo || winB.pixhi < winB.pixlo)
+            logger.error("setdata: wrong input.1");
+
+        if ((winB.linehi > B.rows - 1) ||
+                (winB.pixhi > B.columns - 1))
+            logger.error("setdata: wrong input.2");
+
+        if ((winA.linehi > A.rows - 1) ||
+                (winA.pixhi > A.columns - 1))
+            logger.error("setdata: wrong input.3");
+
+        // Fill data
+        int sizeLin = (int) winA.pixels() * 2;
+        for (int i = (int) winB.linelo; i <= winB.linehi; i++) {
+
+            int startA = (int) (i * A.columns * 2 + winA.pixlo * 2);
+            int startB = (int) (i * B.columns * 2 + winB.pixlo * 2);
+
+            System.arraycopy(A.data, startA, B.data, startB, sizeLin);
+
+        }
+    }
+
+    public static void fft2d(ComplexDoubleMatrix A) {
+        DoubleFFT_2D fft2d = new DoubleFFT_2D(A.rows, A.columns);
+        fft2d.complexForward(A.data);
+    }
+
+    private static void ifft2d(ComplexDoubleMatrix A) {
+        DoubleFFT_2D fft2d = new DoubleFFT_2D(A.rows, A.columns);
+        fft2d.complexInverse(A.data, true);
+    }
+
+    public static ComplexDoubleMatrix dotmult(ComplexDoubleMatrix A, ComplexDoubleMatrix B) {
+        return A.mmul(B);
+    }
+
+    /**
+    * B.fliplr()
+    * Mirror in center vertical (flip left right).
+    */
+    public static void fliplr(DoubleMatrix A) {
+
+        int nrows = A.rows;
+        int ncols = A.columns;
+
+        if (A.rows == 1) {
+            double tmp;
+            for (int i=0; i< (ncols/2); ++i) {
+                tmp = A.get(1, i);
+                A.put(1,i,A.get(1, nrows - i));
+                A.put(1, nrows - 1, tmp);
+            }
+        } else {
+            for (int i = 0; i < (ncols / 2); ++i)     // floor
+            {
+                DoubleMatrix tmp1 = A.getColumn(i);
+                DoubleMatrix tmp2 = A.getColumn(ncols - i - 1);
+                A.putColumn(i, tmp2);
+                A.putColumn(ncols - i - 1, tmp1);
+            }
+        }
+    }
+
+
+
+    public static DoubleMatrix intensity(ComplexDoubleMatrix cint) {
+        return MatrixFunctions.pow(cint.real(), 2).add(MatrixFunctions.pow(cint.imag(), 2));
+
+    }
 }
