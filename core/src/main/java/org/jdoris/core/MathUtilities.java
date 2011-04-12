@@ -1068,7 +1068,13 @@ public class MathUtilities {
         fft2d.complexForward(A.data);
     }
 
-    private static void ifft2d(ComplexDoubleMatrix A) {
+    // TODO: check declaration of FFT for Real 2D input and realForwardFull
+    public static void fft2d(DoubleMatrix A) {
+        DoubleFFT_2D fft2d = new DoubleFFT_2D(A.rows, A.columns);
+        fft2d.realForwardFull(A.data);
+    }
+
+    public static void ifft2d(ComplexDoubleMatrix A) {
         DoubleFFT_2D fft2d = new DoubleFFT_2D(A.rows, A.columns);
         fft2d.complexInverse(A.data, true);
     }
@@ -1109,5 +1115,26 @@ public class MathUtilities {
     public static DoubleMatrix intensity(ComplexDoubleMatrix cint) {
         return MatrixFunctions.pow(cint.real(), 2).add(MatrixFunctions.pow(cint.imag(), 2));
 
+    }
+
+    // HELPER FUNCTIONS!
+    public static DoubleMatrix matTxmat(DoubleMatrix matrix1, DoubleMatrix matrix2) {
+        return matrix1.transpose().mmul(matrix2);
+    }
+
+    public static ComplexDoubleMatrix matTxmat(ComplexDoubleMatrix matrix1, ComplexDoubleMatrix matrix2) {
+        return matrix1.transpose().mmul(matrix2);
+    }
+
+    public static double rad2deg(double rad) {
+        return Math.toDegrees(rad);
+    }
+
+    public static void setdata(ComplexDoubleMatrix B, ComplexDoubleMatrix A, Window winA) {
+        setdata(B, new Window(0, B.rows, 0, B.columns), A, winA);
+    }
+
+    public static DoubleMatrix magnitude(ComplexDoubleMatrix A) {
+        return null;  //To change body of created methods use File | Settings | File Templates.
     }
 }

@@ -1,27 +1,29 @@
 package org.jdoris.core.filtering;
 
+import org.apache.log4j.Logger;
+import org.jblas.ComplexDouble;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
+import org.jdoris.core.MathUtilities;
+import org.jdoris.core.Window;
 import org.jdoris.core.todo_classes.todo_classes;
 
-/**
- * User: pmar@ppolabs.com
- * Date: 4/8/11
- * Time: 5:01 PM
- */
+import static org.jblas.MatrixFunctions.pow;
+
 public class PhaseFiter {
+
+    static Logger logger = Logger.getLogger(PhaseFiter.class.getName());
+
 
     //TODO: make template classes for generalInput, operatorInput, and ProductMetadata class
 
     /**
-     * *************************************************************
-     * phasefilter                                               *
-     * goldsteins method, see routine goldstein and smooth.         *
-     * After Goldstein and Werner, Radar interferogram filtering    *
-     * for geophysical applications. GRL 25-21 pp 4035-4038, 1998.  *
-     * and: ESA Florence 1997, vol2, pp969-972, Goldstein & Werner  *
-     * "Radar ice motion interferometry".                           *
-     * *************************************************************
+     * phasefilter: OPERATOR prototype METHOD
+     * goldsteins method, see routine goldstein and smooth.
+     * After Goldstein and Werner, Radar interferogram filtering
+     * for geophysical applications. GRL 25-21 pp 4035-4038, 1998.
+     * and: ESA Florence 1997, vol2, pp969-972, Goldstein & Werner
+     * "Radar ice motion interferometry".
      */
     public static void phasefilter(
             final todo_classes.inputgeneral generalinput,
@@ -29,132 +31,419 @@ public class PhaseFiter {
             final todo_classes.input_filtphase filtphaseinput) {
     }
 
-    /*
-   *    phasefilter goldstein                                     *
-   * Input is matrix of SIZE (e.g. 32) lines, and N range pixels. *
-   * Filtered OUTPUT is same size as input block.                 *
-   * Because of overlap, only write to disk in calling routine    *
-   * part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]             *
-   *                                                              *
-   * Smoothing of the amplitude of the spectrum is performed by   *
-   * spatial convolution with a block kernel of size 2*SMOOTH+1.  *
-   * (Which is done by FFT's). e.g. a spatial moving average with *
-   * kernel (1d) k=[1 1 1 1 1]/5; kernel2d = transpose(k)*k.      *
-   * Blocks in range direction.                                   *
-   *                                                              *
-   * After Goldstein and Werner, Radar interferogram filtering    *
-   * for geophysical applications. GRL 25-21 pp 4035-4038, 1998.  *
-   * and: ESA Florence 1997, vol2, pp969-972, Goldstein & Werner  *
-   * "Radar ice motion interferometry".                           *
-   * */
-    public static ComplexDoubleMatrix goldstein(
-            final ComplexDoubleMatrix CINT,
-            final float ALPHA,
-            final long OVERLAP,
-            final DoubleMatrix smoothkernel) { // lying down
-        return null;
-    }
-
-    /*
-     *    phasefilter buffer by spatial conv. with kernel.          *
-     * Input is matrix of SIZE (e.g. 256) lines, and N range pixels.*
-     * Filtered OUTPUT is same size as input block.                 *
-     * Because of overlap, only write to disk in calling routine    *
-     * part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]             *
-     * (in line direction)                                          *
-     * spatial convolution with a kernel function, such as a block  *
-     * function 111 (1D) (By FFT's).                                *
-     * Processing is done in blocks in range direction.             *
-     * For the first block the part [0:OVERLAP-1] is set to 0.      *
-     * For the last block the part [NPIX-1-OVERLAP:NPIX-1] is 0.    *
-     *                                                              *
-     * Input:                                                       *
-     *  - matrix to be filtered of blocklines * numpixs             *
-     *  - kernel2d: fft2 of 2d spatial kernel.                      *
-     *  - overlap: half of the kernel size, e.g., 1 for 111.        *
-     * Output:                                                      *
-     *  - filtered matrix.                                          *
-     *    ifft2d(BLOCK .* KERNEL2D) is returned, so if required for *
-     *    non symmetrical kernel, offer the conj(KERNEL2D)!         *
-     *                                                              *
-    */
-    public static ComplexDoubleMatrix convbuffer(
-            final ComplexDoubleMatrix CINT,
-            final ComplexDoubleMatrix KERNEL2D,
-            final long OVERLAP) {         // overlap in column direction
-
-        return null;
-
-    }
-
     /**
-     * *************************************************************
-     * spatialphasefilt                                          *
-     * For the first block the part [0:OVERLAP-1] is set to 0.      *
-     * For the last block the part [NPIX-1-OVERLAP:NPIX-1] is 0.    *
-     * *************************************************************
-     */
-    public static void spatialphasefilt(
-            final todo_classes.inputgeneral generalinput,
-            final todo_classes.productinfo interferogram,
-            final todo_classes.input_filtphase filtphaseinput) {
-
-    }
-
-    /**
-     * phasefilter spectral                                      *
-     * Input is matrix of SIZE (e.g. 32) lines, and N range pixels. *
-     * Filtered OUTPUT is same size as input block.                 *
-     * Because of overlap, only write to disk in calling routine    *
-     * part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]             *
-     * *
-     * Filtering is performed by pointwise multiplication of the    *
-     * spectrum per block by the KERNEL2D (input).                  *
-     * Blocks in range direction,                                   *
-     */
-
-    public static ComplexDoubleMatrix spectralfilt(
-            final ComplexDoubleMatrix CINT,
-            final ComplexDoubleMatrix KERNEL2D,
-            final long OVERLAP) {
-
-        return null;
-    }
-
-    /**
-     * B = smooth(A,KERNEL)                                         *
-     * (circular) spatial moving average with a (2N+1,2N+1) block.  *
-     * See also matlab script smooth.m for some tests.              *
-     * implementation as convolution with FFT's                     *
-     * input: KERNEL is the FFT of the kernel (block)
-     */
-    public static ComplexDoubleMatrix smooth(
-            final DoubleMatrix A,
-            final ComplexDoubleMatrix KERNEL2D) {
-        return null;
-    }
-
-    /**
-     * B = smooth(A,blocksize)                                      *
-     * (circular) spatial moving average with a (2N+1,2N+1) block.  *
-     * See also matlab script smooth.m for some tests.
-     */
-    public static DoubleMatrix smooth(
-            final DoubleMatrix A,
-            long N) {
-        return null;
-    }
-
-    /**
-     * phasefilterspectral                                       *
-     * loop over whole file and multiply spectrum of interferogram  *
+     * phasefilterspectral: OPERATOR method
+     * loop over whole file and multiply spectrum of interferogram
      * with kernel specified in input file.
      */
     public static void phasefilterspectral(
             final todo_classes.inputgeneral generalinput,
             final todo_classes.productinfo interferogram,
             final todo_classes.input_filtphase filtphaseinput) {
+    }
 
+    /**
+     * spatialphasefilt : OPERATOR prototype METHOD
+     * For the first block the part [0:OVERLAP-1] is set to 0.
+     * For the last block the part [NPIX-1-OVERLAP:NPIX-1] is 0.
+     */
+    @Deprecated
+    public static void spatialphasefilt(
+            final todo_classes.inputgeneral generalinput,
+            final todo_classes.productinfo interferogram,
+            final todo_classes.input_filtphase filtphaseinput) {
+    }
+
+
+    /**
+     * phasefilter goldstein
+     * Input is matrix of SIZE (e.g. 32) lines, and N range pixels.
+     * Filtered OUTPUT is same size as input block.
+     * Because of overlap, only write to disk in calling routine
+     * part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]
+     * <p/>
+     * Smoothing of the amplitude of the spectrum is performed by
+     * spatial convolution with a block kernel of size 2*SMOOTH+1.
+     * (Which is done by FFT's). e.g. a spatial moving average with
+     * kernel (1d) k=[1 1 1 1 1]/5; kernel2d = transpose(k)*k.
+     * Blocks in range direction.
+     * <p/>
+     * After Goldstein and Werner, Radar interferogram filtering
+     * for geophysical applications. GRL 25-21 pp 4035-4038, 1998.
+     * and: ESA Florence 1997, vol2, pp969-972, Goldstein & Werner
+     * "Radar ice motion interferometry".
+     */
+    public static ComplexDoubleMatrix goldstein(
+            final ComplexDoubleMatrix CINT,
+            final float ALPHA,
+            final int OVERLAP,
+            final DoubleMatrix smoothkernel) { // lying down
+
+        boolean CHECKINDICESCALLING = false;
+        boolean CHECKINDEXONLY = false;
+
+        if (CHECKINDICESCALLING) {
+
+            return CINT;
+
+        } else {
+            // ______ Allocate output matrix ______
+            int SIZE = CINT.rows;
+            int NPIX = CINT.columns;
+
+            ComplexDoubleMatrix FILTERED = new ComplexDoubleMatrix(SIZE, NPIX); // output
+
+            // ______ Get block from buffer ______
+            int numout = SIZE - (2 * OVERLAP);       // number of output pixels
+            int cintpixlo = 0;                      // index in CINT to get 1st block
+            int cintpixhi = SIZE - 1;                 // index in CINT to get 1st block
+            int outblockpixlo = 0;                      // index in BLOCK (only 1st block)
+            int outblockpixhi = SIZE - 1 - OVERLAP;         // index in BLOCK (except last block)
+            int outpixlo = outblockpixlo;          // index in FILTERED (1st block)
+            int outpixhi = outblockpixhi;          // index in FILTERED
+            boolean lastblockdone = false;                  // only just started...
+            // note that int32() floors division
+            int SMOOTH = smoothkernel.columns / 2; // half block size, odd kernel
+            boolean dosmooth = (SMOOTH == 0) ? false : true;
+            logger.debug("SMOOTH: " + SMOOTH);// problem with uint<0 index in smoothkernel
+
+            // ______ use FFT's for convolution with smoothkernel ______
+            // ______ this could also be done static, or in the calling routine ______
+            // ______ KERNEL2D is FFT2 of even kernel (no imag part after fft!) ______
+            ComplexDoubleMatrix KERNEL2D = null;
+            if (dosmooth == true) {
+                ComplexDoubleMatrix kernel = new ComplexDoubleMatrix(1, SIZE);             // init to zeros
+                for (int ii = -SMOOTH; ii <= SMOOTH; ++ii) {// 1d kernel function of block
+
+                    //kernel(0,(ii+SIZE)%SIZE) = smoothkernel(0,ii-SMOOTH);
+                    // e.g.: [30,31,0,1,2] <--> [0,1,2,3,4]
+                    int tmp1 = (ii + SIZE) % SIZE;
+                    int tmp2 = ii + SMOOTH;// used to be ii-SMOOTH: wrong
+                    logger.debug("tmp1: " + tmp1 + "; tmp2: " + tmp2);
+                    kernel.put(0, tmp1, new ComplexDouble(smoothkernel.get(0, tmp2), 0.0));
+                }
+
+                KERNEL2D = MathUtilities.matTxmat(kernel, kernel);
+                MathUtilities.fft2d(KERNEL2D);  // should be real sinc
+            }
+            logger.debug("kernel created for smoothing spectrum");
+
+            // ====== Loop forever, stop after lastblockdone ======
+            for (; ;)      //forever, like in c!
+            {
+                if (cintpixhi >= NPIX - 1)                      // check if we are doing the last block
+                {
+                    lastblockdone = true;
+                    cintpixhi = NPIX - 1;                   // prevent reading after file
+                    cintpixlo = cintpixhi - SIZE + 1;         // but make sure SIZE pixels are read
+                    outpixhi = cintpixhi;                // index in FILTERED 2b written
+                    outblockpixhi = SIZE - 1;                   // write all to the end
+                    outblockpixlo = outblockpixhi - (outpixhi - outpixlo + 1) + 1;
+                }
+                Window wincint = new Window(0, SIZE - 1, cintpixlo, cintpixhi);
+                Window winblock = new Window(0, SIZE - 1, outblockpixlo, outblockpixhi);
+                Window winfiltered = new Window(0, SIZE - 1, outpixlo, outpixhi);
+
+                // Construct BLOCK as part of CINT
+                ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
+                MathUtilities.setdata(BLOCK, CINT, wincint);
+
+                if (CHECKINDEXONLY) {
+
+                    // Get spectrum/amplitude/smooth/filter ______
+                    MathUtilities.fft2d(BLOCK);
+                    DoubleMatrix AMPLITUDE = MathUtilities.magnitude(BLOCK);
+
+                    // ______ use FFT's for convolution with rect ______
+                    if (dosmooth == true)
+                        AMPLITUDE = smooth(AMPLITUDE, KERNEL2D);
+
+                    double maxamplitude = AMPLITUDE.max();
+
+                    if (maxamplitude > 1e-20) //?
+                    {
+                        AMPLITUDE.div(maxamplitude);
+                        pow(AMPLITUDE, ALPHA);
+                        BLOCK.mmul(new ComplexDoubleMatrix(AMPLITUDE));           // weight spectrum
+                    } else {
+                        logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
+                    }
+
+                    MathUtilities.ifft2d(BLOCK);
+
+                }
+
+                // ______ Set correct part that is filtered in output matrix ______
+                MathUtilities.setdata(FILTERED, winfiltered, BLOCK, winblock);
+
+                // ______ Exit if finished ______
+                if (lastblockdone)
+                    return FILTERED;                  // return
+
+                // ______ Update indexes in matrices, will be corrected for last block ______
+                cintpixlo += numout;             // next block
+                cintpixhi += numout;             // next block
+                outblockpixlo = OVERLAP;            // index in block, valid for all middle blocks
+                outpixlo = outpixhi + 1;         // index in FILTERED, next range line
+                outpixhi = outpixlo + numout - 1;  // index in FILTERED
+
+            } // for all blocks in this buffer
+
+
+        }
+
+    }
+
+    /**
+     * phasefilter buffer by spatial conv. with kernel.
+     * Input is matrix of SIZE (e.g. 256) lines, and N range pixels.
+     * Filtered OUTPUT is same size as input block.
+     * Because of overlap, only write to disk in calling routine
+     * part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]
+     * (in line direction)
+     * spatial convolution with a kernel function, such as a block
+     * function 111 (1D) (By FFT's).
+     * Processing is done in blocks in range direction.
+     * For the first block the part [0:OVERLAP-1] is set to 0.
+     * For the last block the part [NPIX-1-OVERLAP:NPIX-1] is 0.
+     * <p/>
+     * Input:
+     * - matrix to be filtered of blocklines * numpixs
+     * - kernel2d: fft2 of 2d spatial kernel.
+     * - overlap: half of the kernel size, e.g., 1 for 111.
+     * Output:
+     * - filtered matrix.
+     * ifft2d(BLOCK .* KERNEL2D) is returned, so if required for
+     * non symmetrical kernel, offer the conj(KERNEL2D)!
+     */
+    public static ComplexDoubleMatrix convbuffer(
+            final ComplexDoubleMatrix CINT,
+            final ComplexDoubleMatrix KERNEL2D,
+            final int OVERLAP) {         // overlap in column direction
+
+        // Allocate output matrix
+        int SIZE = CINT.rows;
+        int NPIX = CINT.columns;
+        ComplexDoubleMatrix FILTERED = new ComplexDoubleMatrix(SIZE, NPIX);          // allocate output (==0)
+
+        // ______ Get block from buffer ______
+        int numout = SIZE - (2 * OVERLAP);       // number of output pixels per block
+        int cintpixlo = 0;                      // index in CINT to get 1st block
+        int cintpixhi = SIZE - 1;                 // index in CINT to get 1st block
+        //int32 outblockpixlo = 0;                    // index in BLOCK (only 1st block)
+        int outblockpixlo = OVERLAP;                // index in block
+        int outblockpixhi = SIZE - 1 - OVERLAP;         // index in BLOCK (except last block)
+        int outpixlo = outblockpixlo;          // index in FILTERED (1st block)
+        int outpixhi = outblockpixhi;          // index in FILTERED
+        boolean lastblockdone = false;                  // only just started...
+
+
+        // Loop forever, stop after lastblockdone
+        for (; ;)      //forever
+        {
+            if (cintpixhi >= NPIX - 1)                      // check if we are doing the last block
+            {
+                lastblockdone = true;
+                cintpixhi = NPIX - 1;                   // prevent reading after file
+                cintpixlo = cintpixhi - SIZE + 1;         // but make sure SIZE pixels are read
+                // leave last few==0
+                outpixhi = NPIX - 1 - OVERLAP;           // index in FILTERED 2b written
+                //outblockpixhi = SIZE-1;                 // write all to the end
+                outblockpixlo = outblockpixhi - (outpixhi - outpixlo + 1) + 1;
+            }
+            Window wincint = new Window(0, SIZE - 1, cintpixlo, cintpixhi);
+            Window winblock = new Window(0, SIZE - 1, outblockpixlo, outblockpixhi);
+            Window winfiltered = new Window(0, SIZE - 1, outpixlo, outpixhi);
+
+            // Construct BLOCK as part of CINT ______
+            ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
+            MathUtilities.setdata(BLOCK, CINT, wincint);
+
+            // ______ Set correct part that is filtered in output matrix ______
+            MathUtilities.setdata(FILTERED, winfiltered, BLOCK, winblock);
+
+            // ______ Exit if finished ______
+            if (lastblockdone)
+                return FILTERED;                  // return
+
+            // ______ Update indexes in matrices, will be corrected for last block ______
+            cintpixlo += numout;             // next block
+            cintpixhi += numout;             // next block
+            outpixlo = outpixhi + 1;         // index in FILTERED, next range line
+            outpixhi = outpixlo + numout - 1;  // index in FILTERED
+
+        } // for all blocks in this buffer
+
+    } // END convbuffer
+
+
+    /**
+     * phasefilter spectral
+     * Input is matrix of SIZE (e.g. 32) lines, and N range pixels.
+     * Filtered OUTPUT is same size as input block.
+     * Because of overlap, only write to disk in calling routine
+     * part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]
+     * *
+     * Filtering is performed by pointwise multiplication of the
+     * spectrum per block by the KERNEL2D (input).
+     * Blocks in range direction,
+     */
+    public static ComplexDoubleMatrix spectralfilt(
+            final ComplexDoubleMatrix CINT,
+            final ComplexDoubleMatrix KERNEL2D,
+            final int OVERLAP) {
+
+
+        // Allocate output matrix
+        final int SIZE = CINT.rows;
+        final int NPIX = CINT.columns;
+        ComplexDoubleMatrix FILTERED = new ComplexDoubleMatrix(SIZE, NPIX);
+
+        // ______ Get block from buffer ______
+        final int numout = SIZE - (2 * OVERLAP);       // number of output pixels
+        int cintpixlo = 0;                      // index in CINT to get 1st block
+        int cintpixhi = SIZE - 1;                 // index in CINT to get 1st block
+        int outblockpixlo = 0;                      // index in BLOCK (only 1st block)
+        int outblockpixhi = SIZE - 1 - OVERLAP;         // index in BLOCK (except last block)
+        int outpixlo = outblockpixlo;          // index in FILTERED (1st block)
+        int outpixhi = outblockpixhi;          // index in FILTERED
+        boolean lastblockdone = false;                  // only just started...
+
+
+        // ====== Loop forever, stop after lastblockdone ======
+        for (; ;)      //forever
+        {
+            if (cintpixhi >= NPIX - 1) {                      // check if we are doing the last block
+                lastblockdone = true;
+                cintpixhi = NPIX - 1;                   // prevent reading after file
+                cintpixlo = cintpixhi - SIZE + 1;         // but make sure SIZE pixels are read
+                outpixhi = cintpixhi;                // index in FILTERED 2b written
+                outblockpixhi = SIZE - 1;                   // write all to the end
+                outblockpixlo = outblockpixhi - (outpixhi - outpixlo + 1) + 1;
+            }
+
+            final Window wincint = new Window(0, SIZE - 1, cintpixlo, cintpixhi);
+            final Window winblock = new Window(0, SIZE - 1, outblockpixlo, outblockpixhi);
+            final Window winfiltered = new Window(0, SIZE - 1, outpixlo, outpixhi);
+
+            // Construct BLOCK as part of CINT
+            ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
+            MathUtilities.setdata(BLOCK, CINT, wincint);
+
+            // ______ Get spectrum/filter/ifft ______
+            MathUtilities.fft2d(BLOCK);
+            BLOCK.mmul(KERNEL2D);                  // the filter...
+
+
+            MathUtilities.ifft2d(BLOCK);
+
+
+            // Set correct part that is filtered in output matrix
+            MathUtilities.setdata(FILTERED, winfiltered, BLOCK, winblock);
+
+            // Exit if finished ______
+            if (lastblockdone)
+                return FILTERED;                  // return
+
+            // ______ Update indexes in matrices, will be corrected for last block ______
+            cintpixlo += numout;             // next block
+            cintpixhi += numout;             // next block
+            outblockpixlo = OVERLAP;            // index in block, valid for all middle blocks
+            outpixlo = outpixhi + 1;         // index in FILTERED, next range line
+            outpixhi = outpixlo + numout - 1;  // index in FILTERED
+
+        } // for all blocks in this buffer
+
+    }
+
+    /**
+     * B = smooth(A,KERNEL)
+     * (circular) spatial moving average with a (2N+1,2N+1) block.
+     * See also matlab script smooth.m for some tests.
+     * implementation as convolution with FFT's
+     * input: KERNEL is the FFT of the kernel (block)
+     */
+    public static DoubleMatrix smooth(
+            final DoubleMatrix A,
+            final ComplexDoubleMatrix KERNEL2D) {
+
+        ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(A);      // or define fft(R4)
+        MathUtilities.fft2d(DATA);                                  // or define fft(R4)
+
+        // ______ create kernel in calling routine, e.g., like ______
+        // ______ Kernel has to be even! ______
+        //const int32 L = A.lines();
+        //const int32 P = A.pixels();
+        //matrix<complr4> kernel(1,L);                        // init to zeros
+        //for (register int32 ii=-N; ii<=N; ++ii)     // 1d kernel function of block
+        //  kernel(0,(ii+L)%L) = 1./(2*N+1);
+        //matrix<complr4> KERNEL2D = matTxmat(kernel,kernel);
+        //fft2d(KERNEL2D);                            // should be real sinc
+
+        DATA.mmuli(KERNEL2D);
+        MathUtilities.ifft2d(DATA);                   // convolution, but still complex...
+        return DATA.real();                           // you know it is real only...
+    }
+
+    /**
+     * B = smooth(A,blocksize)
+     * (circular) spatial moving average with a (2N+1,2N+1) block.
+     * See also matlab script smooth.m for some tests.
+     */
+    @Deprecated
+    public static DoubleMatrix smoothSpace(
+            final DoubleMatrix A,
+            int N) {
+
+        if (N == 0)
+            return A;
+
+        int L = A.rows;
+        int P = A.columns;
+        DoubleMatrix SMOOTH = new DoubleMatrix(L, P);            // init to zero...
+        double sum = 0.;
+        int indexii;
+        double Nsmooth = (2 * N + 1) * (2 * N + 1);
+        for (int i = 0; i < L; ++i) {
+            for (int j = 0; j < P; ++j) {
+                // Smooth this pixel
+                for (int ii = -N; ii <= N; ++ii) {
+                    indexii = (i + ii + L) % L;
+                    for (int jj = -N; jj <= N; ++jj) {
+                        sum += A.get(indexii, (j + jj + P) % P);
+                    }
+                }
+                SMOOTH.put(i, j, sum / Nsmooth);
+                sum = 0.;
+            }
+        }
+
+        return SMOOTH;
+    }
+
+    // Do the same as smoothSpace but faster
+    // some overhead due to conversion r4<->cr4
+    public static DoubleMatrix smoothSpectral(
+            final DoubleMatrix A,
+            int N) {
+
+        int L = A.rows;
+        int P = A.columns;
+        ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(L, P); // init to zero...
+
+        MathUtilities.fft2d(DATA); // or define fft(R4)
+        ComplexDoubleMatrix kernel = new ComplexDoubleMatrix(1, L); // init to zeros
+
+        // design 1d kernel function of block
+        for (int ii = -N; ii <= N; ++ii) {
+            kernel.put(0, (ii + L) % L, new ComplexDouble(1.0 / (2 * N + 1), 0.0));
+        }
+
+        ComplexDoubleMatrix KERNEL2D = MathUtilities.matTxmat(kernel, kernel);
+        MathUtilities.fft2d(KERNEL2D); // should be real sinc
+        DATA.mmul(KERNEL2D); // no need for conj. with real fft...
+        MathUtilities.ifft2d(DATA);  // convolution, but still complex...
+        return DATA.real(); // you know it is real only...
 
     }
 
