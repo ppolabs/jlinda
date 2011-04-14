@@ -24,7 +24,7 @@ public class ResFileTest {
     private static double delta = Math.pow(10, -6);
 
     @BeforeClass
-    public static void setupTestData() {
+    public static void setupTestData() throws Exception {
 
         testFile = new File("test.res");
 

@@ -62,12 +62,12 @@ public class ResFile {
     }
 
     // method to buffer doris res file
-    public void streamBuffer(File fileName) {
+    public void streamBuffer(File file) {
 
         BufferedReader input;
 
         try {
-            input = new BufferedReader(new FileReader(fileName), 1);
+            input = new BufferedReader(new FileReader(file), 1);
             String line;
             while ((line = input.readLine()) != null) {
                 buffer.append(line);
@@ -87,9 +87,12 @@ public class ResFile {
             BufferedWriter out = new BufferedWriter(new FileWriter(resFile));
             out.write(buffer.toString());
             out.close();
-        } catch (IOException e) {
-            logger.error(" dumpBuffer() exception " + e.getMessage());
-            e.printStackTrace();
+        } catch (FileNotFoundException ex) {
+            logger.error(" dumpBuffer() exception " + ex.getMessage());
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            logger.error(" dumpBuffer() exception " + ex.getMessage());
+            ex.printStackTrace();
         }
 
     }
@@ -100,9 +103,12 @@ public class ResFile {
             BufferedWriter out = new BufferedWriter(new FileWriter(newFile));
             out.write(buffer.toString());
             out.close();
-        } catch (IOException e) {
-            logger.error(" dumpBuffer() exception " + e.getMessage());
-            e.printStackTrace();
+        } catch (FileNotFoundException ex) {
+            logger.error(" dumpBuffer() exception " + ex.getMessage());
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            logger.error(" dumpBuffer() exception " + ex.getMessage());
+            ex.printStackTrace();
         }
 
     }
@@ -130,8 +136,8 @@ public class ResFile {
     }
 
     public void resetSubBuffer() {
-        startIdx = 0;
-        endIdx = buffer.length();
+        this.startIdx = 0;
+        this.endIdx = buffer.length();
     }
 
     // define pattern: line starts with key, value(s) separated by ":"
@@ -261,32 +267,32 @@ public class ResFile {
         return resFile;
     }
 
-    public void setResFile(File resfile) {
-        resFile = resfile;
+    public void setResFile(File resFile) {
+        this.resFile = resFile;
     }
 
     public int getStartIdx() {
         return startIdx;
     }
 
-    public void setStartIdx(int startidx) {
-        startIdx = startidx;
+    public void setStartIdx(int startIdx) {
+        this.startIdx = startIdx;
     }
 
     public int getEndIdx() {
         return endIdx;
     }
 
-    public void setEndIdx(int endidx) {
-        endIdx = endidx;
+    public void setEndIdx(int endIdx) {
+        this.endIdx = endIdx;
     }
 
     public StringBuffer getBuffer() {
         return buffer;
     }
 
-    public void setBuffer(StringBuffer inbuffer) {
-        buffer = inbuffer;
+    public void setBuffer(StringBuffer buffer) {
+        this.buffer = buffer;
     }
 
     @Override
@@ -294,6 +300,16 @@ public class ResFile {
         return super.clone();
     }
 
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer();
+        sb.append("ResFile");
+        sb.append("{file=").append(resFile.getAbsoluteFile());
+        sb.append(" ,start substring index ").append(startIdx);
+        sb.append(" ,end substring index").append(endIdx);
+        sb.append(" ,stringbuffer length").append(buffer.length());
+        return sb.toString();
+    }
 
     /**
      * Computes a hash code for a double value, using the algorithm from
@@ -307,18 +323,30 @@ public class ResFile {
         return (int) (f ^ (f >>> 32));
     }
 
-    /**
-     * Gets a hashcode for this window.
-     *
-     * @return a hashcode for this window
-     */
+    @Override
     public int hashCode() {
         //Algorithm from Effective Java by Joshua Bloch
-        int result = 17;
+        int result = buffer != null ? buffer.hashCode() : 0;
         result = 37 * result + hashCode(startIdx);
         result = 37 * result + hashCode(endIdx);
-        result = 37 * result + hashCode(buffer.length());
+        result = 37 * result + (resFile != null ? resFile.hashCode() : 0);
         return result;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ResFile resFile1 = (ResFile) o;
+
+        if (endIdx != resFile1.endIdx) return false;
+        if (startIdx != resFile1.startIdx) return false;
+        if (buffer != null ? !buffer.equals(resFile1.buffer) : resFile1.buffer != null) return false;
+        if (resFile != null ? !resFile.equals(resFile1.resFile) : resFile1.resFile != null) return false;
+
+        return true;
+    }
 }
+
+
