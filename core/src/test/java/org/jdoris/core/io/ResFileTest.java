@@ -1,8 +1,8 @@
 package org.jdoris.core.io;
 
 
-import com.sun.xml.internal.bind.v2.runtime.IllegalAnnotationsException;
 import org.apache.log4j.Logger;
+import org.esa.beam.framework.datamodel.ProductData;
 import org.junit.*;
 
 import java.io.BufferedWriter;
@@ -108,7 +108,7 @@ public class ResFileTest {
 
     @Test
     public void testBufferIO() throws Exception {
-        Assert.assertEquals(resFileString, resFile.buffer.toString());
+        Assert.assertEquals(resFileString, resFile.getBuffer().toString());
     }
 
     @Test
@@ -119,9 +119,9 @@ public class ResFileTest {
         tempResFile.streamBuffer(testFile);
         tempResFile.setResFile(testFile);
         tempResFile.setStartIdx(0);
-        tempResFile.setEndIdx(tempResFile.buffer.length());
+        tempResFile.setEndIdx(tempResFile.getBuffer().length());
 
-        Assert.assertEquals(resFileString, tempResFile.buffer.toString());
+        Assert.assertEquals(resFileString, tempResFile.getBuffer().toString());
 
     }
 
@@ -134,7 +134,7 @@ public class ResFileTest {
 
         Assert.assertEquals(idxStartExpected, resFile.getStartIdx());
         Assert.assertEquals(idxEndExpected, resFile.getEndIdx());
-        Assert.assertEquals(processControlBlock, resFile.buffer.substring(resFile.startIdx, resFile.endIdx));
+        Assert.assertEquals(processControlBlock, resFile.getBuffer().substring(resFile.getStartIdx(), resFile.getEndIdx()));
 
     }
 
@@ -180,6 +180,15 @@ public class ResFileTest {
         double returnValue = resFile.parseDoubleValue("Radar_wavelength \\(m\\)");
 
         Assert.assertEquals(expectedValue, returnValue, delta);
+
+    }
+
+    @Test
+    public void testParseTimeValue() throws Exception {
+
+        ProductData.UTC expectedTime = ProductData.UTC.parse("11-JUN-2003 06:12:52.090719");
+        ProductData.UTC returnedTime = resFile.parseTimeValue("First_pixel_azimuth_time \\(UTC\\)");
+        Assert.assertEquals(expectedTime.toString(), returnedTime.toString());
 
     }
 

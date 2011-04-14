@@ -24,18 +24,18 @@ public class ResFile {
     */
 
     // fields
-    public  File resFile;
+    private File resFile;
 
     // start/end index for subBuffers
-    public  int startIdx = 0;
-    public  int endIdx = 0;
+    private int startIdx = 0;
+    private int endIdx = 0;
 
-    public  StringBuffer buffer = new StringBuffer();
+    private StringBuffer buffer = new StringBuffer();
 
     public ResFile() {
     }
 
-    public enum IndexPositions {
+    private static enum IndexPositions {
         START, END;
     }
 
@@ -108,10 +108,9 @@ public class ResFile {
     }
 
 
-
     public void setSubBuffer(int start, int end) {
         if (start > end) {
-             throw new InputMismatchException();
+            throw new InputMismatchException();
         } else {
             startIdx = start;
             endIdx = end;
@@ -150,7 +149,7 @@ public class ResFile {
     private int indexKey(String key, String position) {
 
         int returnIndex = 0;
-        Matcher match = createMatcher(buffer.substring(startIdx,endIdx), createPattern(key));
+        Matcher match = createMatcher(buffer.substring(startIdx, endIdx), createPattern(key));
 
         switch (IndexPositions.valueOf(position.toUpperCase())) {
 
@@ -175,12 +174,12 @@ public class ResFile {
     }
 
     // return end index of first match of key
-    public int indexEndKey(String key) {
+    private int indexEndKey(String key) {
         return indexKey(key, "end");
     }
 
     // return end index of first match of key
-    public int indexStartKey(String key) {
+    private int indexStartKey(String key) {
         return indexKey(key, "start");
     }
 
@@ -221,41 +220,18 @@ public class ResFile {
         return ProductData.UTC.parse(parseStringValue(key));
     }
 
-//    // method to query for keys in ascii file
-//    public static ArrayList queryKey(StringBuffer inputBuffer, String key, int groupToReturn) {
-//
-//        ArrayList<String> valuesList = new ArrayList<String>();
-//
-//        Matcher match = createMatcher(inputBuffer, createPattern(key));
-//        while (match.find()) {
-//            valuesList.add(match.group(groupToReturn));
-//            // logging
-//            logger.trace("match.end() = " + match.end());
-//        }
-//        return valuesList;
-//    }
-//
-//    // method to query for keys in ascii file
-//    public static ArrayList queryKey(StringBuffer inputBuffer, String key) {
-//        return queryKey(inputBuffer, key, 3);
-//    }
-
-
     public double[][] parseOrbit() throws Exception {
 
         // get number of state vectors
         final String numStateVectorsKey = "NUMBER_OF_DATAPOINTS";
-        int numberOfStateVectors = parseIntegerValue(numStateVectorsKey);
+        final int numberOfStateVectors = parseIntegerValue(numStateVectorsKey);
 
-        ArrayList<String> valuesList = new ArrayList<String>();
-
-        double[][] stateVectors = new double[numberOfStateVectors][4];
+        final double[][] stateVectors = new double[numberOfStateVectors][4];
 
         String stateVectorsPattern = "\\s*?(\\d+\\.\\d+)\\s*?(\\d+\\.\\d+)\\s*?(\\d+\\.\\d+)\\s*?(\\d+\\.\\d+)";
         Matcher match = createMatcher(buffer.substring(startIdx, endIdx), stateVectorsPattern);
 
         int i = 0;
-
         while (match.find()) {
             try {
 
@@ -285,37 +261,64 @@ public class ResFile {
         return resFile;
     }
 
-    public void setResFile(File resFile) {
-        this.resFile = resFile;
+    public void setResFile(File resfile) {
+        resFile = resfile;
     }
 
     public int getStartIdx() {
         return startIdx;
     }
 
-    public void setStartIdx(int startIdx) {
-        this.startIdx = startIdx;
+    public void setStartIdx(int startidx) {
+        startIdx = startidx;
     }
 
     public int getEndIdx() {
         return endIdx;
     }
 
-    public void setEndIdx(int endIdx) {
-        this.endIdx = endIdx;
+    public void setEndIdx(int endidx) {
+        endIdx = endidx;
     }
 
     public StringBuffer getBuffer() {
         return buffer;
     }
 
-    public void setBuffer(StringBuffer buffer) {
-        this.buffer = buffer;
+    public void setBuffer(StringBuffer inbuffer) {
+        buffer = inbuffer;
     }
 
     @Override
     protected Object clone() throws CloneNotSupportedException {
         return super.clone();
+    }
+
+
+    /**
+     * Computes a hash code for a double value, using the algorithm from
+     * Joshua Bloch's book <i>Effective Java"</i>
+     *
+     * @param x
+     * @return a hashcode for the double value
+     */
+    public static int hashCode(double x) {
+        long f = Double.doubleToLongBits(x);
+        return (int) (f ^ (f >>> 32));
+    }
+
+    /**
+     * Gets a hashcode for this window.
+     *
+     * @return a hashcode for this window
+     */
+    public int hashCode() {
+        //Algorithm from Effective Java by Joshua Bloch
+        int result = 17;
+        result = 37 * result + hashCode(startIdx);
+        result = 37 * result + hashCode(endIdx);
+        result = 37 * result + hashCode(buffer.length());
+        return result;
     }
 
 }
