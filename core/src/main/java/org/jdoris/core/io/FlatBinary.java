@@ -13,8 +13,6 @@ public class FlatBinary {
     String format;
     long sizeBytes;
     Rectangle dimensions;
-    int multiLookX;
-    int multiLookY;
     DataOutputStream outStream;
     DataInputStream inStream;
 
@@ -109,8 +107,6 @@ public class FlatBinary {
         sb.append(", format='").append(format).append('\'');
         sb.append(", sizeBytes=").append(sizeBytes);
         sb.append(", dimensions=").append(dimensions);
-        sb.append(", multiLookX=").append(multiLookX);
-        sb.append(", multiLookY=").append(multiLookY);
         sb.append('}');
         return sb.toString();
     }
@@ -122,8 +118,6 @@ public class FlatBinary {
 
         FlatBinary that = (FlatBinary) o;
 
-        if (multiLookX != that.multiLookX) return false;
-        if (multiLookY != that.multiLookY) return false;
         if (sizeBytes != that.sizeBytes) return false;
         if (dimensions != null ? !dimensions.equals(that.dimensions) : that.dimensions != null) return false;
         if (file != null ? !file.equals(that.file) : that.file != null) return false;
@@ -138,8 +132,6 @@ public class FlatBinary {
         result = 31 * result + (format != null ? format.hashCode() : 0);
         result = 31 * result + (int) (sizeBytes ^ (sizeBytes >>> 32));
         result = 31 * result + (dimensions != null ? dimensions.hashCode() : 0);
-        result = 31 * result + multiLookX;
-        result = 31 * result + multiLookY;
         return result;
     }
 
@@ -163,14 +155,6 @@ public class FlatBinary {
         this.dimensions = dimensions;
     }
 
-    public void setMultiLookX(int multiLookX) {
-        this.multiLookX = multiLookX;
-    }
-
-    public void setMultiLookY(int multiLookY) {
-        this.multiLookY = multiLookY;
-    }
-
     public File getFile() {
         return file;
     }
@@ -186,16 +170,5 @@ public class FlatBinary {
     public Rectangle getDimensions() {
         return dimensions;
     }
-
-    public int getMultiLookX() {
-        return multiLookX;
-    }
-
-    public int getMultiLookY() {
-        return multiLookY;
-    }
-
-
-
 
 }
