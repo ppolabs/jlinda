@@ -6,12 +6,12 @@ public class Ellipsoid {
 
     Logger logger = Logger.getLogger(Ellipsoid.class.getName());
 
-    private double e2;  // squared first  eccentricity (derived)
-    private double e2b; // squared second eccentricity (derived)
+    private static double e2;  // squared first  eccentricity (derived)
+    private static double e2b; // squared second eccentricity (derived)
 
-    public double a; // semi major
-    public double b; // semi minor
-    public String name;
+    public static double a; // semi major
+    public static double b; // semi minor
+    public static String name;
 
     public Ellipsoid() {
         a = Constants.WGS84_A;
@@ -60,28 +60,34 @@ public class Ellipsoid {
     * input:                                                       *
     *  - ellipsinfo, xyz, (phi,lam,hei)                            *
     * output:                                                      *
-    *  - void (updated lam<-pi,pi>, phi<-pi,pi>, hei)              *
+    *  - void (returned double[] lam<-pi,pi>, phi<-pi,pi>, hei)    *
     *                                                              *
     ****************************************************************/
-    public void xyz2ell(final Point xyz, double phi, double lambda, double height) {
+    public static double[] xyz2ell(final Point xyz) {
+
+//        double[] phi_lambda_height = new double[3];
         double r = Math.sqrt(Math.pow(xyz.x, 2) + Math.pow(xyz.y, 2));
         double nu = Math.atan2((xyz.z * a), (r * b));
         double sin3 = Math.pow(Math.sin(nu), 3);
         double cos3 = Math.pow(Math.cos(nu), 3);
-        phi = Math.atan2((xyz.z + e2b * b * sin3), (r - e2 * a * cos3));
-        lambda = Math.atan2(xyz.y, xyz.x);
-        double N = a / Math.sqrt(1.0 - e2 * Math.pow(Math.sin(phi), 2));
-        height = (r / Math.cos(phi)) - N;
+        double phi = Math.atan2((xyz.z + e2b * b * sin3), (r - e2 * a * cos3));
+        double lambda = Math.atan2(xyz.y, xyz.x);
+        double N = computeEllipsoidNormal(phi);
+        double height = (r / Math.cos(phi)) - N;
+
+        return new double[]{phi, lambda, height};
+
     }
 
-    public void xyz2ell(final Point xyz, double phi, double lambda) {
-        double r = Math.sqrt(Math.pow(xyz.x, 2) + Math.pow(xyz.y, 2));
-        double nu = Math.atan2((xyz.z * a), (r * b));
-        double sin3 = Math.pow(Math.sin(nu), 3);
-        double cos3 = Math.pow(Math.cos(nu), 3);
-        phi = Math.atan2((xyz.z + e2b * b * sin3), (r - e2 * a * cos3));
-        lambda = Math.atan2(xyz.y, xyz.x);
-    }
+
+//    public static double[] xyz2ell(final Point xyz) {
+//        double r = Math.sqrt(Math.pow(xyz.x, 2) + Math.pow(xyz.y, 2));
+//        double nu = Math.atan2((xyz.z * a), (r * b));
+//        double sin3 = Math.pow(Math.sin(nu), 3);
+//        double cos3 = Math.pow(Math.cos(nu), 3);
+//        phi = Math.atan2((xyz.z + e2b * b * sin3), (r - e2 * a * cos3));
+//        lambda = Math.atan2(xyz.y, xyz.x);
+//    }
 
 
     /**
@@ -97,22 +103,55 @@ public class Ellipsoid {
      * Bert Kampes, 05-Jan-1999                                  *
      * ***************************************************************
      */
-    public Point ell2xyz(final double phi, final double lambda, final double height) {
-        final double N = a / Math.sqrt(1.0 - e2 * Math.pow(Math.sin(phi), 2));
+    public static Point ell2xyz(final double phi, final double lambda, final double height) throws Exception {
+
+        if (phi > Math.PI || phi < -Math.PI || lambda > Math.PI || lambda < -Math.PI) {
+            throw new Exception();
+        }
+
+        final double N = computeEllipsoidNormal(phi);
         final double Nph = N + height;
-        return new Point(Nph * Math.cos(phi) * Math.cos(lambda),
+        return new Point(
+                Nph * Math.cos(phi) * Math.cos(lambda),
                 Nph * Math.cos(phi) * Math.sin(lambda),
                 (Nph - e2 * N) * Math.sin(phi));
     }
 
+    public static Point ell2xyz(final double[] phi_lambda_height) throws Exception {
+
+        final double phi = phi_lambda_height[0];
+        final double lambda = phi_lambda_height[1];
+        final double height = phi_lambda_height[2];
+
+        if (phi > Math.PI || phi < -Math.PI || lambda > Math.PI || lambda < -Math.PI) {
+            throw new Exception();
+        }
+
+        final double N = computeEllipsoidNormal(phi);
+        final double Nph = N + height;
+        return new Point(
+                Nph * Math.cos(phi) * Math.cos(lambda),
+                Nph * Math.cos(phi) * Math.sin(lambda),
+                (Nph - e2 * N) * Math.sin(phi));
+    }
+
+    private static double computeEllipsoidNormal(double phi) {
+        return a / Math.sqrt(1.0 - e2 * Math.pow(Math.sin(phi), 2));
+    }
+
+    private double computeCurvatureRadiusInMeridianPlane(double phi) {
+        return a * (1 - e2) / Math.pow((1 - e2 * Math.pow(Math.sin(phi), 2)), 3 / 2);
+
+    }
+
     // first ecc.
-    private void set_ecc1st_sqr() {
+    private static void set_ecc1st_sqr() {
         //  faster than e2=(sqr(a)-sqr(b))/sqr(a)
         e2 = 1.0 - Math.pow(b / a, 2);
     }
 
     // second ecc.
-    private void set_ecc2nd_sqr() {
+    private static void set_ecc2nd_sqr() {
         // faster than e2b=(sqr(a)-sqr(b))/sqr(b);
         e2b = Math.pow(a / b, 2) - 1.0;
     }
