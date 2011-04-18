@@ -1,24 +1,27 @@
 package org.jdoris.core;
 
-import org.esa.beam.framework.datamodel.GeoPos;
+import org.apache.log4j.Logger;
 import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.nest.datamodel.AbstractMetadata;
-import org.esa.nest.util.Constants;
-import org.esa.nest.util.GeoUtils;
 import org.jblas.DoubleMatrix;
-import org.jblas.Solve;
+import org.jdoris.core.io.ResFile;
+
+import java.io.File;
 
 
 public final class Orbit {
 
+    static Logger logger = Logger.getLogger(Orbit.class.getName());
+
+
     public static String interpMethod;
     public static int numStateVectors;
-    public static DoubleMatrix data_X;
-    public static DoubleMatrix data_Y;
-    public static DoubleMatrix data_Z;
-    public static DoubleMatrix coeff_X;
-    public static DoubleMatrix coeff_Y;
-    public static DoubleMatrix coeff_Z;
+    public static double[] data_X;
+    public static double[] data_Y;
+    public static double[] data_Z;
+    public static double[] coeff_X;
+    public static double[] coeff_Y;
+    public static double[] coeff_Z;
     public static int poly_degree;
     static int MAXITER = 10;
 
@@ -26,29 +29,51 @@ public final class Orbit {
     public static long klo; // index in timevector correct
     public static long khi; // +part picewize polynomial
 
-    public static DoubleMatrix time;
+    public static double[] time;
     static double CRITERPOS = Math.pow(10, -6);
     static double CRITERTIM = Math.pow(10, -10);
-    static double SOL = Constants.lightSpeed;
     static int refHeight = 0;
 
     // ellipsoid axes
-    private static double ell_a = Constants.semiMajorAxis;
-    private static double ell_b = Constants.semiMinorAxis;
+    private double ell_a = Constants.WGS84_A;
+    private double ell_b = Constants.WGS84_B;
+    private double SOL = Constants.SOL;
 
     public Orbit() {
     }
 
-    public Orbit(DoubleMatrix timeVector, DoubleMatrix xVector, DoubleMatrix yVector, DoubleMatrix zVector) {
+    public Orbit(double[] timeVector, double[] xVector, double[] yVector, double[] zVector) {
 
         time = timeVector;
         data_X = xVector;
         data_Y = yVector;
         data_Z = zVector;
 
-        numStateVectors = time.rows;
+        numStateVectors = time.length;
 
     }
+
+    public Orbit(double[][] stateVectors) {
+        setOrbit(stateVectors);
+    }
+
+    public void parseOrbit(File file) throws Exception {
+        ResFile resFile = new ResFile(file);
+        setOrbit(resFile.parseOrbit());
+    }
+
+    public void setOrbit(double[][] stateVectors) {
+
+        numStateVectors = stateVectors.length;
+
+        for (int i = 0; i < stateVectors.length; i++) {
+            time[i]   = stateVectors[i][0];
+            data_X[i] = stateVectors[i][1];
+            data_Y[i] = stateVectors[i][2];
+            data_Z[i] = stateVectors[i][3];
+        }
+    }
+
 
     // TODO: refactor this one, split in definition and interpolation
     public Orbit(MetadataElement nestMetadataElement) {
@@ -57,34 +82,33 @@ public final class Orbit {
 
         numStateVectors = orbitStateVectors.length;
 
-        time = new DoubleMatrix(numStateVectors);
-        data_X = new DoubleMatrix(numStateVectors);
-        data_Y = new DoubleMatrix(numStateVectors);
-        data_Z = new DoubleMatrix(numStateVectors);
+//        time = new double[numStateVectors];
+//        data_X = new double[numStateVectors];
+//        data_Y = new double[numStateVectors];
+//        data_Z = new double[numStateVectors];
 
         for (int i = 0; i < numStateVectors; i++) {
             // convert time to seconds of the acquisition day
-            time.put(i, (orbitStateVectors[i].time_mjd -
-                    (int) orbitStateVectors[i].time_mjd) * (24 * 3600)); // Modified Julian Day 2000 (MJD2000)
-            data_X.put(i, orbitStateVectors[i].x_pos);
-            data_Y.put(i, orbitStateVectors[i].y_pos);
-            data_Z.put(i, orbitStateVectors[i].z_pos);
+            time[i] = (orbitStateVectors[i].time_mjd -
+                    (int) orbitStateVectors[i].time_mjd) * (24 * 3600); // Modified Julian Day 2000 (MJD2000)
+            data_X[i] = orbitStateVectors[i].x_pos;
+            data_Y[i] = orbitStateVectors[i].y_pos;
+            data_Z[i] = orbitStateVectors[i].z_pos;
         }
 
     }
 
-    private void computeCoefficients(Orbit orbit, int degree) {
+    private void computeCoefficients(Orbit orbit, int degree) throws Exception {
 
         // TODO: switch on interpolation method, either spline method or degree of polynomial
-        //      INFO << "Computing coefficients for orbit polyfit degree: "
-        //           << interp_method;
+        logger.info("Computing coefficients for orbit polyfit degree: " + interpMethod);
         // compute coefficients of orbit interpolator
         // final int getPolyDegree = 3; //HARDCODED because of how AbstractedMetadata Handles orbits
         // poly_degree = MathUtilities.getPolyDegree();
         poly_degree = degree;
-        coeff_X = MathUtilities.polyFit(time, data_X, poly_degree);
-        coeff_Y = MathUtilities.polyFit(time, data_Y, poly_degree);
-        coeff_Z = MathUtilities.polyFit(time, data_Z, poly_degree);
+        coeff_X = MathUtilities.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_X), poly_degree);
+        coeff_Y = MathUtilities.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Y), poly_degree);
+        coeff_Z = MathUtilities.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Z), poly_degree);
 
     }
 
@@ -92,13 +116,12 @@ public final class Orbit {
         return numStateVectors;
     }
 
-    // TODO:
+    // TODO: for splines!
     private void getKloKhi() {
     }
 
     // TODO: make generic so it can work with arrays of lines as well: see matlab implementation
-    // TODO: switch to Cn class
-    public Point lp2xyz(double line, double pixel, SLCImage slcimage, Orbit orbits) {
+    public Point lp2xyz(double line, double pixel, SLCImage slcimage) throws Exception {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -115,8 +138,8 @@ public final class Orbit {
         ellipsoidPosition = slcimage.getApproxXYZCentreOriginal();
 
         // allocate matrices
-        DoubleMatrix equationSet = DoubleMatrix.zeros(3);
-        DoubleMatrix partialsXYZ = DoubleMatrix.zeros(3, 3);
+        double[] equationSet = new double[3];
+        double[][] partialsXYZ = new double[3][3];
 
         // iterate
         for (int iter = 0; iter <= MAXITER; iter++) {
@@ -125,211 +148,57 @@ public final class Orbit {
             double dsat_Py = ellipsoidPosition.y - satellitePosition.y;   // vector of 'satellite to P on ellipsoid'
             double dsat_Pz = ellipsoidPosition.z - satellitePosition.z;   // vector of 'satellite to P on ellipsoid'
 
-            equationSet.put(0,
+            equationSet[0] =
                     -(satelliteVelocity.x * dsat_Px +
                             satelliteVelocity.y * dsat_Py +
-                            satelliteVelocity.z * dsat_Pz));
+                            satelliteVelocity.z * dsat_Pz);
 
-            equationSet.put(1,
+            equationSet[1] =
                     -(dsat_Px * dsat_Px +
                             dsat_Py * dsat_Py +
-                            dsat_Pz * dsat_Pz - Math.pow(SOL * rgTime, 2)));
+                            dsat_Pz * dsat_Pz - Math.pow(SOL * rgTime, 2));
 
-            equationSet.put(2,
+            equationSet[2] =
                     -((ellipsoidPosition.x * ellipsoidPosition.x + ellipsoidPosition.y * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2)) +
-                            Math.pow(ellipsoidPosition.z / (ell_b + refHeight), 2) - 1.0));
+                            Math.pow(ellipsoidPosition.z / (ell_b + refHeight), 2) - 1.0);
 
-            partialsXYZ.put(0, 0, satelliteVelocity.x);
-            partialsXYZ.put(0, 1, satelliteVelocity.y);
-            partialsXYZ.put(0, 2, satelliteVelocity.z);
-            partialsXYZ.put(1, 0, 2 * dsat_Px);
-            partialsXYZ.put(1, 1, 2 * dsat_Py);
-            partialsXYZ.put(1, 2, 2 * dsat_Pz);
-            partialsXYZ.put(2, 0, (2 * ellipsoidPosition.x) / (Math.pow(ell_a + refHeight, 2)));
-            partialsXYZ.put(2, 1, (2 * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2)));
-            partialsXYZ.put(2, 2, (2 * ellipsoidPosition.z) / (Math.pow(ell_a + refHeight, 2)));
+            partialsXYZ[0][0] = satelliteVelocity.x;
+            partialsXYZ[0][1] = satelliteVelocity.y;
+            partialsXYZ[0][2] = satelliteVelocity.z;
+            partialsXYZ[1][0] = 2 * dsat_Px;
+            partialsXYZ[1][1] = 2 * dsat_Py;
+            partialsXYZ[1][2] = 2 * dsat_Pz;
+            partialsXYZ[2][0] = (2 * ellipsoidPosition.x) / (Math.pow(ell_a + refHeight, 2));
+            partialsXYZ[2][1] = (2 * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2));
+            partialsXYZ[2][2] = (2 * ellipsoidPosition.z) / (Math.pow(ell_a + refHeight, 2));
 
             // solve system [NOTE!] orbit has to be normalized, otherwise close to singular
-            DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet);
-            // DoubleMatrix ellipsoidPositionSolution = solve33(partialsXYZ, equationSet);
+            // DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet);
+            double[] ellipsoidPositionSolution = MathUtilities.solve33(partialsXYZ, equationSet);
 
             // update solution
-            ellipsoidPosition.x = ellipsoidPosition.x + ellipsoidPositionSolution.get(0);
-            ellipsoidPosition.y = ellipsoidPosition.y + ellipsoidPositionSolution.get(1);
-            ellipsoidPosition.z = ellipsoidPosition.z + ellipsoidPositionSolution.get(2);
+            ellipsoidPosition.x = ellipsoidPosition.x + ellipsoidPositionSolution[0];
+            ellipsoidPosition.y = ellipsoidPosition.y + ellipsoidPositionSolution[1];
+            ellipsoidPosition.z = ellipsoidPosition.z + ellipsoidPositionSolution[2];
 
             // check convergence
-            if (Math.abs(ellipsoidPositionSolution.get(0)) < CRITERPOS &&
-                    Math.abs(ellipsoidPositionSolution.get(1)) < CRITERPOS &&
-                    Math.abs(ellipsoidPositionSolution.get(2)) < CRITERPOS) {
+            if (Math.abs(ellipsoidPositionSolution[0]) < CRITERPOS &&
+                    Math.abs(ellipsoidPositionSolution[1]) < CRITERPOS &&
+                    Math.abs(ellipsoidPositionSolution[2]) < CRITERPOS) {
 //                System.out.println("INFO: ellipsoidPosition (converged) = " + ellipsoidPosition);
                 break;
             } else if (iter >= MAXITER) {
                 MAXITER = MAXITER + 1;
                 System.out.println("WARNING: line, pix -> x,y,z: maximum iterations (" + MAXITER + ") reached. " + "Criterium (m): " + CRITERPOS +
-                        "dx,dy,dz=" + ellipsoidPositionSolution.get(0) + ", " + ellipsoidPositionSolution.get(1) + ", " + ellipsoidPositionSolution.get(2, 0));
+                        "dx,dy,dz=" + ellipsoidPositionSolution[0] + ", " + ellipsoidPositionSolution[1] + ", " + ellipsoidPositionSolution[2]);
             }
         }
 
         return ellipsoidPosition;
     }
 
-    public Point lp2xyz(Point sarPixel, SLCImage slcImage, Orbit orbit) {
-
-        Point satellitePosition;
-        Point satelliteVelocity;
-        Point ellipsoidPosition = new Point();
-
-        // TODO: check notations and difference between NEST and DORIS
-        double azTime = slcImage.line2ta(sarPixel.x);
-        double rgTime = slcImage.pix2tr(sarPixel.y);
-
-        satellitePosition = getXYZ(azTime);
-        satelliteVelocity = getXYZDot(azTime);
-
-        // initial value
-//        ellipsoidPosition = slcImage.getApproxXYZCentreOriginal();
-//        ellipsoidPosition = slcImage.getApproxXYZCentreOriginal();
-
-        // TODO: switch to ARRAYs
-        // allocate matrices
-        DoubleMatrix equationSet = DoubleMatrix.zeros(3);
-        DoubleMatrix partialsXYZ = DoubleMatrix.zeros(3, 3);
-
-        // iterate
-        for (int iter = 0; iter <= MAXITER; iter++) {
-            //   update equations and slove system
-
-            double dsat_Px = ellipsoidPosition.x - satellitePosition.x;   // vector of 'satellite to P on ellipsoid'
-            double dsat_Py = ellipsoidPosition.y - satellitePosition.y;   // vector of 'satellite to P on ellipsoid'
-            double dsat_Pz = ellipsoidPosition.z - satellitePosition.z;   // vector of 'satellite to P on ellipsoid'
-
-            equationSet.put(0,
-                    -(satelliteVelocity.x * dsat_Px +
-                            satelliteVelocity.y * dsat_Py +
-                            satelliteVelocity.z * dsat_Pz));
-
-            equationSet.put(1,
-                    -(dsat_Px * dsat_Px +
-                            dsat_Py * dsat_Py +
-                            dsat_Pz * dsat_Pz - Math.pow(SOL * rgTime, 2)));
-
-            equationSet.put(2,
-                    -((ellipsoidPosition.x * ellipsoidPosition.x + ellipsoidPosition.y * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2)) +
-                            Math.pow(ellipsoidPosition.z / (ell_b + refHeight), 2) - 1.0));
-
-            partialsXYZ.put(0, 0, satelliteVelocity.x);
-            partialsXYZ.put(0, 1, satelliteVelocity.y);
-            partialsXYZ.put(0, 2, satelliteVelocity.z);
-            partialsXYZ.put(1, 0, 2 * dsat_Px);
-            partialsXYZ.put(1, 1, 2 * dsat_Py);
-            partialsXYZ.put(1, 2, 2 * dsat_Pz);
-            partialsXYZ.put(2, 0, (2 * ellipsoidPosition.x) / (Math.pow(ell_a + refHeight, 2)));
-            partialsXYZ.put(2, 1, (2 * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2)));
-            partialsXYZ.put(2, 2, (2 * ellipsoidPosition.z) / (Math.pow(ell_a + refHeight, 2)));
-
-            // solve system [NOTE!] orbit has to be normalized, otherwise close to singular
-            DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet); // use JBlas call
-            // DoubleMatrix ellipsoidPositionSolution = solve33(partialsXYZ, equationSet);
-
-            // update solution
-            ellipsoidPosition.x = ellipsoidPosition.x + ellipsoidPositionSolution.get(0);
-            ellipsoidPosition.y = ellipsoidPosition.y + ellipsoidPositionSolution.get(1);
-            ellipsoidPosition.z = ellipsoidPosition.z + ellipsoidPositionSolution.get(2);
-
-            // check convergence
-            if (Math.abs(ellipsoidPositionSolution.get(0)) < CRITERPOS &&
-                    Math.abs(ellipsoidPositionSolution.get(1)) < CRITERPOS &&
-                    Math.abs(ellipsoidPositionSolution.get(2)) < CRITERPOS) {
-//                System.out.println("INFO: ellipsoidPosition (converged) = " + ellipsoidPosition);
-                break;
-            } else if (iter >= MAXITER) {
-                MAXITER = MAXITER + 1;
-                System.out.println("WARNING: line, pix -> x,y,z: maximum iterations (" + MAXITER + ") reached. " + "Criterium (m): " + CRITERPOS +
-                        "dx,dy,dz=" + ellipsoidPositionSolution.get(0) + ", " + ellipsoidPositionSolution.get(1) + ", " + ellipsoidPositionSolution.get(2, 0));
-            }
-        }
-
-        return ellipsoidPosition;
-    }
-
-    public Point lp2xyz(Point sarPixel, SLCImage slcImage) {
-
-        Point satellitePosition;
-        Point satelliteVelocity;
-        Point ellipsoidPosition = new Point();
-
-        // TODO: check notations and difference between NEST and DORIS
-        double azTime = slcImage.line2ta(sarPixel.x);
-        double rgTime = slcImage.pix2tr(sarPixel.y);
-
-        satellitePosition = getXYZ(azTime);
-        satelliteVelocity = getXYZDot(azTime);
-
-        // initial value
-//        ellipsoidPosition = slcImage.getApproxXYZCentreOriginal();
-//        ellipsoidPosition = slcImage.getApproxXYZCentreOriginal();
-
-        // TODO: switch to ARRAYs
-        // allocate matrices
-        DoubleMatrix equationSet = DoubleMatrix.zeros(3);
-        DoubleMatrix partialsXYZ = DoubleMatrix.zeros(3, 3);
-
-        // iterate
-        for (int iter = 0; iter <= MAXITER; iter++) {
-            //   update equations and slove system
-
-            double dsat_Px = ellipsoidPosition.x - satellitePosition.x;   // vector of 'satellite to P on ellipsoid'
-            double dsat_Py = ellipsoidPosition.y - satellitePosition.y;   // vector of 'satellite to P on ellipsoid'
-            double dsat_Pz = ellipsoidPosition.z - satellitePosition.z;   // vector of 'satellite to P on ellipsoid'
-
-            equationSet.put(0,
-                    -(satelliteVelocity.x * dsat_Px +
-                            satelliteVelocity.y * dsat_Py +
-                            satelliteVelocity.z * dsat_Pz));
-
-            equationSet.put(1,
-                    -(dsat_Px * dsat_Px +
-                            dsat_Py * dsat_Py +
-                            dsat_Pz * dsat_Pz - Math.pow(SOL * rgTime, 2)));
-
-            equationSet.put(2,
-                    -((ellipsoidPosition.x * ellipsoidPosition.x + ellipsoidPosition.y * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2)) +
-                            Math.pow(ellipsoidPosition.z / (ell_b + refHeight), 2) - 1.0));
-
-            partialsXYZ.put(0, 0, satelliteVelocity.x);
-            partialsXYZ.put(0, 1, satelliteVelocity.y);
-            partialsXYZ.put(0, 2, satelliteVelocity.z);
-            partialsXYZ.put(1, 0, 2 * dsat_Px);
-            partialsXYZ.put(1, 1, 2 * dsat_Py);
-            partialsXYZ.put(1, 2, 2 * dsat_Pz);
-            partialsXYZ.put(2, 0, (2 * ellipsoidPosition.x) / (Math.pow(ell_a + refHeight, 2)));
-            partialsXYZ.put(2, 1, (2 * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2)));
-            partialsXYZ.put(2, 2, (2 * ellipsoidPosition.z) / (Math.pow(ell_a + refHeight, 2)));
-
-            // solve system [NOTE!] orbit has to be normalized, otherwise close to singular
-            DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet);
-            // DoubleMatrix ellipsoidPositionSolution = solve33(partialsXYZ, equationSet);
-
-            // update solution
-            ellipsoidPosition.x = ellipsoidPosition.x + ellipsoidPositionSolution.get(0);
-            ellipsoidPosition.y = ellipsoidPosition.y + ellipsoidPositionSolution.get(1);
-            ellipsoidPosition.z = ellipsoidPosition.z + ellipsoidPositionSolution.get(2);
-
-            // check convergence
-            if (Math.abs(ellipsoidPositionSolution.get(0)) < CRITERPOS &&
-                    Math.abs(ellipsoidPositionSolution.get(1)) < CRITERPOS &&
-                    Math.abs(ellipsoidPositionSolution.get(2)) < CRITERPOS) {
-//                System.out.println("INFO: ellipsoidPosition (converged) = " + ellipsoidPosition);
-                break;
-            } else if (iter >= MAXITER) {
-                MAXITER = MAXITER + 1;
-                System.out.println("WARNING: line, pix -> x,y,z: maximum iterations (" + MAXITER + ") reached. " + "Criterium (m): " + CRITERPOS +
-                        "dx,dy,dz=" + ellipsoidPositionSolution.get(0) + ", " + ellipsoidPositionSolution.get(1) + ", " + ellipsoidPositionSolution.get(2, 0));
-            }
-        }
-
-        return ellipsoidPosition;
+    public Point lp2xyz(Point sarPixel, SLCImage slcimage) throws Exception {
+        return lp2xyz(sarPixel.y, sarPixel.x, slcimage);
     }
 
     public Point xyz2orb(Point pointOnEllips, SLCImage slcimage) {
@@ -359,66 +228,13 @@ public final class Orbit {
 
         // ______ Check for number of iterations ______
         if (iter >= MAXITER) {
-            System.out.println("WARNING: x,y,z -> line, pix: maximum iterations (" + MAXITER + ") reached. " +
+            logger.warn("x,y,z -> line, pix: maximum iterations (" + MAXITER + ") reached. " +
                     "Criterium (s):" + CRITERTIM + "dta (s)=" + solution);
         }
 
         // Compute range time
         // ____ Update equations _____
         return posSat = getXYZ(tAzi);
-
-    }
-
-    public Point xyz2t(Point position, SLCImage slcimage, Orbit orbit) {
-
-        Point delta;
-        Point returnVector = new Point();
-
-        // inital value
-        double timeAzimuth = slcimage.line2ta(0.5 * slcimage.getApproxRadarCentreOriginal().y);
-
-        int iter;
-        double solution = 0;
-        for (iter = 0; iter <= MAXITER; ++iter) {
-            Point satellitePosition = getXYZ(timeAzimuth);
-            Point satelliteVelocity = getXYZDot(timeAzimuth);
-            Point satelliteAcceleration = getXYZDotDot(timeAzimuth);
-            delta = position.min(satellitePosition);
-/*
-            delta.x = position.x - satellitePosition.x;
-            delta.y = position.y - satellitePosition.y;
-            delta.z = position.z - satellitePosition.z;
-*/
-
-            // update solution
-            solution = -1 * (satelliteVelocity.x * delta.x + satelliteVelocity.y * delta.y + satelliteVelocity.z * delta.z) /
-                    (satelliteAcceleration.x * delta.x + satelliteAcceleration.y * delta.y + satelliteAcceleration.z * delta.z -
-                            Math.pow(satelliteVelocity.x, 2) - Math.pow(satelliteVelocity.y, 2) - Math.pow(satelliteVelocity.z, 2));
-
-            timeAzimuth += solution;
-
-            if (Math.abs(solution) < CRITERTIM) {
-                break;
-            }
-
-        }
-        // ______ Check number of iterations _____
-        if (iter >= MAXITER) {
-            System.out.println("WARNING: x,y,z -> line, pix: maximum iterations (" + MAXITER + ") reached. " + "Criterium (s):" + CRITERTIM + "dta (s)=" + solution);
-        }
-
-        // ====== Compute range time ======
-        // ______ Update equations ______
-        final Point satellitePosition = getXYZ(timeAzimuth);
-
-        delta = position.min(satellitePosition);
-
-        double timeRange = Math.sqrt(Math.pow(delta.x, 2) + Math.pow(delta.y, 2) + Math.pow(delta.z, 2)) / SOL;
-
-        returnVector.y = timeAzimuth;
-        returnVector.x = timeRange;
-
-        return returnVector;
 
     }
 
@@ -437,11 +253,6 @@ public final class Orbit {
             Point satelliteVelocity = getXYZDot(timeAzimuth);
             Point satelliteAcceleration = getXYZDotDot(timeAzimuth);
             delta = position.min(satellitePosition);
-/*
-            delta.x = position.x - satellitePosition.x;
-            delta.y = position.y - satellitePosition.y;
-            delta.z = position.z - satellitePosition.z;
-*/
 
             // update solution
             solution = -1 * (satelliteVelocity.x * delta.x + satelliteVelocity.y * delta.y + satelliteVelocity.z * delta.z) /
@@ -457,7 +268,7 @@ public final class Orbit {
         }
         // ______ Check number of iterations _____
         if (iter >= MAXITER) {
-            System.out.println("WARNING: x,y,z -> line, pix: maximum iterations (" + MAXITER + ") reached. " + "Criterium (s):" + CRITERTIM + "dta (s)=" + solution);
+            logger.warn("x,y,z -> line, pix: maximum iterations (" + MAXITER + ") reached. " + "Criterium (s):" + CRITERTIM + "dta (s)=" + solution);
         }
 
         // ====== Compute range time ======
@@ -490,81 +301,18 @@ public final class Orbit {
         return returnPixel;
     }
 
-    // TODO
-    public Point ell2lp(GeoPos philamheight, SLCImage slcimage) {
-        double[] xyz = new double[3];
-        GeoUtils.geo2xyz(philamheight, xyz);
-        return xyz2lp(new Point(xyz), slcimage);
+    public Point ell2lp(double[] phi_lam_height, SLCImage slcimage) throws Exception {
+        Point xyz = Ellipsoid.ell2xyz(phi_lam_height);
+        return xyz2lp(xyz, slcimage);
     }
 
-    // TODO
-    public GeoPos lp2ell(Point position, SLCImage slcimage) {
-        GeoPos returnPos = new GeoPos();
+    public double[] lp2ell(Point position, SLCImage slcimage) throws Exception {
         Point xyz = lp2xyz(position, slcimage);
-        GeoUtils.xyz2geo(xyz.toArray(), returnPos);
-        return returnPos;
+        return Ellipsoid.xyz2ell(xyz);
     }
 
-    public Point[][] dumpOrbit() {
-
-        if (numStateVectors == 0) {
-            System.out.println("Exiting Orbit.dumporbit(), no orbit data available.");
-        }
-
-        double dt = 0.;
-
-        //  INFO << "dumporbits: MAXITER: "   << MAXITER   << "; "
-        //                   << "CRITERPOS: " << CRITERPOS << " m; "
-        //                   << "CRITERTIM: " << CRITERTIM << " s";
-        //  INFO.print();
-
-        //  ______ Evaluate polynomial orbit for t1:dt:tN ______
-        int outputlines = 1 + (int) ((time.get(numStateVectors - 1, 0) - time.get(0, 0)) / dt);
-        double tAzi = time.get(0, 0);
-
-        Point[][] dumpedOrbit = new Point[(int) outputlines][3];
-
-        for (int i = 0; i < outputlines; ++i) {
-            dumpedOrbit[i][0] = getXYZ(tAzi);
-            dumpedOrbit[i][1] = getXYZDot(tAzi);
-            dumpedOrbit[i][2] = getXYZDotDot(tAzi);
-            tAzi += dt;
-        }
-
-
-        //  // ______ dump coeff. as well for testing ... ______
-        //  #ifdef __DEBUG
-        //  if (ID==MASTERID)
-        //    {
-        //    DEBUG.print("dumping files m_t, m_x, m_y, m_z, m_cx, m_cy, m_cz for spline interpolation.");
-        //    dumpasc("m_t",time);
-        //    dumpasc("m_x",data_x);  dumpasc("m_y",data_y);  dumpasc("m_z",data_z);
-        //    dumpasc("m_cx",coef_x); dumpasc("m_cy",coef_y); dumpasc("m_cz",coef_z);
-        //    }
-        //  else
-        //    {
-        //    DEBUG.print("dumping files s_t, s_x, s_y, s_z, s_cx, s_cy, s_cz for spline interpolation.");
-        //    dumpasc("s_t",time);
-        //    dumpasc("s_x",data_x);  dumpasc("s_y",data_y);  dumpasc("s_z",data_z);
-        //    dumpasc("s_cx",coef_x); dumpasc("s_cy",coef_y); dumpasc("s_cz",coef_z);
-        //    }
-        //  #endif
-
-        return dumpedOrbit;
-
-    }
-
-    public void showOrbit() {
-        System.out.println("Time of orbit ephemerides: " + time.toString());
-        System.out.println("Orbit ephemerides x:" + data_X.toString());
-        System.out.println("Orbit ephemerides y:" + data_Y.toString());
-        System.out.println("Orbit ephemerides z:" + data_Z.toString());
-        System.out.println("Estimated coefficients x(t):" + coeff_X.toString());
-        System.out.println("Estimated coefficients y(t):" + coeff_Y.toString());
-        System.out.println("Estimated coefficients z(t):" + coeff_Z.toString());
-    }
-
-    // TODO
+    // TODO: legacy support, implementation from baseline class
+    @Deprecated
     public void computeBaseline() {
 
     }
@@ -575,7 +323,7 @@ public final class Orbit {
         Point satelliteXYZPosition = new Point();
 
         // normalize time
-        azTime = (azTime - time.get(time.length / 2)) / 10;
+        azTime = (azTime - time[time.length / 2]) / 10;
 
         satelliteXYZPosition.x = MathUtilities.polyVal1d(azTime, coeff_X);
         satelliteXYZPosition.y = MathUtilities.polyVal1d(azTime, coeff_Y);
@@ -590,18 +338,18 @@ public final class Orbit {
         Point satelliteVelocity = new Point();
 
         // normalize time
-        azTime = (azTime - time.get(time.length / 2)) / 10;
+        azTime = (azTime - time[time.length / 2]) / 10;
 
         // NOTE: orbit interpolator is simple polynomial
-        satelliteVelocity.x = coeff_X.get(1);
-        satelliteVelocity.y = coeff_Y.get(1);
-        satelliteVelocity.z = coeff_Z.get(1);
+        satelliteVelocity.x = coeff_X[1];
+        satelliteVelocity.y = coeff_Y[1];
+        satelliteVelocity.z = coeff_Z[1];
 
         for (int i = 2; i <= poly_degree; ++i) {
             double powT = (double) i * Math.pow(azTime, (double) (i - 1));
-            satelliteVelocity.x += coeff_X.get(i) * powT;
-            satelliteVelocity.y += coeff_Y.get(i) * powT;
-            satelliteVelocity.z += coeff_Z.get(i) * powT;
+            satelliteVelocity.x += coeff_X[i] * powT;
+            satelliteVelocity.y += coeff_Y[i] * powT;
+            satelliteVelocity.z += coeff_Z[i] * powT;
         }
 
         return satelliteVelocity.divByScalar(10.0d);
@@ -614,16 +362,16 @@ public final class Orbit {
         Point satelliteAcceleration = new Point();
 
         // normalize time
-        azTime = (azTime - time.get(time.length / 2)) / 10.0d;
+        azTime = (azTime - time[time.length / 2]) / 10.0d;
 
         // NOTE: orbit interpolator is simple polynomial
         // 2a_2 + 2*3a_3*t^1 + 3*4a_4*t^2...
 
         for (int i = 2; i <= poly_degree; ++i) {
             double powT = (double) ((i - 1) * i) * Math.pow(azTime, (double) (i - 2));
-            satelliteAcceleration.x += coeff_X.get(i) * powT;
-            satelliteAcceleration.y += coeff_Y.get(i) * powT;
-            satelliteAcceleration.z += coeff_Z.get(i) * powT;
+            satelliteAcceleration.x += coeff_X[i] * powT;
+            satelliteAcceleration.y += coeff_Y[i] * powT;
+            satelliteAcceleration.z += coeff_Z[i] * powT;
         }
         return satelliteAcceleration.divByScalar(100.0d);
 
@@ -655,5 +403,65 @@ public final class Orbit {
     public boolean is_initialized() {
         return true;
     }
+
+    public Point[][] dumpOrbit() {
+
+        if (numStateVectors == 0) {
+            System.out.println("Exiting Orbit.dumporbit(), no orbit data available.");
+        }
+
+        double dt = 0.;
+
+        logger.info("dumporbits: MAXITER: " + MAXITER + "; " + "\n" +
+                    "          CRITERPOS: " + CRITERPOS + " m; " + "\n" +
+                    "          CRITERTIM: " + CRITERTIM + " s");
+
+        //  ______ Evaluate polynomial orbit for t1:dt:tN ______
+        int outputlines = 1 + (int) ((time[numStateVectors - 1] - time[0]) / dt);
+
+        double tAzi = time[0];
+        Point[][] dumpedOrbit = new Point[outputlines][3];
+
+        for (int i = 0; i < outputlines; ++i) {
+            dumpedOrbit[i][0] = getXYZ(tAzi);
+            dumpedOrbit[i][1] = getXYZDot(tAzi);
+            dumpedOrbit[i][2] = getXYZDotDot(tAzi);
+            tAzi += dt;
+        }
+
+
+        // ______ dump coeff. as well for testing ... ______
+        //  #ifdef __DEBUG
+        //  if (ID==MASTERID)
+        //    {
+        //    DEBUG.print("dumping files m_t, m_x, m_y, m_z, m_cx, m_cy, m_cz for spline interpolation.");
+        //    dumpasc("m_t",time);
+        //    dumpasc("m_x",data_x);  dumpasc("m_y",data_y);  dumpasc("m_z",data_z);
+        //    dumpasc("m_cx",coef_x); dumpasc("m_cy",coef_y); dumpasc("m_cz",coef_z);
+        //    }
+        //  else
+        //    {
+        //    DEBUG.print("dumping files s_t, s_x, s_y, s_z, s_cx, s_cy, s_cz for spline interpolation.");
+        //    dumpasc("s_t",time);
+        //    dumpasc("s_x",data_x);  dumpasc("s_y",data_y);  dumpasc("s_z",data_z);
+        //    dumpasc("s_cx",coef_x); dumpasc("s_cy",coef_y); dumpasc("s_cz",coef_z);
+        //    }
+        //  #endif
+
+        return dumpedOrbit;
+
+    }
+
+    public void showOrbit() {
+        // TODO: refactor to new matrix class!
+        logger.info("Time of orbit ephemerides: " + time.toString());
+        logger.info("Orbit ephemerides x:" + data_X.toString());
+        logger.info("Orbit ephemerides y:" + data_Y.toString());
+        logger.info("Orbit ephemerides z:" + data_Z.toString());
+        logger.info("Estimated coefficients x(t):" + coeff_X.toString());
+        logger.info("Estimated coefficients y(t):" + coeff_Y.toString());
+        logger.info("Estimated coefficients z(t):" + coeff_Z.toString());
+    }
+
 
 }

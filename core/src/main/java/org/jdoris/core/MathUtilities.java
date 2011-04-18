@@ -1,13 +1,17 @@
 package org.jdoris.core;
 
-import org.esa.beam.framework.gpf.OperatorException;
+import org.apache.log4j.Logger;
 import org.jblas.Decompose;
 import org.jblas.DoubleMatrix;
 import org.jblas.Solve;
 
 import java.awt.*;
 
+import static org.jblas.MatrixFunctions.abs;
+
 public class MathUtilities {
+
+    static Logger logger = Logger.getLogger(MathUtilities.class.getName());
 
     private static int polyDegree;
 
@@ -29,36 +33,68 @@ public class MathUtilities {
         output/return:
          - matrix result 3x1 unknown
     */
-    public DoubleMatrix solve33(DoubleMatrix A, DoubleMatrix rhs) {
+    public static double[] solve33(double[][] A, double[] rhs) throws Exception {
 
-        DoubleMatrix result = DoubleMatrix.zeros(3, 1);
+        double[] result = new double[3];
 
-//      if (A.lines() != 3 || A.pixels() != 3){
-//        throw "solve33: input: size of A not 33.")
-//      }
-//      if (rhs.lines() != 3 || rhs.pixels() != 1) {
-//        throw "solve33: input: size rhs not 3x1.")
-//      }
+        if (A[0].length != 3 || A.length != 3) {
+            throw new Exception("solve33: input: size of A not 33.");
+        }
+        if (rhs.length != 3) {
+            throw new Exception("solve33: input: size rhs not 3x1.");
+        }
 
         // ______  real8 L10, L20, L21: used lower matrix elements
         // ______  real8 U11, U12, U22: used upper matrix elements
         // ______  real8 b0,  b1,  b2:  used Ux=b
-        final double L10 = A.get(1, 0) / A.get(0, 0);
-        final double L20 = A.get(2, 0) / A.get(0, 0);
-        final double U11 = A.get(1, 1) - L10 * A.get(0, 1);
-        final double L21 = (A.get(2, 1) - (A.get(0, 1) * L20)) / U11;
-        final double U12 = A.get(1, 2) - L10 * A.get(0, 2);
-        final double U22 = A.get(2, 2) - L20 * A.get(0, 2) - L21 * U12;
+        final double L10 = A[1][0] / A[0][0];
+        final double L20 = A[2][0] / A[0][0];
+        final double U11 = A[1][1] - L10 * A[0][1];
+        final double L21 = (A[2][1] - (A[0][1] * L20)) / U11;
+        final double U12 = A[1][2] - L10 * A[0][2];
+        final double U22 = A[2][2] - L20 * A[0][2] - L21 * U12;
 
         // ______ Solution: forward substitution ______
-        final double b0 = rhs.get(0, 0);
-        final double b1 = rhs.get(1, 0) - b0 * L10;
-        final double b2 = rhs.get(2, 0) - b0 * L20 - b1 * L21;
+        final double b0 = rhs[0];
+        final double b1 = rhs[1] - b0 * L10;
+        final double b2 = rhs[2] - b0 * L20 - b1 * L21;
 
         // ______ Solution: backwards substitution ______
-        result.put(2, 0, b2 / U22);
-        result.put(1, 0, (b1 - U12 * result.get(2, 0)) / U11);
-        result.put(0, 0, (b0 - A.get(0, 1) * result.get(1, 0) - A.get(0, 2) * result.get(2, 0)) / A.get(0, 0));
+        result[2] = b2 / U22;
+        result[1] = (b1 - U12 * result[2]) / U11;
+        result[0] = (b0 - A[0][1] * result[1] - A[0][2] * result[2]) / A[0][0];
+
+        return result;
+
+    }
+
+    /**
+     * solve22                                                   *
+     * *
+     * Solves setof 2 equations by straightforward substitution     *
+     * y=Ax (unknown x)                                             *
+     * *
+     * input:                                                       *
+     * - matrix<real8> righthandside 2x1 (y)                       *
+     * - matrix<real8> partials 2x2 (A)                            *
+     * output:                                                      *
+     * - matrix<real8> result 2x1 unknown dx,dy,dz                 *
+     * *
+     */
+    public static double[] solve22(double[][] A, double[] y) throws Exception {
+
+        double[] result = new double[2];
+
+        if (A[0].length != 2 || A.length != 2) {
+            throw new Exception("solve33: input: size of A not 33.");
+        }
+        if (y.length != 2) {
+            throw new Exception("solve33: input: size y not 3x1.");
+        }
+
+        // Direct Solution
+        result[1] = (y[0] - ((A[0][0] / A[1][0]) * y[1])) / (A[0][1] - ((A[0][0] * A[1][1]) / A[1][0]));
+        result[0] = (y[0] - A[0][1] * result[1]) / A[0][0];
 
         return result;
 
@@ -167,7 +203,6 @@ public class MathUtilities {
     }
 
 
-
     public int numberOfCoefficients(int degree) {
 //        return 0;  //To change body of created methods use File | Settings | File Templates.
         return (int) (0.5 * (Math.pow(degree + 1, 2) + degree + 1));
@@ -179,46 +214,56 @@ public class MathUtilities {
         return (int) (0.5 * (-1 + (int) (Math.sqrt(1 + 8 * numOfCoefficients)))) - 1;
     }
 
-    public static DoubleMatrix polyFit(DoubleMatrix posting, DoubleMatrix observations, int polyDegree) {
+    /****************************************************************
+     *    polyfit                                                   *
+     *                                                              *
+     * Compute coefficients of x=a0+a1*t+a2*t^2+a3*t3 polynomial    *
+     * for orbit interpolation.  Do this to facilitate a method     *
+     * in case only a few datapoints are given.                     *
+     * Data t is normalized approximately [-x,x], then polynomial   *
+     * coefficients are computed.  For poly_val this is repeated    *
+     * see getxyz, etc.                                             *
+     *                                                              *
+     * input:                                                       *
+     *  - matrix by getdata with time and position info             *
+     * output:                                                      *
+     *  - matrix with coeff.                                        *
+     *    (input for interp. routines)                              */
+    public static double[] polyFit(DoubleMatrix time, DoubleMatrix y, int DEGREE) throws Exception {
 
-        // TODO: check on the vector size
-        // TODO: check on order of posting: has to be ascending
-        /*
-                if (time.pixels() != 1 || y.pixels() != 1){
-                    PRINT_ERROR("code 902: polyfit: wrong input.");
-                    throw(input_error);
-                }
-                if (time.lines() != y.lines()) {
-                    PRINT_ERROR("code 902: polyfit: require same size vectors.");
-                    throw(input_error);
-                }
-            */
-
-        // Normalize _posting_ for numerical reasons
-        final int numOfPoints = posting.length;
-        DoubleMatrix normPosting = posting.sub(posting.get(numOfPoints / 2)).div(10.0);
-
-        // Check redundancy
-        final int numOfUnknowns = polyDegree + 1;
-//        System.out.println("Degree of orbit interpolating polynomial: " + getPolyDegree);
-//        System.out.println("Number of unknowns: " + numOfUnknowns);
-//        System.out.println("Number of data points (orbit): " + numOfPoints);
-        if (numOfPoints < numOfUnknowns) {
-            throw new OperatorException("Number of points is smaller than parameters solved for.");
+        if (time.length != y.length) {
+            logger.error("polyfit: require same size vectors.");
+            throw new Exception("polyfit: require same size vectors.");
         }
 
-        // Setup system of equation
-//        System.out.println("Setting up linear system of equations");
+        // Normalize _posting_ for numerical reasons
+        final int numOfPoints = time.length;
+        logger.debug("Normalizing t axis for least squares fit");
+        DoubleMatrix normPosting = time.sub(time.get(numOfPoints / 2)).div(10.0);
+
+        // Check redundancy
+        final int numOfUnknowns = DEGREE + 1;
+        logger.debug("Degree of orbit interpolating polynomial: " + DEGREE);
+        logger.debug("Number of unknowns: " + numOfUnknowns);
+        logger.debug("Number of data points (orbit): " + numOfPoints);
+
+        if (numOfPoints < numOfUnknowns) {
+            logger.error("Number of points is smaller than parameters solved for.");
+            throw new Exception("Number of points is smaller than parameters solved for.");
+        }
+
+        // Set up system of equations to solve coeff
+        logger.debug("Setting up linear system of equations");
         DoubleMatrix A = new DoubleMatrix(numOfPoints, numOfUnknowns);// designmatrix
-        for (int j = 0; j <= polyDegree; j++) {
+        for (int j = 0; j <= DEGREE; j++) {
             DoubleMatrix normPostingTemp = normPosting.dup();
             normPostingTemp = matrixPower(normPostingTemp, (double) j);
             A.putColumn(j, normPostingTemp);
         }
 
-//        System.out.println("Solving lin. system of equations with Cholesky.");
+        logger.debug("Solving lin. system of equations with Cholesky.");
         // Fit polynomial through computed vector of phases
-        DoubleMatrix y = observations.dup();
+//        DoubleMatrix y = y.dup();
         DoubleMatrix N = A.transpose().mmul(A);
         DoubleMatrix rhs = A.transpose().mmul(y);
 
@@ -239,56 +284,60 @@ public class MathUtilities {
             }
         }
 
-        DoubleMatrix maxDeviation = N.mmul(Qx_hat).sub(DoubleMatrix.eye(Qx_hat.rows));
 
-//        System.out.println("polyFit orbit: max(abs(N*inv(N)-I)) = " + maxDeviation.get(1, 1));
+        double maxDeviation = abs(N.mmul(Qx_hat).sub(DoubleMatrix.eye(Qx_hat.rows))).max();
+        logger.debug("polyfit orbit: max(abs(N*inv(N)-I)) = " + maxDeviation);
 
-//        // ___ report max error... (seems sometimes this can be extremely large) ___
-//        if (maxDeviation.get(1, 1) > 1e-6) {
-//            System.out.println("polyfit orbit interpolation unstable!");
-//        }
+        // ___ report max error... (seems sometimes this can be extremely large) ___
+        if (maxDeviation > 1e-6) {
+            logger.warn("polyfit orbit: max(abs(N*inv(N)-I)) = " + maxDeviation);
+            logger.warn("polyfit orbit interpolation unstable!");
+        }
 
         // work out residuals
         DoubleMatrix y_hat = A.mmul(x);
         DoubleMatrix e_hat = y.sub(y_hat);
 
-        DoubleMatrix e_hat_abs = absMatrix(e_hat);
+        DoubleMatrix e_hat_abs = abs(e_hat);
 
         // TODO: absMatrix(e_hat_abs).max() there is a simpleBlas function that implements this!
         // 0.05 is already 1 wavelength! (?)
         if (absMatrix(e_hat_abs).max() > 0.02) {
-            System.out.println("WARNING: Max. approximation error at datapoints (x,y,or z?): " + absMatrix(e_hat).max() + "m");
-        }
-//        else {
-//            System.out.println("Max. approximation error at datapoints (x,y,or z?): " + absMatrix(e_hat).max() + "m");
-//        }
+            logger.warn("WARNING: Max. approximation error at datapoints (x,y,or z?): " + abs(e_hat).max() + " m");
 
-//        System.out.println("REPORTING POLYFIT LEAST SQUARES ERRORS");
-//        System.out.println(" time \t\t\t y \t\t\t yhat  \t\t\t ehat");
-//        for (int i = 0; i < numOfPoints; i++) {
-//            System.out.println(" " + posting.get(i) + "\t" + y.get(i) + "\t" + y_hat.get(i) + "\t" + e_hat.get(i));
-//        }
+        }
+        else {
+            logger.info("Max. approximation error at datapoints (x,y,or z?): " + abs(e_hat).max() + " m");
+        }
+
+        logger.debug("REPORTING POLYFIT LEAST SQUARES ERRORS");
+        logger.debug(" time \t\t\t y \t\t\t yhat  \t\t\t ehat");
+        for (int i = 0; i < numOfPoints; i++) {
+            logger.debug(" " + time.get(i) + "\t" + y.get(i) + "\t" + y_hat.get(i) + "\t" + e_hat.get(i));
+        }
 
         for (int i = 0; i < numOfPoints - 1; i++) {
             // ___ check if dt is constant, not necessary for me, but may ___
             // ___ signal error in header data of SLC image ___
-            double dt = posting.get(i + 1) - posting.get(i);
-//            System.out.println("Time step between point " + i + 1 + " and " + i + "= " + dt);
+            double dt = time.get(i + 1) - time.get(i);
+            logger.debug("Time step between point " + i + 1 + " and " + i + "= " + dt);
 
-            if (Math.abs(dt - (posting.get(1) - posting.get(0))) > 0.001)// 1ms of difference we allow...
-                System.out.println("WARNING: Orbit: data does not have equidistant time interval?");
+            if (Math.abs(dt - (time.get(1) - time.get(0))) > 0.001)// 1ms of difference we allow...
+                logger.warn("WARNING: Orbit: data does not have equidistant time interval?");
         }
 
-        return x;
+        return x.toArray();
     }
 
-    public static double polyVal1d(double x, DoubleMatrix coefficients) {
-            double sum = 0.0;
-          for (int d = coefficients.length - 1; d >= 0; --d) {
-              sum *= x;
-              sum += coefficients.get(d);
-          }
-          return sum;
+
+
+    public static double polyVal1d(double x, double[] coefficients) {
+        double sum = 0.0;
+        for (int d = coefficients.length - 1; d >= 0; --d) {
+            sum *= x;
+            sum += coefficients[d];
+        }
+        return sum;
     }
 
     public DoubleMatrix polyValOnGrid(DoubleMatrix x, DoubleMatrix y, final DoubleMatrix coeff, int degreee) {
