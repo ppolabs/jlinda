@@ -48,7 +48,7 @@ public class SLCImageTest {
     @Test
     public void testPix2fdc() throws Exception {
         double dopplerActual = master.pix2fdc(pixelExpected);
-        System.out.println("dopplerActual = " + dopplerActual);
+//        System.out.println("dopplerActual = " + dopplerActual);
         Assert.assertEquals(dopplerExpected,dopplerActual,delta);
     }
 
