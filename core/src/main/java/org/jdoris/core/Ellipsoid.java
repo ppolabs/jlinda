@@ -1,11 +1,10 @@
-package org.jdoris.core.todo_classes;
+package org.jdoris.core;
 
 import org.apache.log4j.Logger;
-import org.jdoris.core.Point;
 
-public class input_ell {
+public class Ellipsoid {
 
-    Logger logger = Logger.getLogger(input_ell.class.getName());
+    Logger logger = Logger.getLogger(Ellipsoid.class.getName());
 
     private double e2;  // squared first  eccentricity (derived)
     private double e2b; // squared second eccentricity (derived)
@@ -14,19 +13,7 @@ public class input_ell {
     public double b; // semi minor
     public String name;
 
-    // first ecc.
-    private void set_ecc1st_sqr() {
-        //  faster than e2=(sqr(a)-sqr(b))/sqr(a)
-        e2 = 1.0 - Math.pow(b / a, 2);
-    }
-
-    // second ecc.
-    private void set_ecc2nd_sqr() {
-        // faster than e2b=(sqr(a)-sqr(b))/sqr(b);
-        e2b = Math.pow(a / b, 2) - 1.0;
-    }
-
-    public input_ell() {
+    public Ellipsoid() {
         a = Constants.WGS84_A;
         b = Constants.WGS84_B;
         e2 = 0.00669438003551279091;
@@ -37,7 +24,7 @@ public class input_ell {
     }
 
 
-    public input_ell(final double semimajor, final double semiminor) {
+    public Ellipsoid(final double semimajor, final double semiminor) {
         a = semimajor;
         b = semiminor;
         set_ecc1st_sqr();// compute e2 (not required for zero-doppler iter.)
@@ -46,7 +33,7 @@ public class input_ell {
 
     }
 
-    public input_ell(input_ell ell) {
+    public Ellipsoid(Ellipsoid ell) {
         a = ell.a;
         b = ell.b;
         e2 = ell.e2;
@@ -116,6 +103,18 @@ public class input_ell {
         return new Point(Nph * Math.cos(phi) * Math.cos(lambda),
                 Nph * Math.cos(phi) * Math.sin(lambda),
                 (Nph - e2 * N) * Math.sin(phi));
+    }
+
+    // first ecc.
+    private void set_ecc1st_sqr() {
+        //  faster than e2=(sqr(a)-sqr(b))/sqr(a)
+        e2 = 1.0 - Math.pow(b / a, 2);
+    }
+
+    // second ecc.
+    private void set_ecc2nd_sqr() {
+        // faster than e2b=(sqr(a)-sqr(b))/sqr(b);
+        e2b = Math.pow(a / b, 2) - 1.0;
     }
 
 }
