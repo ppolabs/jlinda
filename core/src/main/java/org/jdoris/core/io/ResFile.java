@@ -40,26 +40,15 @@ public class ResFile {
     }
 
     public ResFile(File file) {
-
         resFile = file;
-
-        try {
-            BufferedReader input = new BufferedReader(new FileReader(file), 1);
-            String line;
-            while ((line = input.readLine()) != null) {
-                buffer.append(line);
-                buffer.append(System.getProperty("line.separator"));
-            }
-        } catch (FileNotFoundException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
-        startIdx = 0;
-        endIdx = buffer.length();
-
+        streamBuffer(file);
     }
+
+    public ResFile(String fileName) {
+        resFile = new File(fileName);
+        streamBuffer(resFile);
+    }
+
 
     // method to buffer doris res file
     public void streamBuffer(File file) {
@@ -78,6 +67,9 @@ public class ResFile {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+
+        startIdx = 0;
+        endIdx = buffer.length();
 
     }
 
