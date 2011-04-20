@@ -87,7 +87,7 @@ public class OrbitTest {
 
         orbit_ACTUAL = new Orbit();
         orbit_ACTUAL.parseOrbit(resFile);
-        orbit_ACTUAL.computeCoefficients(4);
+        orbit_ACTUAL.computeCoefficients(poly_degree_EXPECTED);
 
     }
 
@@ -197,7 +197,7 @@ public class OrbitTest {
 
     @Test
     public void testLp2xyz() throws Exception {
-        Point xyz_ACTUAL = orbit_ACTUAL.lp2xyz(pixel_EXPECTED.y, pixel_EXPECTED.x,slcimage);
+        Point xyz_ACTUAL = orbit_ACTUAL.lp2xyz(pixel_EXPECTED.y, pixel_EXPECTED.x, slcimage);
         Assert.assertArrayEquals(pixelXYZ_EXPECTED.toArray(), xyz_ACTUAL.toArray(), eps_03);
     }
 
@@ -220,7 +220,7 @@ public class OrbitTest {
         Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, crGEO_EXPECTED[2], slcimage);
 //        Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, 0, slcimage);
 
-        Assert.assertArrayEquals(xyz_ACTUAL.toArray(), xyz_ACTUAL_2.toArray(),eps_03);
+        Assert.assertArrayEquals(xyz_ACTUAL.toArray(), xyz_ACTUAL_2.toArray(), eps_03);
 
     }
 
