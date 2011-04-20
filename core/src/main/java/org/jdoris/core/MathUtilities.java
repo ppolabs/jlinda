@@ -653,4 +653,25 @@ public class MathUtilities {
         return result;
     }
 
+
+    // TODO: refactor and better integrate helper functions for Baseline.class
+    // HELPER FUNCTIONS == from Baseline class
+    public static DoubleMatrix matTxmat(DoubleMatrix matrix1, DoubleMatrix matrix2) {
+        return matrix1.transpose().mmul(matrix2);
+    }
+
+    public static double rad2deg(double rad) {
+        return Math.toDegrees(rad);
+    }
+
+
+    public static double sqr(double value) {
+        return Math.pow(value, 2);
+    }
+
+    public static double sqrt(double value) {
+        return Math.sqrt(value);
+    }
+
+
 }
