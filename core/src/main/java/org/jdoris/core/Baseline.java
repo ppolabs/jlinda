@@ -155,13 +155,13 @@ public class Baseline {
 
     } // END BBparBperpTheta
 
-    private void model_parameters(final SLCImage master, final SLCImage slave, Orbit masterorbit, Orbit slaveorbit) {
+    private void model_parameters(final SLCImage master, final SLCImage slave, Orbit masterorbit, Orbit slaveorbit) throws Exception {
 
         // TODO: with throwables!
-        if (!masterorbit.is_initialized()) {
+        if (!masterorbit.isInterpolated()) {
             logger.debug("Baseline cannot be computed, master orbit not initialized.");
             return;
-        } else if (!slaveorbit.is_initialized()) {
+        } else if (!slaveorbit.isInterpolated()) {
             logger.debug("Baseline cannot be computed, slave orbit not initialized.");
             return;
         }
@@ -209,7 +209,7 @@ public class Baseline {
         for (long k = 0; k < N_heights; ++k)  // height levels
         {
             final double HEIGHT = H_min + k * deltaheight;
-//        input_ell ELLIPS(ellips.a + HEIGHT, ellips.b + HEIGHT);
+//        Ellipsoid ELLIPS(ellips.a + HEIGHT, ellips.b + HEIGHT);
             for (long i = 0; i < N_pointsL; ++i) // azimuthlines
             {
                 final double line = master.currentWindow.linelo + i * deltalines;
@@ -233,13 +233,14 @@ public class Baseline {
                     //final double m_trange = master.pix2tr(pixel);
 //                lp2xyz(line, pixel, ELLIPS, master, masterorbit, P, MAXITER, CRITERPOS);
                     // TODO: check this!
-                    P = masterorbit.lp2xyz(line, pixel, master, masterorbit);
+//                    P = masterorbit.lp2xyz(line, pixel, master, masterorbit);
+                    P = masterorbit.lp2xyz(line, pixel, master);
 
                     // ______ Compute xyz for slave satellite from P ______
 //                xyz2t(s_tazi, s_trange, slave, slaveorbit, P, MAXITER, CRITERTIM);
 
                     // TODO: check and refactor this!
-                    Point temp = slaveorbit.xyz2t(P, slave, slaveorbit);
+                    Point temp = slaveorbit.xyz2t(P, slave);
                     s_tazi = temp.y;
                     s_trange = temp.x;
 
