@@ -5,65 +5,57 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
-import java.text.ParseException;
 
 public class SLCImageTest {
 
     private static File resFile;
     private static SLCImage master = new SLCImage();
-    private static final double delta = 1E-05;
-    private static final double delta_1 = 1E-04;
-    private static final int lineExpected = 16475;
-    private static final double timeAzExpected = 38199.5916316067;
-    private static final int pixelExpected = 3151;
-    private static final double timeRgExpected = 0.00286525698652786;
-    private static final double dopplerExpected = 933.516721989199;
+    private static final double eps05 = 1E-05;
+    private static final double eps02 = 1E-02;
+    private static final double line_EXPECTED = 18093.22191;
+    private static final double azTime_EXPECTED =  36487.9539543639;
+    private static final double pixel_EXPECTED = 3614.506571;
+    private static final double rgTime_EXPECTED = 0.00286444560797666;
+    private static final double doppler_EXPECTED = 178.068022732768;
+
     @BeforeClass
-    public static void setUp() throws ParseException {
-        resFile = new File("/d2/delft_cr_asar.res");
+    public static void setUp() throws Exception {
+        resFile = new File("/d2/test_cr.res");
         master.parseResFile(resFile);
     }
 
-
-//    @Test
-//    public void testParseResFile() throws Exception {
-//
-//
-//
-//    }
-
     @Test
     public void testPix2tr() throws Exception {
-        double timeRgActual = master.pix2tr(pixelExpected);
-        Assert.assertEquals(timeRgExpected,timeRgActual,delta);
+        double rgTime_ACTUAL = master.pix2tr(pixel_EXPECTED);
+        Assert.assertEquals(rgTime_EXPECTED, rgTime_ACTUAL, eps05);
     }
 
     @Test
     public void testTr2pix() throws Exception {
-        double pixelActual = master.tr2pix(timeRgExpected);
-        Assert.assertEquals(pixelExpected,pixelActual,delta);
+        double pixel_ACTUAL = master.tr2pix(rgTime_EXPECTED);
+        Assert.assertEquals(pixel_EXPECTED,pixel_ACTUAL, eps05);
 
     }
 
     @Test
     public void testPix2fdc() throws Exception {
-        double dopplerActual = master.pix2fdc(pixelExpected);
-//        System.out.println("dopplerActual = " + dopplerActual);
-        Assert.assertEquals(dopplerExpected,dopplerActual,delta);
+        double doppler_ACTUAL = master.pix2fdc(pixel_EXPECTED);
+        Assert.assertEquals(doppler_EXPECTED,doppler_ACTUAL, eps05);
     }
 
     @Test
     public void testLine2ta() throws Exception {
-        double timeAzActual = master.line2ta(lineExpected);
-        Assert.assertEquals(timeAzExpected, timeAzActual, delta);
+        double azTime_ACTUAL = master.line2ta(line_EXPECTED);
+        Assert.assertEquals(azTime_EXPECTED, azTime_ACTUAL, eps05);
 
     }
 
 
     @Test
     public void testTa2line() throws Exception {
-        double lineActual = master.ta2line(timeAzExpected);
-        Assert.assertEquals(lineExpected, lineActual, delta_1);
+        double line_ACTUAL = master.ta2line(azTime_EXPECTED);
+        Assert.assertEquals(line_EXPECTED, line_ACTUAL, eps02);
 
     }
+
 }

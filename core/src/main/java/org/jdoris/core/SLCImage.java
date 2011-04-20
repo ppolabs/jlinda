@@ -9,7 +9,6 @@ import org.esa.nest.util.GeoUtils;
 import org.jdoris.core.io.ResFile;
 
 import java.io.File;
-import java.text.ParseException;
 
 public final class SLCImage {
 
@@ -182,7 +181,7 @@ public final class SLCImage {
 
     }
 
-    public void parseResFile(File resFileName) throws ParseException {
+    public void parseResFile(File resFileName) throws Exception {
 
         ResFile resFile = new ResFile(resFileName);
 
@@ -195,6 +194,9 @@ public final class SLCImage {
         this.approxGeoCentreOriginal.lat = (float) resFile.parseDoubleValue("Scene_centre_latitude");
         this.approxGeoCentreOriginal.lon = (float) resFile.parseDoubleValue("Scene_centre_longitude");
         this.averageHeight = 0.0;
+
+        this.approxXYZCentreOriginal = Ellipsoid.ell2xyz(Math.toRadians(approxGeoCentreOriginal.lat),
+                Math.toRadians(approxGeoCentreOriginal.lon), averageHeight);
 
         // azimuth annotations
         this.PRF = resFile.parseDoubleValue("Pulse_Repetition_Frequency \\(computed, Hz\\)");
@@ -280,5 +282,31 @@ public final class SLCImage {
     public Window getCurrentWindow() {
         return currentWindow;
     }
+
+    public double gettRange1() {
+        return tRange1;
+    }
+
+    public void settRange1(double tRange1) {
+        this.tRange1 = tRange1;
+    }
+
+    public double getRangeBandwidth() {
+        return rangeBandwidth;
+    }
+
+    public void setRangeBandwidth(double rangeBandwidth) {
+        this.rangeBandwidth = rangeBandwidth;
+    }
+
+    public double getRsr2x() {
+        return rsr2x;
+    }
+
+    public void setRsr2x(double rsr2x) {
+        this.rsr2x = rsr2x;
+    }
+
+
 
 }

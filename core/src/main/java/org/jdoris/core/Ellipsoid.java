@@ -6,12 +6,12 @@ public class Ellipsoid {
 
     Logger logger = Logger.getLogger(Ellipsoid.class.getName());
 
-    private static double e2;  // squared first  eccentricity (derived)
-    private static double e2b; // squared second eccentricity (derived)
+    private static double e2 = 0.00669438003551279091;  // squared first  eccentricity (derived)
+    private static double e2b = 0.00673949678826153145; // squared second eccentricity (derived)
 
-    public static double a; // semi major
-    public static double b; // semi minor
-    public static String name;
+    public static double a = Constants.WGS84_A; // semi major
+    public static double b = Constants.WGS84_B; // semi minor
+    public static String name = "WGS84";
 
     public Ellipsoid() {
         a = Constants.WGS84_A;
@@ -30,7 +30,6 @@ public class Ellipsoid {
         set_ecc1st_sqr();// compute e2 (not required for zero-doppler iter.)
         set_ecc2nd_sqr();// compute e2b (not required for zero-doppler iter.)
         //set_name("unknown");
-
     }
 
     public Ellipsoid(Ellipsoid ell) {
@@ -106,11 +105,11 @@ public class Ellipsoid {
     public static Point ell2xyz(final double phi, final double lambda, final double height) throws Exception {
 
         if (phi > Math.PI || phi < -Math.PI || lambda > Math.PI || lambda < -Math.PI) {
-            throw new Exception();
+            throw new Exception("Ellipsoid.ell2xyz : input values for phi/lambda have to be in radians!");
         }
 
-        final double N = computeEllipsoidNormal(phi);
-        final double Nph = N + height;
+        double N = computeEllipsoidNormal(phi);
+        double Nph = N + height;
         return new Point(
                 Nph * Math.cos(phi) * Math.cos(lambda),
                 Nph * Math.cos(phi) * Math.sin(lambda),
@@ -124,7 +123,7 @@ public class Ellipsoid {
         final double height = phi_lambda_height[2];
 
         if (phi > Math.PI || phi < -Math.PI || lambda > Math.PI || lambda < -Math.PI) {
-            throw new Exception();
+            throw new Exception("Ellipsoid.ell2xyz(): phi/lambda values has to be in radians!");
         }
 
         final double N = computeEllipsoidNormal(phi);
