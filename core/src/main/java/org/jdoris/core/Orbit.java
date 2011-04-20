@@ -134,7 +134,7 @@ public final class Orbit {
     }
 
     // TODO: make generic so it can work with arrays of lines as well: see matlab implementation
-    public Point lp2xyz(double line, double pixel, SLCImage slcimage) throws Exception {
+    public Point lph2xyz(double line, double pixel, double height, SLCImage slcimage) throws Exception {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -162,7 +162,7 @@ public final class Orbit {
 
             equationSet[0] = -eq1_Doppler(satelliteVelocity, dsat_P);
             equationSet[1] = -eq2_Range(dsat_P, rgTime);
-            equationSet[2] = -eq3_Ellipsoid(ellipsoidPosition);
+            equationSet[2] = -eq3_Ellipsoid(ellipsoidPosition, height);
 
             partialsXYZ[0][0] = satelliteVelocity.x;
             partialsXYZ[0][1] = satelliteVelocity.y;
@@ -170,9 +170,9 @@ public final class Orbit {
             partialsXYZ[1][0] = 2 * dsat_P.x;
             partialsXYZ[1][1] = 2 * dsat_P.y;
             partialsXYZ[1][2] = 2 * dsat_P.z;
-            partialsXYZ[2][0] = (2 * ellipsoidPosition.x) / (Math.pow(ell_a + refHeight, 2));
-            partialsXYZ[2][1] = (2 * ellipsoidPosition.y) / (Math.pow(ell_a + refHeight, 2));
-            partialsXYZ[2][2] = (2 * ellipsoidPosition.z) / (Math.pow(ell_a + refHeight, 2));
+            partialsXYZ[2][0] = (2 * ellipsoidPosition.x) / (Math.pow(ell_a + height, 2));
+            partialsXYZ[2][1] = (2 * ellipsoidPosition.y) / (Math.pow(ell_a + height, 2));
+            partialsXYZ[2][2] = (2 * ellipsoidPosition.z) / (Math.pow(ell_a + height, 2));
 
             // solve system [NOTE!] orbit has to be normalized, otherwise close to singular
             // DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet);
@@ -213,7 +213,11 @@ public final class Orbit {
     }
 
     public Point lp2xyz(Point sarPixel, SLCImage slcimage) throws Exception {
-        return lp2xyz(sarPixel.y, sarPixel.x, slcimage);
+        return lph2xyz(sarPixel.y, sarPixel.x, 0, slcimage);
+    }
+
+    public Point lp2xyz(double line, double pixel, SLCImage slcimage) throws Exception {
+        return lph2xyz(line, pixel, 0, slcimage);
     }
 
     public Point xyz2orb(Point pointOnEllips, SLCImage slcimage) {
@@ -375,14 +379,18 @@ public final class Orbit {
         return pointEllipsSat.in(pointEllipsSat) - Math.pow(SOL * rgTime, 2);
     }
 
-    public double eq3_Ellipsoid(Point pointOnEllips) {
-        return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(ell_a, 2)) +
-                Math.pow(pointOnEllips.z / ell_b, 2) - 1.0;
+    public double eq3_Ellipsoid(Point pointOnEllips, double height) {
+        return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(ell_a + height, 2)) +
+                Math.pow(pointOnEllips.z / (ell_b + height), 2) - 1.0;
     }
 
-    public double eq3_Ellipsoid(Point pointOnEllips, double semiMajorA, double semiMinorB) {
-        return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(semiMajorA, 2)) +
-                Math.pow(pointOnEllips.z / semiMinorB, 2) - 1.0;
+    public double eq3_Ellipsoid(Point pointOnEllips) {
+        return eq3_Ellipsoid(pointOnEllips, 0);
+    }
+
+    public double eq3_Ellipsoid(Point pointOnEllips, double semiMajorA, double semiMinorB, double height) {
+        return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(semiMajorA+height, 2)) +
+                Math.pow(pointOnEllips.z / (semiMinorB+height), 2) - 1.0;
     }
 
     // TODO: sanity checks

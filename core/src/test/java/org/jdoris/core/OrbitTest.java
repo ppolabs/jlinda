@@ -2,9 +2,7 @@ package org.jdoris.core;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.File;
 
@@ -25,11 +23,10 @@ public class OrbitTest {
 
     private static final SLCImage slcimage = new SLCImage();
 
-    // expected values
-    private static final double[] crGEO_EXPECTED = {51.9903894167, 4.3896355000, 41.670};
+
+    private static final double[] crGEO_EXPECTED = new double[]{51.9903894167, 4.3896355000, 41.670};
     //    private static final double[] crXYZ_EXPECTED = {3.92428342070434e+06, 3.01243077763538e+05, 5.00217775318444e+06};
     private static final Point crXYZ_EXPECTED = new Point(3.92428342070434e+06, 3.01243077763538e+05, 5.00217775318444e+06);
-
 
     private static final Point pixelXYZ_EXPECTED = new Point(3924267.875114853, 301323.1099883879, 5002132.192287684);
     private static final Point pixel_EXPECTED = new Point(3615, 18094);
@@ -78,6 +75,9 @@ public class OrbitTest {
     private static final double eps_04 = 1E-04;
     private static final double eps_06 = 1E-06;
 
+    // expected CR values
+    private static Point crSAR_EXPECTED = null;
+
     @BeforeClass
     public static void setUpTestData() throws Exception {
 
@@ -90,6 +90,12 @@ public class OrbitTest {
         orbit_ACTUAL.computeCoefficients(4);
 
     }
+
+    @AfterClass
+    public static void destroyTestData() throws Exception {
+        System.gc();
+    }
+
 
     @Test
     public void testGetNumStateVectors() throws Exception {
@@ -160,7 +166,7 @@ public class OrbitTest {
 
     @Test
     public void testEq3_Ellipsoid() throws Exception {
-        Assert.assertEquals(eq3Ellipsoid_EXPECTED, orbit_ACTUAL.eq3_Ellipsoid(crXYZ_EXPECTED), eps_06);
+        Assert.assertEquals(eq3Ellipsoid_EXPECTED, orbit_ACTUAL.eq3_Ellipsoid(crXYZ_EXPECTED, 0), eps_06);
     }
 
     // test geometrical conversions
@@ -191,10 +197,32 @@ public class OrbitTest {
 
     @Test
     public void testLp2xyz() throws Exception {
-        Point xyz_ACTUAL = orbit_ACTUAL.lp2xyz(pixel_EXPECTED.y, pixel_EXPECTED.x, slcimage);
+        Point xyz_ACTUAL = orbit_ACTUAL.lp2xyz(pixel_EXPECTED.y, pixel_EXPECTED.x,slcimage);
         Assert.assertArrayEquals(pixelXYZ_EXPECTED.toArray(), xyz_ACTUAL.toArray(), eps_03);
     }
 
+
+//    @Before
+//    public void setUpCrTestData() throws Exception {
+//
+//        crSAR_EXPECTED = new Point(100,100);
+//
+//    }
+
+    //
+    @Test
+    public void crLoop_Run1() throws Exception {
+
+        Point xyz_ACTUAL = Ellipsoid.ell2xyz(Math.toRadians(crGEO_EXPECTED[0]), Math.toRadians(crGEO_EXPECTED[1]), crGEO_EXPECTED[2]);
+        Point time_ACTUAL = orbit_ACTUAL.xyz2t(xyz_ACTUAL, slcimage);
+        double line_ACTUAL = slcimage.ta2line(time_ACTUAL.y);
+        double pixel_ACTUAL = slcimage.tr2pix(time_ACTUAL.x);
+        Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, crGEO_EXPECTED[2], slcimage);
+//        Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, 0, slcimage);
+
+        Assert.assertArrayEquals(xyz_ACTUAL.toArray(), xyz_ACTUAL_2.toArray(),eps_03);
+
+    }
 
 //    @Test
 //    public void testEll2lp() throws Exception {
@@ -206,10 +234,6 @@ public class OrbitTest {
 //
 //    }
 //
-//    @Test
-//    public void testComputeBaseline() throws Exception {
-//
-//    }
 
 
 }
