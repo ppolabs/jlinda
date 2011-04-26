@@ -231,4 +231,17 @@ public class todo_classes {
         */
     }
 
+    public class input_pr_orbits {
+        /*
+            char          m_orbdir[4*ONE27];
+            char          s_orbdir[4*ONE27];
+            int32         timeinterval;               // time in sec.
+            int32         timebefore;                   // sec before first line.
+            real8         dumpmasterorbit;          // dtime in sec.
+            real8         dumpslaveorbit;           // dtime in sec.
+        */
+    }
+
+
+
 }

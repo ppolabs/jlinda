@@ -7,7 +7,7 @@ import org.jblas.ranges.IntervalRange;
 import org.jdoris.core.MathUtilities;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
-import org.jdoris.core.todo_classes.input_ell;
+import org.jdoris.core.Ellipsoid;
 import org.jdoris.core.todo_classes.todo_classes;
 
 import static org.jblas.MatrixFunctions.pow;
@@ -291,7 +291,7 @@ public class RangeFilter {
     @Deprecated
     public static void rangefilterorbits(final todo_classes.inputgeneral generalinput,
                                          final todo_classes.input_filtrange inputfiltrange,
-                                         final input_ell ellips,
+                                         final Ellipsoid ellips,
                                          final SLCImage master,
                                          final SLCImage slave,
                                          Orbit masterorbit,
