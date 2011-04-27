@@ -43,7 +43,7 @@ public class Window implements Comparable, Cloneable, Serializable {
      * Constructs a <code>Window</code> at (0,0,0,0).
      */
     public Window() {
-        new Window(0, 0, 0, 0);
+        this(0, 0, 0, 0);
     }
 
     /**
@@ -52,8 +52,8 @@ public class Window implements Comparable, Cloneable, Serializable {
      *
      * @param w the <code>Window</code> to copy.
      */
-    public Window(Window w) {
-        new Window(w.linelo, w.linehi, w.pixlo, w.pixhi);
+    public Window(final Window w) {
+        this(w.linelo, w.linehi, w.pixlo, w.pixhi);
     }
 
 
@@ -63,7 +63,7 @@ public class Window implements Comparable, Cloneable, Serializable {
      *
      * @param other the <code>Window</code> to copy
      */
-    public void setWindow(Window other) {
+    public void setWindow(final Window other) {
         linelo = other.linelo;
         linehi = other.linehi;
         pixlo = other.pixlo;
@@ -78,13 +78,12 @@ public class Window implements Comparable, Cloneable, Serializable {
      * @param pixlo  the min pix coordinate
      * @param pixhi  the max pix coordinate
      */
-    public void setWindow(long linelo, long linehi, long pixlo, long pixhi) {
+    public void setWindow(final long linelo, final long linehi, final long pixlo, final long pixhi) {
         this.linelo = linelo;
         this.linehi = linehi;
         this.pixlo = pixlo;
         this.pixhi = pixhi;
     }
-
 
 
     /**
@@ -136,7 +135,7 @@ public class Window implements Comparable, Cloneable, Serializable {
      * @return -1, zero, or 1 as this <code>Window</code>
      *         is less than, equal to, or greater than the specified <code>Window</code>
      */
-    public int compareTo(Object o) {
+    public int compareTo(final Object o) {
 
         Window other = (Window) o;
 
@@ -157,25 +156,33 @@ public class Window implements Comparable, Cloneable, Serializable {
      * Returns <code>true</code> if <code>other</code> has the same values for linelo,linehi,
      * and pixlo,pixhi.
      *
-     * @param other a <code>Coordinate</code> with which to do the 3D comparison.
-     * @return <code>true</code> if <code>other</code> is a <code>Coordinate</code>
-     *         with the same values for x, y and z.
+     * @param other <code>Window</code> with which to do the comparison.
+     * @return <code>true</code> if <code>other</code> is a <code>Window</code>
+     *         with the same values for linelo,linehi,and pixlo,pixhi.
      */
-    public boolean equals(Window other) {
-        return (linelo == linelo) && (linehi == other.linehi) &&
-                (pixlo == pixlo) && (pixhi == other.pixlo);
+    public boolean equals(final Object other) {
+        if (!(other instanceof Window)) {
+            return false;
+        }
+        return equals((Window) other);
+    }
+
+    public boolean equals(final Window other) {
+        return (linelo == other.linelo) && (linehi == other.linehi) &&
+                (pixlo == other.pixlo) && (pixhi == other.pixhi);
     }
 
 
-    // TODO: add assert message here
-    public Object clone() {
+    public Object clone() throws CloneNotSupportedException {
         try {
-            Window wind = (Window) super.clone();
-            return wind;
+            return super.clone();
         } catch (CloneNotSupportedException e) {
+            // this shouldn't happen, since we are Cloneable
             return null;
+//        throw new InternalError();
         }
     }
+
 
     /**
      * Computes extend of window in AZIMUTH direction ~ height.
@@ -185,7 +192,7 @@ public class Window implements Comparable, Cloneable, Serializable {
      * @param w a window
      * @return the height of window
      */
-    public long lines(Window w) {
+    public static long lines(final Window w) {
         return w.linehi - w.linelo + 1;
 
     }
@@ -210,7 +217,7 @@ public class Window implements Comparable, Cloneable, Serializable {
      * @param w a window
      * @return the height of window
      */
-    public long pixels(Window w) {
+    public static long pixels(final Window w) {
         return w.pixhi - w.pixlo + 1;
     }
 
@@ -229,10 +236,11 @@ public class Window implements Comparable, Cloneable, Serializable {
      * Computes a hash code for a double value, using the algorithm from
      * Joshua Bloch's book <i>Effective Java"</i>
      *
+     * @param x
      * @return a hashcode for the double value
      */
-    public static int hashCode(double x) {
-        long f = Double.doubleToLongBits(x);
+    private static int hashCode(final double x) {
+        final long f = Double.doubleToLongBits(x);
         return (int) (f ^ (f >>> 32));
     }
 
