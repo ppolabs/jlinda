@@ -651,37 +651,35 @@ public class MathUtilities {
 
 
     /**
-     * *************************************************************
-     * ifft(A,dim)                                                  *
-     * inverse 1dfft over dim of A is returned in A by reference *
-     * if dim=1 ifft is over all columns of A, if 2 over rows.   *
-     * data is stored major row order in memory, so dim=2 is     *
-     * probably much faster.                                     *
-     * fftlength should be power of 2                            *
-     * **************************************************************
+     * ifft(A,dim)
+     * inverse 1dfft over dim of A is returned in A by reference
+     * if dim=1 ifft is over all columns of A, if 2 over rows.
+     * data is stored major row order in memory, so dim=2 is
+     * probably much faster.
+     * fftlength should be power of 2
      */
     public static void ifft(ComplexDoubleMatrix A, int dimension) {
         int i;
-        final int iopt = -1;                        // inverse FFT (scaled)
+        // inverse FFT (scaled)
+        final int iOpt = -1;
 
         switch (dimension) {
             case 1: {
                 logger.debug("1d ifft over columns");
-                int fftlength = A.rows;
+                final int fftLength = A.rows;
                 for (i = 0; i < A.columns; ++i) {
                     ComplexDoubleMatrix VECTOR = A.getColumn(i);
-                    four1(VECTOR, fftlength, iopt);
+                    four1D(VECTOR, fftLength, iOpt);
                     A.putColumn(i, VECTOR);
                 }
                 break;
             }
             case 2: {
                 logger.debug("1d ifft over rows");
-                int fftlength = A.columns;
-
+                final int fftLength = A.columns;
                 for (i = 0; i < A.rows; ++i) {
                     ComplexDoubleMatrix VECTOR = A.getRow(i);
-                    four1(VECTOR, fftlength, iopt);
+                    four1D(VECTOR, fftLength, iOpt);
                     A.putRow(i, VECTOR);
                 }
                 break;
@@ -695,15 +693,16 @@ public class MathUtilities {
     public static void fft(ComplexDoubleMatrix A, int dimension) {
 
         int i;
-        final int iopt = 1;                         // forward FFT
-        int fftlength;
-        ComplexDoubleMatrix VECTOR = null;
+        // forward FFT
+        final int intOption = 1;
+        int fftLength;
+        ComplexDoubleMatrix VECTOR;
         switch (dimension) {
             case 1: {
-                fftlength = A.rows;
+                fftLength = A.rows;
                 for (i = 0; i < A.columns; ++i) {
                     VECTOR = A.getColumn(i);
-                    four1(VECTOR, fftlength, iopt);// but generic.
+                    four1D(VECTOR, fftLength, intOption);// but generic.
                     A.putColumn(i, VECTOR);
                     // perhaps can be used directly to do this w/o data copying...
                     // four1(A.getColumn(i), fftlength, iopt);// but generic.
@@ -711,12 +710,11 @@ public class MathUtilities {
                 break;
             }
             case 2: {
-                fftlength = A.columns;
+                fftLength = A.columns;
                 for (i = 0; i < A.rows; ++i) {
                     VECTOR = A.getRow(i);
-                    four1(VECTOR, fftlength, iopt);// but generic.
+                    four1D(VECTOR, fftLength, intOption);// but generic.
                     A.putRow(i, VECTOR);
-//                    four1(A.getRow(i), fftlength, iopt);
                 }
                 break;
             }
@@ -727,31 +725,31 @@ public class MathUtilities {
     }
 
     /**
-     * four1(complr4 *, length, isign)                              *
-     * four1(&A[0][0], 128, 1)                                      *
-     * either based on numerical recipes or veclib                  *
-     * helper function for other fft routines, if no veclib         *
-     * cooley-turkey, power 2, replaces input,                      *
-     * isign=1: fft , isign=-1: ifft                                *
-     * handling vectors should be simpler (lying, standing)         *
-     * note that this is not a good implementation, only to get     *
-     * doris software working without veclib.                       *
+     * four1(complr4 *, length, isign)
+     * four1(&A[0][0], 128, 1)
+     * either based on numerical recipes or veclib
+     * helper function for other fft routines, if no veclib
+     * cooley-turkey, power 2, replaces input,
+     * isign=1: fft , isign=-1: ifft
+     * handling vectors should be simpler (lying, standing)
+     * note that this is not a good implementation, only to get
+     * doris software working without veclib.
      * *
-     * define SAMEASVECIB if you want the order of the coefficients *
-     * of the fft the same as veclib. it seems this is not required *
-     * for a good version of Doris, but in case of problems this    *
-     * may be the solution.                                         *
+     * define SAMEASVECIB if you want the order of the coefficients
+     * of the fft the same as veclib. it seems this is not required
+     * for a good version of Doris, but in case of problems this
+     * may be the solution.
      * *
-     * VECLIB defines the FT same as matlab:                        *
+     * VECLIB defines the FT same as matlab:
      * N-1                                                 *
-     * X(k) = sum  x(n)*exp(-j*2*pi*k*n/N), 0 <= k <= N-1.        *
+     * X(k) = sum  x(n)*exp(-j*2*pi*k*n/N), 0 <= k <= N-1.
      * n=0                                                 *
      * *
-     * FFTW defines the same as Matlab, but inv. not normalized.    *
-     * I don't know if the matrix must be allocated somehow, so for *
-     * now we try only 1d ffts to build 2d too.                     *
+     * FFTW defines the same as Matlab, but inv. not normalized.
+     * I don't know if the matrix must be allocated somehow, so for
+     * now we try only 1d ffts to build 2d too.
      */
-    public static void four1(ComplexDoubleMatrix vector, int fftlength, int direction) {
+    public static void four1D(ComplexDoubleMatrix vector, int fftlength, int direction) {
 
         DoubleFFT_1D fft = new DoubleFFT_1D(fftlength);
 
@@ -841,11 +839,11 @@ public class MathUtilities {
     }
 
     /**
-     * myhamming                                                    *
-     * hamming window, lying vector                                 *
-     * w = (a + (1.-a).*cos((2.*pi/fs).*fr)) .* myrect(fr./Br);     *
-     * scale/shift filter by g(x)=f((x-xo)/s)                       *
-     * alpha==1 yields a myrect window                              *
+     * myhamming
+     * hamming window, lying vector
+     * w = (a + (1.-a).*cos((2.*pi/fs).*fr)) .* myrect(fr./Br);
+     * scale/shift filter by g(x)=f((x-xo)/s)
+     * alpha==1 yields a myrect window
      */
     public static DoubleMatrix myhamming(final DoubleMatrix fr, double RBW, double RSR, double alpha) throws Exception {
 
@@ -892,7 +890,8 @@ public class MathUtilities {
      */
     public static ComplexDoubleMatrix oversample(ComplexDoubleMatrix AA, int factorrow, int factorcol) throws Exception {
 
-        ComplexDoubleMatrix A = AA; // copy, AA is changed by in-place fft;
+        ComplexDoubleMatrix A = AA.dup(); // copy, AA is changed by in-place fft;
+
         final int l = A.rows;
         final int p = A.columns;
         final int halfl = l / 2;
@@ -916,7 +915,7 @@ public class MathUtilities {
 
         ComplexDoubleMatrix Res = new ComplexDoubleMatrix(L2, P2);
 
-        int i, j;
+//        int i, j;
         if (factorrow == 1) {
 
             // 1d fourier transform per row
@@ -1114,6 +1113,10 @@ public class MathUtilities {
 
     public static ComplexDoubleMatrix dotmult(ComplexDoubleMatrix A, ComplexDoubleMatrix B) {
         return A.mmul(B);
+    }
+
+    public static void dotmultIn(ComplexDoubleMatrix A, ComplexDoubleMatrix B) {
+        A.mmul(B);
     }
 
     /**

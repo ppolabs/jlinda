@@ -4,10 +4,10 @@ import org.apache.log4j.Logger;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
 import org.jblas.ranges.IntervalRange;
+import org.jdoris.core.Ellipsoid;
 import org.jdoris.core.MathUtilities;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
-import org.jdoris.core.Ellipsoid;
 import org.jdoris.core.todo_classes.todo_classes;
 
 import static org.jblas.MatrixFunctions.pow;
@@ -15,6 +15,15 @@ import static org.jblas.MatrixFunctions.pow;
 public class RangeFilter {
 
     static Logger logger = Logger.getLogger(RangeFilter.class.getName());
+
+    SLCImage masterMetaData;
+    SLCImage slaveMetaData;
+
+    ComplexDoubleMatrix masterCplxData;
+    ComplexDoubleMatrix slaveCplxData;
+
+    double meanSNR;
+    double percentOfFiltered;
 
 
     //TODO: make template classes for generalInput, operatorInput, and ProductMetadata class
@@ -25,26 +34,25 @@ public class RangeFilter {
                                    final todo_classes.input_filtrange inputfiltrange) {
     }
 
+
     /**
-     * rfilterblock
+     * filterblock
      * Computes powerspectrum of complex interferogram.
-     * (product oversampled master. conj oversampled slave in range)
+     * (Product oversampled master. conj oversampled slave in range)
      * A peak in this spectrum corresponds to frequency shift.
      * The master and slave are LPF filtered for this shift.
-     * *
-     * Optionally the oversampling can be turned off, since no use
-     * if only small baseline, and flat terrain.
-     * The powerspectrum can be weighted to give more influence to
-     * higher frequencies (conv. of 2 blocks, should be hamming).
+     * <p/>
+     * Optionally the oversampling can be turned off, since no use if only small baseline, and flat terrain.
+     * <p/>
+     * The powerspectrum can be weighted to give more influence to higher frequencies (conv. of 2 blocks, should be hamming).
+     * <p/>
      * The peak is detected by taking a mean of nlmean lines (odd).
-     * Filtering is applied if the SNR (N*power peak / power rest)
-     * is above a user supplied threshold.
-     * At LPF filtering of the master/slave a hamming window may
-     * be applied first to deweight, then to re-weight the spectrum
+     * <p/>
+     * Filtering is applied if the SNR (N*power peak / power rest) is above a user supplied threshold.
+     * At LPF filtering of the master/slave a hamming window may be applied first to deweight, then to re-weight the spectrum
      * <p/>
      * Should filter based on zero terrain slope if below SNR,
      * but this requried knowledge of orbits, pixel,line coordinate
-     * #%// BK 13-Nov-2000
      * *
      * Input:
      * - MASTER: block of master, that will be filtered
@@ -53,239 +61,256 @@ public class RangeFilter {
      * - MASTER (SLAVE): filtered from indeces[0:numl-1]
      * (nlmean-1)/2 to numlines-(nlmean-1)/2-1
      */
-    public static void rfilterblock(ComplexDoubleMatrix master, // updated
-                                    ComplexDoubleMatrix slave,  // updated
-                                    long nlmean, float SNRthreshold,
-                                    float RSR, // in MHz
-                                    float RBW, // in MHz
-                                    float alphahamming,
-                                    long osfactor,
-                                    boolean doweightcorrel,
-                                    double meanSNR, // returned
-                                    double percentnotfiltered) throws Exception { // returned
+    public void filterBlock(ComplexDoubleMatrix masterDataBlock, // updated
+                            ComplexDoubleMatrix slaveDataBlock,  // updated
+                            long nlmean,
+                            float SNRthreshold,
+                            float RSR, // in MHz
+                            float RBW, // in MHz
+                            float alphaHamming,
+                            long ovsFactor,
+                            boolean doWeightCorrelFlag,
+                            double meanSNR, // returned
+                            double percentNotFiltered) throws Exception { // returned
 
 
-        long numlines = master.rows;
-        long numpixs = master.columns;
-        long outputlines = numlines - nlmean + 1;
-        long firstline = (long) ((nlmean - 1) / 2);        // indices in matrix system
-        long lastline = firstline + outputlines - 1;
-        boolean dohamming = (alphahamming < 0.9999) ? true : false;
+        final long numLines = masterDataBlock.rows;
+        final long numPixs = masterDataBlock.columns;
+        final long outputLines = numLines - nlmean + 1;
+        final long firstLine = ((nlmean - 1) / 2);        // indices in matrix system
+        final long lastLine = firstLine + outputLines - 1;
+        final boolean doHammingFlag = (alphaHamming < 0.9999);
         // use oversampling before int. gen.
-        boolean dooversample = (osfactor != 1) ? true : false;
-        int notfiltered = 0;                                  // counter
+        final boolean doOversampleFlag = (ovsFactor != 1);
+        int notFiltered = 0; // method counter
 
+        // local variables
+        DoubleMatrix inverseHamming = null;
+
+        // sanity check on input paramaters
         if (!MathUtilities.isodd(nlmean)) {
-            logger.error("nlmean has to be odd.");
-            throw new Exception();
+            logger.error("nlMean has to be odd.");
+            throw new IllegalArgumentException();
         }
-        if (!MathUtilities.ispower2(numpixs)) {
-
-            logger.error("numpixels (FFT) has to be power of 2.");
-
-            throw new Exception();
+        if (!MathUtilities.ispower2(numPixs)) {
+            logger.error("numPixels (FFT) has to be power of 2.");
+            throw new IllegalArgumentException();
         }
-        if (!MathUtilities.ispower2(osfactor)) {
+        if (!MathUtilities.ispower2(ovsFactor)) {
             logger.error("oversample factor (FFT) has to be power of 2.");
-            throw new Exception();
+            throw new IllegalArgumentException();
         }
-        if (slave.rows != numlines) {
+        if (slaveDataBlock.rows != numLines) {
             logger.error("slave not same size as master.");
-            throw new Exception();
+            throw new IllegalArgumentException();
         }
-        if (slave.columns != numpixs) {
+        if (slaveDataBlock.columns != numPixs) {
             logger.error("slave not same size as master.");
-            throw new Exception();
+            throw new IllegalArgumentException();
         }
-        if (outputlines < 1) {
-            logger.warn("no outputlines, continuing.");
+        if (outputLines < 1) {
+            logger.warn("no outputLines, continuing....");
         }
-
 
         // SHIFT PARAMETERS
-        int i, j;
-        final double deltaf = RSR / numpixs;
-        final double fr = -RSR / 2.;
-        DoubleMatrix freqaxis = new DoubleMatrix(1, (int) numpixs);
-        for (i = 0; i < numpixs; ++i) {
-            freqaxis.put(0, i, fr + (i * deltaf));
-        }
+        final double deltaF = RSR / numPixs;
+        final double freq = -RSR / 2.;
 
-        DoubleMatrix inversehamming = null;
-        if (dohamming) {
-            inversehamming = MathUtilities.myhamming(freqaxis, RBW, RSR, alphahamming);
-            for (i = 0; i < numpixs; ++i)
-                if (inversehamming.get(0, i) != 0.)
-                    inversehamming.put(0, i, 1. / inversehamming.get(0, i));
+        DoubleMatrix freqAxis = defineFreqAxis(numPixs, RSR);
+
+        if (doHammingFlag) {
+            inverseHamming = doHamming(RSR, RBW, alphaHamming, numPixs, freqAxis);
         }
 
         // COMPUTE CPLX IFG ON THE FLY -> power
-        ComplexDoubleMatrix cint;
-        if (dooversample) {
-            cint = MathUtilities.dotmult(MathUtilities.oversample(slave.conj(), 1, (int) osfactor),
-                    MathUtilities.oversample(master, 1, (int) osfactor));
+        ComplexDoubleMatrix cplxIfg;
+        if (doOversampleFlag) {
+            cplxIfg = computeOvsIfg(masterDataBlock, slaveDataBlock, (int) ovsFactor);
         } else {
-            cint = MathUtilities.dotmult(master, slave.conj());
+            cplxIfg = computeIfg(masterDataBlock, slaveDataBlock);
         }
 
-
-        long fftlength = cint.columns;
+        long fftLength = cplxIfg.columns;
 
         logger.debug("is real4 accurate enough?");// seems so
 
-        MathUtilities.fft(cint, 2);                 // cint=fft over rows
-        DoubleMatrix power = MathUtilities.intensity(cint);      // power=cint.*conj(cint);
+        MathUtilities.fft(cplxIfg, 2);                          // cplxIfg = fft over rows
+        DoubleMatrix power = MathUtilities.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
 
-        // ______ Use weighted correlation due to bias in normal definition ______
-        // ______ Actually better deweight with autoconvoluted hamming.
-        // ______ No use a triangle for #points used for correlation estimation
-        // ______ not in combination with dooversample...
-        if (doweightcorrel) {
-
-            // TODO: refactor this call to use arrays instead of loops
-
-            //matrix<real4> weighting(1,fftlength);
-            //for (i=0; i<fftlength; ++i)
-            //  weighting(0,i) = abs(i)...;
-            //power *= weightingfunction...== inv.triangle
-
-            // weigth = numpoints in spectral convolution for fft squared for power...
-            int indexnopeak = (int) ((1. - (RBW / RSR)) * (float) (numpixs));
-            for (j = 0; j < fftlength; ++j) {
-
-                long npnts = Math.abs(numpixs - j);
-                // oversample: numpixs==fftlength/2
-                double weight = (npnts < indexnopeak) ? Math.pow(numpixs, 2) : Math.pow(npnts, 2); // ==zero
-                for (i = 0; i < numlines; ++i) {
-//                  power(i, j) /= weight;
-                    power.put(i, j, power.get(i, j) / weight);
-                }
-            }
+        // Use weighted correlation due to bias in normal definition
+        // Actually better de-weight with autoconvoluted hamming.
+        // No use a triangle for #points used for correlation estimation
+        // not in combination with dooversample...
+        if (doWeightCorrelFlag) {
+            doWeightCorrel(RSR, RBW, numLines, numPixs, fftLength, power);
         }
 
-        // ______ Average power to reduce noise ______
-        MathUtilities.fft(master, 2);                                // master=fft over rows
-        MathUtilities.fft(slave, 2);                                 // slave=fft over rows
+        // Average power to reduce noise
+        MathUtilities.fft(masterDataBlock, 2); // fft.ing over rows
+        MathUtilities.fft(slaveDataBlock, 2);
         logger.trace("Took FFT over rows of master, slave.");
 
-
-        IntervalRange rangeRows = new IntervalRange(0, (int) (nlmean - 1));
-        IntervalRange rangeColumns = new IntervalRange(0, (int) (fftlength - 1));
-
-
-//        DoubleMatrix nlmeanpower = sum(power(0,nlmean-1, 0,fftlength-1),1);
-        DoubleMatrix nlmeanpower = pow(power.get(rangeRows, rangeColumns), 2).rowSums();
+        DoubleMatrix nlMeanPower = computeNlMeanPower(nlmean, fftLength, power);
 
         long shift = 0;                          // returned by max
         long dummy = 0;                          // returned by max
         meanSNR = 0.;
-        double meanSHIFT = 0.;
+        double meanShift = 0.;
 
-
-        // ______ Start actual filtering ______
-        // ______ oline is index in matrix system ______
-        for (long oline = firstline; oline <= lastline; ++oline) {
-
-            DoubleMatrix totalp = nlmeanpower.columnSums();        // 1x1 matrix ...
-            double totalpower = totalp.get(0, 0);
+        // Start actual filtering
+        for (long outLine = firstLine; outLine <= lastLine; ++outLine) {
 
             // TODO: check algorithmically this step
-            // double maxvalue = max(nlmeanpower, dummy, shift);      // shift returned
-            double maxvalue = nlmeanpower.max();
+            // 1x1 matrix ... ??
+//            DoubleMatrix totalPowerMatrix = nlMeanPower.columnSums().get(0,0);
+            double totalPower = nlMeanPower.columnSums().get(0, 0);
 
-            long lastshift = shift;     // use this if current shift not ok.
-            double SNR = fftlength * (maxvalue / (totalpower - maxvalue));
+            // double maxvalue = max(nlmeanpower, dummy, shift);      // shift returned
+            double maxValue = nlMeanPower.max();
+
+            long lastShift = shift;     // use this if current shift not ok.
+            double SNR = fftLength * (maxValue / (totalPower - maxValue));
             meanSNR += SNR;
 
-            // ______ Check for negative shift ______
-            boolean negshift = false;
-            if (shift > (int) (fftlength / 2)) {
-                shift = (int) fftlength - shift;
-                lastshift = shift; // use this if current shift not OK.
-                negshift = true;
+            // TODO: encapsulate check for the shift direction
+            // Check for negative shift
+            boolean negShift = false;
+            if (shift > (int) (fftLength / 2)) {
+                shift = (int) fftLength - shift;
+                lastShift = shift; // use this if current shift not OK.
+                negShift = true;
             }
 
             // ______ Do actual filtering ______
             if (SNR < SNRthreshold) {
-                notfiltered++;                                    // update counter
-                shift = lastshift;
+                notFiltered++;                                    // update counter
+                shift = lastShift;
                 logger.warn("using last shift for filter");
             }
-            meanSHIFT += shift;
+
+            meanShift += shift;
             DoubleMatrix filter;
 
-            if (dohamming) {
-                // ______ Newhamming is scaled and centered around new mean ______
-                filter = MathUtilities.myhamming(freqaxis.subi(0.5 * shift * deltaf),
-                        RBW - (shift * deltaf),
-                        RSR, alphahamming);          // fftshifted
-                filter.mmul(inversehamming);
+            if (doHammingFlag) {
+                // Newhamming is scaled and centered around new mean
+                // filter is fftshifted
+                filter = MathUtilities.myhamming(
+                        freqAxis.subi(0.5 * shift * deltaF),
+                        RBW - (shift * deltaF),
+                        RSR, alphaHamming);
+                filter.mmul(inverseHamming);
             } else { // no weighting of spectra
-                filter = MathUtilities.myrect((freqaxis.subi(.5 * shift * deltaf)).divi((RBW - shift * deltaf)));   // fftshifted
+                // filter is fftshifted
+                filter = MathUtilities.myrect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
             }
 
-            // ______ Use freq. as returned by fft ______
-            // ______ Note that filter_s = fliplr(filter_m) ______
-            // ______ and that this is also valid after ifftshift ______
-            MathUtilities.ifftshift(filter);                                // fftsh works on data!
+            // Use freq. as returned by fft
+            // Note that filter_s = fliplr(filter_m)
+            // and that this is also valid after ifftshift
+            MathUtilities.ifftshift(filter);
 
             // ====== Actual spectral filtering ======
-            // ______ Decide which side to filter, may be dependent on ______
-            // ______ definition of FFT, this is ok for VECLIB ______
-            // ______ if you have trouble with this step, either check your FFT
-            // ______ (or use uinternal one, or add a card for changing false to true below
-            if (negshift == false) {
-//                dotmult(master[oline], filter, 1);
-                MathUtilities.dotmult(master.getRow((int) oline), new ComplexDoubleMatrix(filter));
+            // Decide which side to filter, may be dependent on definition of FFT??
+            ComplexDoubleMatrix filterComplex = new ComplexDoubleMatrix(filter);
+            if (!negShift) {
+                MathUtilities.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
                 MathUtilities.fliplr(filter);
-                MathUtilities.dotmult(slave.getRow((int) oline), new ComplexDoubleMatrix(filter));
+                MathUtilities.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
             } else {
-                MathUtilities.dotmult(slave.getRow((int) oline), new ComplexDoubleMatrix(filter));
+                MathUtilities.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
                 MathUtilities.fliplr(filter);
-                MathUtilities.dotmult(master.getRow((int) oline), new ComplexDoubleMatrix(filter));
-            }
-            // following is removed, we now always filter with last know spectral offset
-            //      } // SNR>threshold
-            //    else
-            //      {
-            //      notfiltered++;                                  // update counter
-            //      }
-
-
-            // ______ Update 'walking' mean ______
-            if (oline != lastline) {                        // then breaks
-                DoubleMatrix line1 = power.getRow((int) (oline - firstline));
-                DoubleMatrix lineN = power.getRow((int) (oline - firstline + nlmean));
-                nlmeanpower.add(lineN.sub(line1));
+                MathUtilities.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
             }
 
-        } // loop over outputlines
+            // Update 'walking' mean
+            if (outLine != lastLine) {
+                DoubleMatrix line1 = power.getRow((int) (outLine - firstLine));
+                DoubleMatrix lineN = power.getRow((int) (outLine - firstLine + nlmean));
+                nlMeanPower.add(lineN.sub(line1));
+            }
 
-        // ______ IFFT of spectrally filtered data, and return these ______
-        MathUtilities.ifft(master, 2);                               // master=ifft over rows
-        MathUtilities.ifft(slave, 2);                                // slave=ifft over rows
+        } // loop over outLines
 
-        // ______ Return these to main ______
-        meanSHIFT /= (outputlines - notfiltered);
-        meanSNR /= outputlines;
-        percentnotfiltered = 100. * (float) (notfiltered) / (float) outputlines;
+        // IFFT of spectrally filtered data, and return these
+        MathUtilities.ifft(masterDataBlock, 2);
+        MathUtilities.ifft(slaveDataBlock, 2);
+
+        // Return these to main
+        meanShift /= (outputLines - notFiltered);
+        meanSNR /= outputLines;
+        percentNotFiltered = 100. * (float) (notFiltered) / (float) outputLines;
 
 
-        // ______ Some info for this block ______
-        double meanfrfreq = meanSHIFT * deltaf;    // Hz?
+        // Some info for this block
+        final double meanFrFreq = meanShift * deltaF;    // Hz?
         logger.debug("mean SHIFT for block"
-                + ": " + meanSHIFT
-                + " = " + meanfrfreq / 1e6 + " MHz (fringe freq.).");
+                + ": " + meanShift
+                + " = " + meanFrFreq / 1e6 + " MHz (fringe freq.).");
 
         logger.debug("mean SNR for block: " + meanSNR);
         logger.debug("filtered for block"
-                + ": " + (100.00 - percentnotfiltered) + "%");
+                + ": " + (100.00 - percentNotFiltered) + "%");
 
-        if (percentnotfiltered > 60.0) {
-            logger.warn("more then 60% of singnal filtered?!?");
+        if (percentNotFiltered > 60.0) {
+            logger.warn("more then 60% of signal filtered?!?");
         }
 
-    } // END rfilterblock
+    }
+
+    private DoubleMatrix computeNlMeanPower(long nlmean, long fftLength, DoubleMatrix power) {
+//        DoubleMatrix nlmeanpower = sum(power(0,nlmean-1, 0,fftlength-1),1);
+        final IntervalRange rangeRows = new IntervalRange(0, (int) (nlmean - 1));
+        final IntervalRange rangeColumns = new IntervalRange(0, (int) (fftLength - 1));
+        return pow(power.get(rangeRows, rangeColumns), 2).rowSums();
+    }
+
+    private static void doWeightCorrel(final float RSR, final float RBW, final long numLines, final long numPixs, final long fftLength, DoubleMatrix data) {
+
+        // TODO: refactor this call to use arrays instead of loops
+        int j;
+        int i;
+
+        // weigth = numpoints in spectral convolution for fft squared for power...
+        int indexNoPeak = (int) ((1. - (RBW / RSR)) * (float) (numPixs));
+        for (j = 0; j < fftLength; ++j) {
+
+            long nPnts = Math.abs(numPixs - j);
+            double weight = (nPnts < indexNoPeak) ? Math.pow(numPixs, 2) : Math.pow(nPnts, 2); // ==zero
+
+            for (i = 0; i < numLines; ++i) {
+                data.put(i, j, data.get(i, j) / weight);
+            }
+        }
+
+    }
+
+    private static ComplexDoubleMatrix computeOvsIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData,
+                                                     final int ovsFactor) throws Exception {
+        return computeIfg(MathUtilities.oversample(masterData, 1, ovsFactor), MathUtilities.oversample(slaveData, 1, ovsFactor));
+    }
+
+    private static ComplexDoubleMatrix computeIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData) throws Exception {
+        return MathUtilities.dotmult(masterData, slaveData.conj());
+    }
+
+
+    private DoubleMatrix defineFreqAxis(final long numPixs, final double RSR) {
+        final double deltaF = RSR / numPixs;
+        final double freq = -RSR / 2.;
+        DoubleMatrix freqAxis = new DoubleMatrix(1, (int) numPixs);
+        for (int i = 0; i < numPixs; ++i) {
+            freqAxis.put(0, i, freq + (i * deltaF));
+        }
+        return freqAxis;
+    }
+
+    private static DoubleMatrix doHamming(float RSR, float RBW, float alphaHamming, long numPixs, DoubleMatrix freqAxis) throws Exception {
+        DoubleMatrix inverseHamming = MathUtilities.myhamming(freqAxis, RBW, RSR, alphaHamming);
+        for (int i = 0; i < numPixs; ++i)
+            if (inverseHamming.get(0, i) != 0.)
+                inverseHamming.put(0, i, 1. / inverseHamming.get(0, i));
+        return inverseHamming;
+    }
 
     // TODO: refactor InputEllips to "Ellipsoid" class of "org.esa.beam.framework.dataop.maptransf.Ellipsoid" and use GeoUtils of NEST;
     @Deprecated
@@ -297,5 +322,6 @@ public class RangeFilter {
                                          Orbit masterorbit,
                                          Orbit slaveorbit) {
     }
+
 
 }

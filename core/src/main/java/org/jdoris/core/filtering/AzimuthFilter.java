@@ -19,23 +19,22 @@ public class AzimuthFilter {
     static Logger logger = Logger.getLogger(AzimuthFilter.class.getName());
 
     /**
-     * *************************************************************
-     * azimuthfilter                                             *
-     * Loop over whole master and slave image and filter out        *
-     * part of the spectrum that is not common.                     *
-     * Only do zero doppler freq. offset.                           *
-     * do not use a polynomial from header for now.                 *
-     * (next we will, but assume image are almost coreg. in range,  *
-     * so f_dc polynomial can be eval. same)                       *
-     * Per block in azimuth [1024] use a certain overlap with the   *
-     * next block so that same data is partially used for spectrum  *
-     * (not sure if this is requried).                              *
-     * Filter is composed of: DE-hamming, RE-hamming (for correct   *
-     * new size and center of the spectrum).                        *
-     * Trick in processor.c: First call routine as:                 *
-     * (generalinput,filtaziinput,master,slave)                    *
-     * in order to process the master, and then as:                 *
-     * (generalinput,filtaziinput,slave,master)                    *
+     * azimuthfilter
+     * Loop over whole master and slave image and filter out
+     * part of the spectrum that is not common.
+     * Only do zero doppler freq. offset.
+     * do not use a polynomial from header for now.
+     * (next we will, but assume image are almost coreg. in range,
+     * so f_dc polynomial can be eval. same)
+     * Per block in azimuth [1024] use a certain overlap with the
+     * next block so that same data is partially used for spectrum
+     * (not sure if this is requried).
+     * Filter is composed of: DE-hamming, RE-hamming (for correct
+     * new size and center of the spectrum).
+     * Trick in processor.c: First call routine as:
+     * (generalinput,filtaziinput,master,slave)
+     * in order to process the master, and then as:
+     * (generalinput,filtaziinput,slave,master)
      * to filter the slave slc image.
      */
     public static void azimuthfilter(final todo_classes.inputgeneral generalinput,
@@ -45,131 +44,139 @@ public class AzimuthFilter {
 
     }
 
+
     /**
-     * *************************************************************
-     * azimuth filter per block                                  *
-     * Input is matrix of SIZE (e.g. 1024) lines, and N range pixs. *
-     * Input is SLC of master. slave_info gives fDC polynomial      *
-     * for slave + coarse offset. HAMMING is alpha for myhamming f. *
-     * Filtered OUTPUT is same size as input block.                 *
-     * Because of overlap (azimuth), only write to disk in calling  *
-     * routine part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]     *
-     * = SIZE-(2*OVERLAP);  // number of output pixels              *
-     * *
-     * Filtering is performed in the spectral domain                *
-     * (1DFFT over azimuth for all columns at once)                 *
-     * Filter is different for each column due to shift in fd_c     *
-     * doppler centroid frequency.                                  *
-     * *
-     * ! It should still be studied if real4 matrices are accurate  *
-     * enough, but I guess it is (BK).                              *
-     * *
+     * azimuth filter per block
+     * Input is matrix of SIZE (e.g. 1024) lines, and N range pixs.
+     * Input is SLC of master. slave_info gives fDC polynomial
+     * for slave + coarse offset. HAMMING is alpha for myhamming f.
+     * Filtered OUTPUT is same size as input block.
+     * Because of overlap (azimuth), only write to disk in calling
+     * routine part (in matrix coord.) [OVERLAP:SIZE-OVERLAP-1]
+     * = SIZE-(2*OVERLAP);  // number of output pixels
+     * <p/>
+     * Filtering is performed in the spectral domain
+     * (1DFFT over azimuth for all columns at once)
+     * Filter is different for each column due to shift in fd_c
+     * doppler centroid frequency.
      */
-    public ComplexDoubleMatrix blockazifilt(
-            final ComplexDoubleMatrix SLCIMAGE,
-            final SLCImage master,          // PRF, BW, fd0
-            final SLCImage slave,           // PRF, BW, fd0
-            final double HAMMING) throws Exception {
+    public ComplexDoubleMatrix filterBlock(
+            final ComplexDoubleMatrix slcData,
+            final SLCImage master, // PRF, BW, fd0
+            final SLCImage slave,  // PRF, BW, fd0
+            final double hamming) throws Exception {
 
-//        return null;
-
-        final long SIZE = SLCIMAGE.rows;  // fftlength
-        final long NCOLS = SLCIMAGE.columns; // width
-        if (NCOLS != master.getCurrentWindow().pixels())
+        final long size = slcData.rows;     // fftlength
+        final long nCols = slcData.columns; // width
+        if (nCols != master.getCurrentWindow().pixels())
             logger.warn("this will crash, size input matrix not ok...");
 
-        // ______ Compute fDC_master, fDC_slave for all columns ______
-        // ______ Create axis to evaluate fDC polynomial for master/slave ______
-        // ______ fDC(column) = fdc_a0 + fDC_a1*(col/RSR) + fDC_a2*(col/RSR)^2 ______
-        // ______ fDC = y = Ax ______
-        // ______ Capitals indicate matrices (FDC_M <-> fDC_m) ______
-        logger.debug("Filtering data by evaluated polynomial fDC for each column.");
-        DoubleMatrix xaxis = new DoubleMatrix(1, (int) master.getCurrentWindow().pixels());         // lying
-
-        // TODO: refactor to more efficient jblass call :: "linspace"
-        for (long i = master.getCurrentWindow().pixlo; i <= master.getCurrentWindow().pixhi; ++i)
-            xaxis.put(0, (int) (i - master.getCurrentWindow().pixlo), i - 1.0);
-
-        xaxis.divi(master.getRsr2x() / 2.0);
-
-        // TODO: better use SLCImage.pix2fdc()
-        DoubleMatrix FDC_M = xaxis.mul(master.getF_DC_a1());
-        FDC_M.addi(master.getF_DC_a0());
-        FDC_M.addi(pow(xaxis, 2).mmul(master.getF_DC_a2()));
-
-        // ______ fDC_slave for same(!) columns (coarse offset). ______
-        // ______ offset defined as: cols=colm+offsetP ______
-        for (long i = master.getCurrentWindow().pixlo; i <= master.getCurrentWindow().pixhi; ++i)
-            xaxis.put(0, (int) master.getCurrentWindow().pixlo, i - 1.0 + slave.getCoarseOffsetP());
-
-        xaxis.divi(slave.getRsr2x() / 2.0);
-        DoubleMatrix FDC_S = xaxis.mul(slave.getF_DC_a1());
-        FDC_S.addi(slave.getF_DC_a0());
-        FDC_S.addi(pow(xaxis, 2).mmul(slave.getF_DC_a2()));
-
-        logger.debug("Dumping matrices fDC_m, fDC_s (__DEBUG defined)");
-        logger.debug("fDC_m: " + FDC_M.toString());
-        logger.debug("fDC_s: " + FDC_S.toString());
-
-        // ______ Axis for filter in frequencies ______
-        // TODO check, rather shift, test matlab... or wshift,1D over dim1
-        // use fft properties to shift...
-
-        final boolean dohamming = (HAMMING < 0.9999) ? true : false;
+        final boolean doHamming = (hamming < 0.9999);
         final double PRF = master.getPRF();               // pulse repetition freq. [Hz]
         final double ABW = master.getAzimuthBandwidth();  // azimuth band width [Hz]
 
-        final float deltaf = (float) (PRF / SIZE);
-        final float fr = (float) (-PRF / 2.0);
-        DoubleMatrix freqaxis = new DoubleMatrix(1, (int) SIZE);
-        for (int i = 0; i < SIZE; ++i)
-            freqaxis.put(0, i, fr + (i * deltaf)); // [-fr:df:fr-df]
+        final float deltaF = (float) (PRF / size);
+        final float freq = (float) (-PRF / 2.0);
 
-        DoubleMatrix FILTER;                         // i.e., the filter per column
-        DoubleMatrix FILTERMAT = new DoubleMatrix((int) SIZE, (int) NCOLS);          // i.e., THE filter
+        // Compute fDC_master, fDC_slave for all columns
+        // Create axis to evaluate fDC polynomial for master/slave
+        // fDC(column) = fdc_a0 + fDC_a1*(col/RSR) + fDC_a2*(col/RSR)^2
+        // fDC = y = Ax
+        // Capitals indicate matrices (FDC_M <-> fDC_m)
+        logger.debug("Filtering data by evaluated polynomial fDC for each column.");
 
-        for (long i = 0; i < NCOLS; ++i) {
-            final double fDC_m = FDC_M.get(0, (int) i);          // zero doppler freq. [Hz]
-            final double fDC_s = FDC_S.get(0, (int) i);          // zero doppler freq. [Hz]
-            final double fDC_mean = 0.5 * (fDC_m + fDC_s);   // mean doppler centroid freq.
-            final double ABW_new = Math.max(1.0, 2.0 * (0.5 * ABW - Math.abs(fDC_m - fDC_mean)));       // new bandwidth > 1.0
+        DoubleMatrix xAxis = defineAxis(master.getCurrentWindow().pixlo, master.getCurrentWindow().pixhi, master.getRsr2x() / 2.0);
+        DoubleMatrix fDC_Master = dopplerAxis(master, xAxis);
 
-            if (dohamming) {
-                // ______ NOT a good implementation for per col., cause wshift AND fftshift.
-                // ______ DE-weight spectrum at centered at fDC_m ______
-                // ______ spectrum should be periodic! (use wshift) ______
-                DoubleMatrix inversehamming = MathUtilities.myhamming(freqaxis, ABW, PRF, HAMMING);
-                for (long ii = 0; ii < SIZE; ++ii)
-                    inversehamming.put(0, (int) ii, (float) (1.0 / inversehamming.get(0, (int) ii)));
+        // redefine xAxis with different scale factor
+        xAxis = defineAxis(master.getCurrentWindow().pixlo, master.getCurrentWindow().pixhi, slave.getRsr2x() / 2.0);
+        DoubleMatrix fDC_Slave = dopplerAxis(slave, xAxis);
 
-                // ______ Shift this circular by myshift pixels ______
-                long myshift = (long) (Math.rint((SIZE * fDC_m / PRF)));// round
-                MathUtilities.wshift(inversehamming, (int) -myshift);          // center at fDC_m
+        logger.debug("Dumping matrices fDC_m, fDC_s (__DEBUG defined)");
+        logger.debug("fDC_m: " + fDC_Master.toString());
+        logger.debug("fDC_s: " + fDC_Slave.toString());
 
-                // ______ Newhamming is scaled and centered around new mean ______
-                myshift = (long) (Math.rint((SIZE * fDC_mean / PRF)));// round
-                FILTER = MathUtilities.myhamming(freqaxis, ABW_new, PRF, HAMMING);         // fftshifted
-                MathUtilities.wshift(FILTER, (int) -myshift);                  // center at fDC_mean
-                FILTER.mmuli(inversehamming);
+        // Axis for filter in frequencies
+        // TODO check, rather shift, test matlab... or wshift,1D over dim1
+        // use fft properties to shift...
+        DoubleMatrix freqAxis = new DoubleMatrix(1, (int) size);
+        for (int i = 0; i < size; ++i)
+            freqAxis.put(0, i, freq + (i * deltaF)); // [-fr:df:fr-df]
+
+        DoubleMatrix filterVector; // filter per column
+        DoubleMatrix filterMatrix = new DoubleMatrix((int) size, (int) nCols); // filter
+
+        // design a filter
+        double fDC_m;   // zero doppler freq. [Hz]
+        double fDC_s;   // zero doppler freq. [Hz]
+        double fDC_mean;// mean doppler centroid freq.
+        double ABW_new; // new bandwidth > 1.0
+        for (long i = 0; i < nCols; ++i) {
+
+            fDC_m = fDC_Master.get(0, (int) i);
+            fDC_s = fDC_Slave.get(0, (int) i);
+            fDC_mean = 0.5 * (fDC_m + fDC_s);
+            ABW_new = Math.max(1.0, 2.0 * (0.5 * ABW - Math.abs(fDC_m - fDC_mean)));
+
+            if (doHamming) {
+                // TODO: not a briliant implementation for per col.. cause wshift AND fftshift.
+                // DE-weight spectrum at centered at fDC_m
+                // spectrum should be periodic -> use of wshift
+                DoubleMatrix inVerseHamming = invertHamming(MathUtilities.myhamming(freqAxis, ABW, PRF, hamming), size);
+
+                // Shift this circular by myshift pixels
+                long myShift = (long) (Math.rint((size * fDC_m / PRF))); // round
+                MathUtilities.wshift(inVerseHamming, (int) -myShift);    // center at fDC_m
+
+                // Newhamming is scaled and centered around new mean
+                myShift = (long) (Math.rint((size * fDC_mean / PRF)));                   // round
+                filterVector = MathUtilities.myhamming(freqAxis, ABW_new, PRF, hamming); // fftshifted
+                MathUtilities.wshift(filterVector, (int) -myShift);                      // center at fDC_mean
+                filterVector.mmuli(inVerseHamming);
+
             } else {       // no weighting, but center at fDC_mean, size ABW_new
-                long myshift = (long) (Math.rint((SIZE * fDC_mean / PRF)));// round
-                FILTER = MathUtilities.myrect(freqaxis.divi((float) ABW_new)); // fftshifted
-                MathUtilities.wshift(FILTER, (int) -myshift);                  // center at fDC_mean
+
+                long myShift = (long) (Math.rint((size * fDC_mean / PRF)));          // round
+                filterVector = MathUtilities.myrect(freqAxis.divi((float) ABW_new)); // fftshifted
+                MathUtilities.wshift(filterVector, (int) -myShift);                  // center at fDC_mean
+
             }
 
-            MathUtilities.ifftshift(FILTER);                          // fftsh works on data!
+            MathUtilities.ifftshift(filterVector);           // fftsh works on data!
+            filterMatrix.putColumn((int) i, filterVector);   // store filter Vector in filter Matrix
 
-            FILTERMAT.putColumn((int) i, FILTER);
         } // foreach column
 
 
-        // ______ Filter slcdata ______
-        ComplexDoubleMatrix FILTERED = SLCIMAGE.dup();
-        MathUtilities.fft(FILTERED, 1);                              // fft foreach column
-        FILTERED.mmuli(new ComplexDoubleMatrix(FILTERMAT));
-        MathUtilities.ifft(FILTERED, 1);                             // ifft foreach column
-        return FILTERED;
+        // Filter slcdata
+        ComplexDoubleMatrix slcDataFiltered = slcData.dup();
+        MathUtilities.fft(slcDataFiltered, 1);                         // fft foreach column
+        slcDataFiltered.mmuli(new ComplexDoubleMatrix(filterMatrix));
+        MathUtilities.ifft(slcDataFiltered, 1);                        // ifft foreach column
+        return slcDataFiltered;
 
+    }
+
+    private static DoubleMatrix invertHamming(DoubleMatrix hamming, long size) throws Exception {
+        for (long ii = 0; ii < size; ++ii)
+            hamming.put(0, (int) ii, (float) (1.0 / hamming.get(0, (int) ii)));
+        return hamming;
+    }
+
+    // doppler progression of image over input axis
+    private static DoubleMatrix dopplerAxis(SLCImage master, DoubleMatrix xAxis) {
+        DoubleMatrix fDC_Master = xAxis.mul(master.getF_DC_a1());
+        fDC_Master.addi(master.getF_DC_a0());
+        fDC_Master.addi(pow(xAxis, 2).mmul(master.getF_DC_a2()));
+        return fDC_Master;
+    }
+
+    private static DoubleMatrix defineAxis(long min, long max, double scale) {
+        DoubleMatrix xAxis = new DoubleMatrix(1, (int) max);  // lying
+        for (long i = min; i <= max; ++i)
+            xAxis.put(0, (int) (i - min), i - 1.0);
+        xAxis.divi(scale / 2.0);
+        return xAxis;
     }
 
 }
