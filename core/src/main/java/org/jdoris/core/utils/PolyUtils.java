@@ -8,6 +8,7 @@ import org.jblas.Solve;
 import static org.jblas.MatrixFunctions.abs;
 
 public class PolyUtils {
+
     public static Logger logger = Logger.getLogger(PolyUtils.class.getName());
 
     public static double normalize(double data, final int min, final int max) {
@@ -29,36 +30,36 @@ public class PolyUtils {
     }
 
     /**
-     *    polyfit                                                   *
-     *                                                              *
-     * Compute coefficients of x=a0+a1*t+a2*t^2+a3*t3 polynomial    *
-     * for orbit interpolation.  Do this to facilitate a method     *
-     * in case only a few datapoints are given.                     *
-     * Data t is normalized approximately [-x,x], then polynomial   *
-     * coefficients are computed.  For poly_val this is repeated    *
-     * see getxyz, etc.                                             *
-     *                                                              *
-     * input:                                                       *
-     *  - matrix by getdata with time and position info             *
-     * output:                                                      *
-     *  - matrix with coeff.                                        *
+     *    polyfit
+     *
+     * Compute coefficients of x=a0+a1*t+a2*t^2+a3*t3 polynomial
+     * for orbit interpolation.  Do this to facilitate a method
+     * in case only a few datapoints are given.
+     * Data t is normalized approximately [-x,x], then polynomial
+     * coefficients are computed.  For poly_val this is repeated
+     * see getxyz, etc.
+     *
+     * input:
+     *  - matrix by getdata with time and position info
+     * output:
+     *  - matrix with coeff.
      *    (input for interp. routines)
      */
-    public static double[] polyFit(DoubleMatrix time, DoubleMatrix y, int DEGREE) throws Exception {
+    public static double[] polyFit(DoubleMatrix t, DoubleMatrix y, final int degree) throws Exception {
 
-        if (time.length != y.length) {
+        if (t.length != y.length) {
             logger.error("polyfit: require same size vectors.");
             throw new Exception("polyfit: require same size vectors.");
         }
 
         // Normalize _posting_ for numerical reasons
-        final int numOfPoints = time.length;
+        final int numOfPoints = t.length;
         logger.debug("Normalizing t axis for least squares fit");
-        DoubleMatrix normPosting = time.sub(time.get(numOfPoints / 2)).div(10.0);
+        DoubleMatrix normPosting = t.sub(t.get(numOfPoints / 2)).div(10.0);
 
         // Check redundancy
-        final int numOfUnknowns = DEGREE + 1;
-        logger.debug("Degree of orbit interpolating polynomial: " + DEGREE);
+        final int numOfUnknowns = degree + 1;
+        logger.debug("Degree of orbit interpolating polynomial: " + degree);
         logger.debug("Number of unknowns: " + numOfUnknowns);
         logger.debug("Number of data points (orbit): " + numOfPoints);
 
@@ -67,10 +68,11 @@ public class PolyUtils {
             throw new Exception("Number of points is smaller than parameters solved for.");
         }
 
-        // Set up system of equations to solve coeff
+        // Set up system of equations to solve coeff :: Design matrix
         logger.debug("Setting up linear system of equations");
-        DoubleMatrix A = new DoubleMatrix(numOfPoints, numOfUnknowns);// designmatrix
-        for (int j = 0; j <= DEGREE; j++) {
+        DoubleMatrix A = new DoubleMatrix(numOfPoints, numOfUnknowns);
+        // work with columns
+        for (int j = 0; j <= degree; j++) {
             DoubleMatrix normPostingTemp = normPosting.dup();
             normPostingTemp = LinearAlgebraUtils.matrixPower(normPostingTemp, (double) j);
             A.putColumn(j, normPostingTemp);
@@ -129,16 +131,16 @@ public class PolyUtils {
         logger.debug("REPORTING POLYFIT LEAST SQUARES ERRORS");
         logger.debug(" time \t\t\t y \t\t\t yhat  \t\t\t ehat");
         for (int i = 0; i < numOfPoints; i++) {
-            logger.debug(" " + time.get(i) + "\t" + y.get(i) + "\t" + y_hat.get(i) + "\t" + e_hat.get(i));
+            logger.debug(" " + t.get(i) + "\t" + y.get(i) + "\t" + y_hat.get(i) + "\t" + e_hat.get(i));
         }
 
         for (int i = 0; i < numOfPoints - 1; i++) {
             // ___ check if dt is constant, not necessary for me, but may ___
             // ___ signal error in header data of SLC image ___
-            double dt = time.get(i + 1) - time.get(i);
+            double dt = t.get(i + 1) - t.get(i);
             logger.debug("Time step between point " + i + 1 + " and " + i + "= " + dt);
 
-            if (Math.abs(dt - (time.get(1) - time.get(0))) > 0.001)// 1ms of difference we allow...
+            if (Math.abs(dt - (t.get(1) - t.get(0))) > 0.001)// 1ms of difference we allow...
                 logger.warn("WARNING: Orbit: data does not have equidistant time interval?");
         }
 
@@ -154,21 +156,21 @@ public class PolyUtils {
         return sum;
     }
 
-    public static DoubleMatrix polyValOnGrid(DoubleMatrix x, DoubleMatrix y, final DoubleMatrix coeff, int degreee) {
+    public static DoubleMatrix polyValGrid(DoubleMatrix x, DoubleMatrix y, final DoubleMatrix coeff, int degreee) {
         if (x.length != x.rows) {
-            System.out.println("WARNING: polyal functions require (x) standing data vectors!");
+            logger.warn("polyval functions require (x) standing data vectors!");
         }
 
         if (y.length != y.rows) {
-            System.out.println("WARNING: polyal functions require (y) standing data vectors!");
+            logger.warn("polyval functions require (y) standing data vectors!");
         }
 
         if (coeff.length != coeff.rows) {
-            System.out.println("WARNING: polyal functions require (coeff) standing data vectors!");
+            logger.warn("polyval functions require (coeff) standing data vectors!");
         }
 
         if (degreee < -1) {
-            System.out.println("WARNING: polyal degree < -1 ????");
+            logger.warn("polyval degree < -1 ????");
         }
 
 //        if (x.length > y.length) {
@@ -180,7 +182,7 @@ public class PolyUtils {
         }
 
         // evaluate polynomial
-        DoubleMatrix result = new DoubleMatrix(new double[x.length][y.length]);
+        DoubleMatrix result = new DoubleMatrix(x.length,y.length);
         int i;
         int j;
 
@@ -445,18 +447,18 @@ public class PolyUtils {
                     }
                 }
 
-                final int STARTDEGREE = 6;
-                final int STARTCOEFF = degreeFromCoefficients(STARTDEGREE - 1);   // 5-> 21 6->28 7->36 etc.
+                final int startDegree = 6;
+                final int startCoeff = degreeFromCoefficients(startDegree - 1);   // 5-> 21 6->28 7->36 etc.
                 for (j = 0; j < result.columns; j++) {
                     double yy = y.get(j, 0);
                     for (i = 0; i < result.rows; i++) {
                         double xx = x.get(i, 0);        // ??? this seems to be wrong (BK 9-feb-00)
                         double sum = 0.;
-                        int coeffindex = STARTCOEFF;
-                        for (int l = STARTDEGREE; l <= degreee; l++) {
+                        int coeffIndex = startCoeff;
+                        for (int l = startDegree; l <= degreee; l++) {
                             for (int k = 0; k <= l; k++) {
-                                sum += coeff.get(coeffindex, 0) * Math.pow(xx, (double) (l - k)) * Math.pow(yy, (double) (k));
-                                coeffindex++;
+                                sum += coeff.get(coeffIndex, 0) * Math.pow(xx, (double) (l - k)) * Math.pow(yy, (double) (k));
+                                coeffIndex++;
                             }
                         }
                         result.put(i, j, result.get(i, j) + sum);
@@ -468,7 +470,6 @@ public class PolyUtils {
     }
 
     public static int numberOfCoefficients(final int degree) {
-//        return 0;  //To change body of created methods use File | Settings | File Templates.
-        return (int) (0.5 * (Math.pow(degree + 1, 2) + degree + 1));
+       return (int) (0.5 * (Math.pow(degree + 1, 2) + degree + 1));
     }
 }

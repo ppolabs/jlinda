@@ -88,15 +88,15 @@ public class RangeFilter {
         DoubleMatrix inverseHamming = null;
 
         // sanity check on input paramaters
-        if (!MathUtils.isodd(nlmean)) {
+        if (!MathUtils.isOdd(nlmean)) {
             logger.error("nlMean has to be odd.");
             throw new IllegalArgumentException();
         }
-        if (!MathUtils.ispower2(numPixs)) {
+        if (!MathUtils.isPower2(numPixs)) {
             logger.error("numPixels (FFT) has to be power of 2.");
             throw new IllegalArgumentException();
         }
-        if (!MathUtils.ispower2(ovsFactor)) {
+        if (!MathUtils.isPower2(ovsFactor)) {
             logger.error("oversample factor (FFT) has to be power of 2.");
             throw new IllegalArgumentException();
         }
@@ -194,14 +194,14 @@ public class RangeFilter {
             if (doHammingFlag) {
                 // Newhamming is scaled and centered around new mean
                 // filter is fftshifted
-                filter = WeightWindows.myhamming(
+                filter = WeightWindows.hamming(
                         freqAxis.subi(0.5 * shift * deltaF),
                         RBW - (shift * deltaF),
                         RSR, alphaHamming);
                 filter.mmul(inverseHamming);
             } else { // no weighting of spectra
                 // filter is fftshifted
-                filter = WeightWindows.myrect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
+                filter = WeightWindows.rect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
             }
 
             // Use freq. as returned by fft
@@ -305,7 +305,7 @@ public class RangeFilter {
     }
 
     private static DoubleMatrix doHamming(float RSR, float RBW, float alphaHamming, long numPixs, DoubleMatrix freqAxis) throws Exception {
-        DoubleMatrix inverseHamming = WeightWindows.myhamming(freqAxis, RBW, RSR, alphaHamming);
+        DoubleMatrix inverseHamming = WeightWindows.hamming(freqAxis, RBW, RSR, alphaHamming);
         for (int i = 0; i < numPixs; ++i)
             if (inverseHamming.get(0, i) != 0.)
                 inverseHamming.put(0, i, 1. / inverseHamming.get(0, i));

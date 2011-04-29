@@ -1,25 +1,28 @@
 package org.jdoris.core.utils;
-
 import org.jblas.DoubleMatrix;
 
 public class WeightWindows {
 
-    public static DoubleMatrix myrect(DoubleMatrix X) throws Exception {
-
-        if (X.rows != 1) {
+    public static DoubleMatrix rect(final DoubleMatrix x) throws IllegalArgumentException {
+        if (!x.isVector()) {
             System.err.println("myrect: only lying vectors.");
-            throw new Exception();
+            throw new IllegalArgumentException();
         }
 
-        DoubleMatrix Res = new DoubleMatrix(1, X.rows);
+        return new DoubleMatrix(rect(x.toArray()));
+    }
 
-        for (int i = 0; i < X.rows; ++i) {
-            if (Math.abs(X.get(i)) <= 0.5) {
-                Res.put(i, (float) 1.);
+    public static double[] rect(final double[] x) {
+
+        double[] rectWin = new double[x.length];
+
+        for (int i = 0; i < x.length; ++i) {
+            if (Math.abs(x[i]) <= 0.5) {
+                rectWin[i] = 1.;
             }
         }
 
-        return Res;
+        return rectWin;
     }
 
     /**
@@ -28,31 +31,44 @@ public class WeightWindows {
      * w = (a + (1.-a).*cos((2.*pi/fs).*fr)) .* myrect(fr./Br);
      * scale/shift filter by g(x)=f((x-xo)/s)
      * alpha==1 yields a myrect window
+     * @param fr
+     * @param br
+     * @param fs
+     * @param alpha
+     * @return
+     * @throws IllegalArgumentException
      */
-    public static DoubleMatrix myhamming(final DoubleMatrix fr, double RBW, double RSR, double alpha) throws Exception {
-
-        if (fr.rows != 1) {
-            System.err.println("myhamming: only lying vectors.");
-            throw new Exception();
-//            throw (argument_error);
-        }
+    public static double[] hamming(final double[] fr, final double br, final double fs, final double alpha) throws IllegalArgumentException {
 
         if (alpha < 0.0 || alpha > 1.0) {
             System.err.println("myhamming: !alpha e{0..1}.");
-            throw new Exception();
+            throw new IllegalArgumentException();
         }
 
-        if (RBW > RSR) {
+        if (br > fs) {
             System.err.println("myhamming: RBW>RSR.");
-            throw new Exception();
+            throw new IllegalArgumentException();
         }
 
-        DoubleMatrix Res = new DoubleMatrix(1, fr.columns);
-        for (int i = 0; i < fr.columns; ++i) {
-            if (Math.abs(fr.get(i)) < 0.5) {   // rect window
-                Res.put(i, (float) (alpha + (1 - alpha) * Math.cos((2 * Math.PI / RSR) * fr.get(i))));
+        double[] hamWin = new double[fr.length];
+        for (int i = 0; i < fr.length; ++i) {
+            if (Math.abs(fr[i]) < 0.5) {   // rect window
+                hamWin[i] = (alpha + (1 - alpha) * Math.cos((2 * Math.PI / fs) * fr[i]));
             }
         }
-        return Res;
+        return hamWin;
     }
+
+    public static DoubleMatrix hamming(final DoubleMatrix fr, final double br, final double fs, final double alpha) throws IllegalArgumentException {
+        if (!fr.isVector()) {
+            System.err.println("myhamming: only lying vectors.");
+            throw new IllegalArgumentException();
+        }
+
+        return new DoubleMatrix(hamming(fr.toArray(), br, fs, alpha));
+
+    }
+
+
+
 }

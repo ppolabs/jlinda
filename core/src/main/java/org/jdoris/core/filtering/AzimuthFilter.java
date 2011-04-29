@@ -124,7 +124,7 @@ public class AzimuthFilter {
                 // TODO: not a briliant implementation for per col.. cause wshift AND fftshift.
                 // DE-weight spectrum at centered at fDC_m
                 // spectrum should be periodic -> use of wshift
-                DoubleMatrix inVerseHamming = invertHamming(WeightWindows.myhamming(freqAxis, ABW, PRF, hamming), size);
+                DoubleMatrix inVerseHamming = invertHamming(WeightWindows.hamming(freqAxis, ABW, PRF, hamming), size);
 
                 // Shift this circular by myshift pixels
                 long myShift = (long) (Math.rint((size * fDC_m / PRF))); // round
@@ -132,14 +132,14 @@ public class AzimuthFilter {
 
                 // Newhamming is scaled and centered around new mean
                 myShift = (long) (Math.rint((size * fDC_mean / PRF)));                   // round
-                filterVector = WeightWindows.myhamming(freqAxis, ABW_new, PRF, hamming); // fftshifted
+                filterVector = WeightWindows.hamming(freqAxis, ABW_new, PRF, hamming); // fftshifted
                 LinearAlgebraUtils.wshift(filterVector, (int) -myShift);                      // center at fDC_mean
                 filterVector.mmuli(inVerseHamming);
 
             } else {       // no weighting, but center at fDC_mean, size ABW_new
 
                 long myShift = (long) (Math.rint((size * fDC_mean / PRF)));          // round
-                filterVector = WeightWindows.myrect(freqAxis.divi((float) ABW_new)); // fftshifted
+                filterVector = WeightWindows.rect(freqAxis.divi((float) ABW_new)); // fftshifted
                 LinearAlgebraUtils.wshift(filterVector, (int) -myShift);                  // center at fDC_mean
 
             }
