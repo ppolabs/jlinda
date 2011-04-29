@@ -5,10 +5,10 @@ import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
 import org.jblas.ranges.IntervalRange;
 import org.jdoris.core.Ellipsoid;
-import org.jdoris.core.MathUtilities;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.todo_classes.todo_classes;
+import org.jdoris.core.utils.*;
 
 import static org.jblas.MatrixFunctions.pow;
 
@@ -88,15 +88,15 @@ public class RangeFilter {
         DoubleMatrix inverseHamming = null;
 
         // sanity check on input paramaters
-        if (!MathUtilities.isodd(nlmean)) {
+        if (!MathUtils.isodd(nlmean)) {
             logger.error("nlMean has to be odd.");
             throw new IllegalArgumentException();
         }
-        if (!MathUtilities.ispower2(numPixs)) {
+        if (!MathUtils.ispower2(numPixs)) {
             logger.error("numPixels (FFT) has to be power of 2.");
             throw new IllegalArgumentException();
         }
-        if (!MathUtilities.ispower2(ovsFactor)) {
+        if (!MathUtils.ispower2(ovsFactor)) {
             logger.error("oversample factor (FFT) has to be power of 2.");
             throw new IllegalArgumentException();
         }
@@ -134,8 +134,8 @@ public class RangeFilter {
 
         logger.debug("is real4 accurate enough?");// seems so
 
-        MathUtilities.fft(cplxIfg, 2);                          // cplxIfg = fft over rows
-        DoubleMatrix power = MathUtilities.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
+        SpectralUtils.fft(cplxIfg, 2);                          // cplxIfg = fft over rows
+        DoubleMatrix power = SarUtils.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
 
         // Use weighted correlation due to bias in normal definition
         // Actually better de-weight with autoconvoluted hamming.
@@ -146,8 +146,8 @@ public class RangeFilter {
         }
 
         // Average power to reduce noise
-        MathUtilities.fft(masterDataBlock, 2); // fft.ing over rows
-        MathUtilities.fft(slaveDataBlock, 2);
+        SpectralUtils.fft(masterDataBlock, 2); // fft.ing over rows
+        SpectralUtils.fft(slaveDataBlock, 2);
         logger.trace("Took FFT over rows of master, slave.");
 
         DoubleMatrix nlMeanPower = computeNlMeanPower(nlmean, fftLength, power);
@@ -194,32 +194,32 @@ public class RangeFilter {
             if (doHammingFlag) {
                 // Newhamming is scaled and centered around new mean
                 // filter is fftshifted
-                filter = MathUtilities.myhamming(
+                filter = WeightWindows.myhamming(
                         freqAxis.subi(0.5 * shift * deltaF),
                         RBW - (shift * deltaF),
                         RSR, alphaHamming);
                 filter.mmul(inverseHamming);
             } else { // no weighting of spectra
                 // filter is fftshifted
-                filter = MathUtilities.myrect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
+                filter = WeightWindows.myrect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
             }
 
             // Use freq. as returned by fft
             // Note that filter_s = fliplr(filter_m)
             // and that this is also valid after ifftshift
-            MathUtilities.ifftshift(filter);
+            SpectralUtils.ifftshift(filter);
 
             // ====== Actual spectral filtering ======
             // Decide which side to filter, may be dependent on definition of FFT??
             ComplexDoubleMatrix filterComplex = new ComplexDoubleMatrix(filter);
             if (!negShift) {
-                MathUtilities.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
-                MathUtilities.fliplr(filter);
-                MathUtilities.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
+                LinearAlgebraUtils.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
+                LinearAlgebraUtils.fliplr(filter);
+                LinearAlgebraUtils.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
             } else {
-                MathUtilities.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
-                MathUtilities.fliplr(filter);
-                MathUtilities.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
+                LinearAlgebraUtils.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
+                LinearAlgebraUtils.fliplr(filter);
+                LinearAlgebraUtils.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
             }
 
             // Update 'walking' mean
@@ -232,8 +232,8 @@ public class RangeFilter {
         } // loop over outLines
 
         // IFFT of spectrally filtered data, and return these
-        MathUtilities.ifft(masterDataBlock, 2);
-        MathUtilities.ifft(slaveDataBlock, 2);
+        SpectralUtils.ifft(masterDataBlock, 2);
+        SpectralUtils.ifft(slaveDataBlock, 2);
 
         // Return these to main
         meanShift /= (outputLines - notFiltered);
@@ -286,11 +286,11 @@ public class RangeFilter {
 
     private static ComplexDoubleMatrix computeOvsIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData,
                                                      final int ovsFactor) throws Exception {
-        return computeIfg(MathUtilities.oversample(masterData, 1, ovsFactor), MathUtilities.oversample(slaveData, 1, ovsFactor));
+        return computeIfg(SarUtils.oversample(masterData, 1, ovsFactor), SarUtils.oversample(slaveData, 1, ovsFactor));
     }
 
     private static ComplexDoubleMatrix computeIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData) throws Exception {
-        return MathUtilities.dotmult(masterData, slaveData.conj());
+        return LinearAlgebraUtils.dotmult(masterData, slaveData.conj());
     }
 
 
@@ -305,7 +305,7 @@ public class RangeFilter {
     }
 
     private static DoubleMatrix doHamming(float RSR, float RBW, float alphaHamming, long numPixs, DoubleMatrix freqAxis) throws Exception {
-        DoubleMatrix inverseHamming = MathUtilities.myhamming(freqAxis, RBW, RSR, alphaHamming);
+        DoubleMatrix inverseHamming = WeightWindows.myhamming(freqAxis, RBW, RSR, alphaHamming);
         for (int i = 0; i < numPixs; ++i)
             if (inverseHamming.get(0, i) != 0.)
                 inverseHamming.put(0, i, 1. / inverseHamming.get(0, i));

@@ -5,6 +5,8 @@ import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.nest.datamodel.AbstractMetadata;
 import org.jblas.DoubleMatrix;
 import org.jdoris.core.io.ResFile;
+import org.jdoris.core.utils.LinearAlgebraUtils;
+import org.jdoris.core.utils.PolyUtils;
 
 import java.io.File;
 
@@ -115,9 +117,9 @@ public final class Orbit {
 
         logger.info("Computing coefficients for orbit polyfit degree: " + poly_degree);
 //        poly_degree = degree;
-        this.coeff_X = MathUtilities.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_X), poly_degree);
-        this.coeff_Y = MathUtilities.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Y), poly_degree);
-        this.coeff_Z = MathUtilities.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Z), poly_degree);
+        this.coeff_X = PolyUtils.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_X), poly_degree);
+        this.coeff_Y = PolyUtils.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Y), poly_degree);
+        this.coeff_Z = PolyUtils.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Z), poly_degree);
 
         isInterpolated = true;
 
@@ -177,7 +179,7 @@ public final class Orbit {
             // solve system [NOTE!] orbit has to be normalized, otherwise close to singular
             // DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet);
 //            double[] ellipsoidPositionSolution = Solve.solve(new DoubleMatrix(partialsXYZ), new DoubleMatrix(equationSet)).toArray();
-            double[] ellipsoidPositionSolution = MathUtilities.solve33(partialsXYZ, equationSet);
+            double[] ellipsoidPositionSolution = LinearAlgebraUtils.solve33(partialsXYZ, equationSet);
 
             // update solution
             ellipsoidPosition.x += ellipsoidPositionSolution[0];
@@ -308,9 +310,9 @@ public final class Orbit {
         // normalize time
         azTime = (azTime - time[time.length / 2]) / 10;
 
-        satelliteXYZPosition.x = MathUtilities.polyVal1d(azTime, coeff_X);
-        satelliteXYZPosition.y = MathUtilities.polyVal1d(azTime, coeff_Y);
-        satelliteXYZPosition.z = MathUtilities.polyVal1d(azTime, coeff_Z);
+        satelliteXYZPosition.x = PolyUtils.polyVal1d(azTime, coeff_X);
+        satelliteXYZPosition.y = PolyUtils.polyVal1d(azTime, coeff_Y);
+        satelliteXYZPosition.z = PolyUtils.polyVal1d(azTime, coeff_Z);
 
         return satelliteXYZPosition;  //To change body of created methods use File | Settings | File Templates.
     }

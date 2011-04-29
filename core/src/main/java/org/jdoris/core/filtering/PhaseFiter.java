@@ -4,9 +4,11 @@ import org.apache.log4j.Logger;
 import org.jblas.ComplexDouble;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
-import org.jdoris.core.MathUtilities;
 import org.jdoris.core.Window;
 import org.jdoris.core.todo_classes.todo_classes;
+import org.jdoris.core.utils.LinearAlgebraUtils;
+import org.jdoris.core.utils.SarUtils;
+import org.jdoris.core.utils.SpectralUtils;
 
 import static org.jblas.MatrixFunctions.pow;
 
@@ -124,8 +126,8 @@ public class PhaseFiter {
                     kernel1D.put(0, tmpValue_1, new ComplexDouble(smoothKernel.get(0, tmpValue_2), 0.0));
                 }
 
-                kernel2D = MathUtilities.matTxmat(kernel1D, kernel1D);
-                MathUtilities.fft2d(kernel2D);  // should be real sinc
+                kernel2D = LinearAlgebraUtils.matTxmat(kernel1D, kernel1D);
+                SpectralUtils.fft2d(kernel2D);  // should be real sinc
             }
             logger.debug("kernel created for smoothing spectrum");
 
@@ -147,13 +149,13 @@ public class PhaseFiter {
 
                 // Construct BLOCK as part of CINT
                 ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) winCIfg.lines(), (int) winCIfg.pixels());
-                MathUtilities.setdata(BLOCK, complexIfg, winCIfg);
+                LinearAlgebraUtils.setdata(BLOCK, complexIfg, winCIfg);
 
                 if (checkIndexOnly) {
 
                     // Get spectrum/amplitude/smooth/filter ______
-                    MathUtilities.fft2d(BLOCK);
-                    DoubleMatrix AMPLITUDE = MathUtilities.magnitude(BLOCK);
+                    SpectralUtils.fft2d(BLOCK);
+                    DoubleMatrix AMPLITUDE = SarUtils.magnitude(BLOCK);
 
                     // ______ use FFT's for convolution with rect ______
                     if (doSmooth == true)
@@ -170,12 +172,12 @@ public class PhaseFiter {
                         logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
                     }
 
-                    MathUtilities.ifft2d(BLOCK);
+                    SpectralUtils.ifft2d(BLOCK);
 
                 }
 
                 // ______ Set correct part that is filtered in output matrix ______
-                MathUtilities.setdata(filteredCplxIfg, winFiltered, BLOCK, winBlock);
+                LinearAlgebraUtils.setdata(filteredCplxIfg, winFiltered, BLOCK, winBlock);
 
                 // ______ Exit if finished ______
                 if (lastBlockDone)
@@ -258,10 +260,10 @@ public class PhaseFiter {
 
             // Construct BLOCK as part of CINT ______
             ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
-            MathUtilities.setdata(BLOCK, CINT, wincint);
+            LinearAlgebraUtils.setdata(BLOCK, CINT, wincint);
 
             // ______ Set correct part that is filtered in output matrix ______
-            MathUtilities.setdata(FILTERED, winfiltered, BLOCK, winblock);
+            LinearAlgebraUtils.setdata(FILTERED, winfiltered, BLOCK, winblock);
 
             // ______ Exit if finished ______
             if (lastblockdone)
@@ -329,18 +331,18 @@ public class PhaseFiter {
 
             // Construct BLOCK as part of CINT
             ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
-            MathUtilities.setdata(BLOCK, CINT, wincint);
+            LinearAlgebraUtils.setdata(BLOCK, CINT, wincint);
 
             // ______ Get spectrum/filter/ifft ______
-            MathUtilities.fft2d(BLOCK);
+            SpectralUtils.fft2d(BLOCK);
             BLOCK.mmul(KERNEL2D);                  // the filter...
 
 
-            MathUtilities.ifft2d(BLOCK);
+            SpectralUtils.ifft2d(BLOCK);
 
 
             // Set correct part that is filtered in output matrix
-            MathUtilities.setdata(FILTERED, winfiltered, BLOCK, winblock);
+            LinearAlgebraUtils.setdata(FILTERED, winfiltered, BLOCK, winblock);
 
             // Exit if finished ______
             if (lastblockdone)
@@ -369,7 +371,7 @@ public class PhaseFiter {
             final ComplexDoubleMatrix KERNEL2D) {
 
         ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(A);      // or define fft(R4)
-        MathUtilities.fft2d(DATA);                                  // or define fft(R4)
+        SpectralUtils.fft2d(DATA);                                  // or define fft(R4)
 
         // ______ create kernel in calling routine, e.g., like ______
         // ______ Kernel has to be even! ______
@@ -382,7 +384,7 @@ public class PhaseFiter {
         //fft2d(KERNEL2D);                            // should be real sinc
 
         DATA.mmuli(KERNEL2D);
-        MathUtilities.ifft2d(DATA);                   // convolution, but still complex...
+        SpectralUtils.ifft2d(DATA);                   // convolution, but still complex...
         return DATA.real();                           // you know it is real only...
     }
 
@@ -432,7 +434,7 @@ public class PhaseFiter {
         int P = A.columns;
         ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(L, P); // init to zero...
 
-        MathUtilities.fft2d(DATA); // or define fft(R4)
+        SpectralUtils.fft2d(DATA); // or define fft(R4)
         ComplexDoubleMatrix kernel = new ComplexDoubleMatrix(1, L); // init to zeros
 
         // design 1d kernel function of block
@@ -440,10 +442,10 @@ public class PhaseFiter {
             kernel.put(0, (ii + L) % L, new ComplexDouble(1.0 / (2 * N + 1), 0.0));
         }
 
-        ComplexDoubleMatrix KERNEL2D = MathUtilities.matTxmat(kernel, kernel);
-        MathUtilities.fft2d(KERNEL2D); // should be real sinc
+        ComplexDoubleMatrix KERNEL2D = LinearAlgebraUtils.matTxmat(kernel, kernel);
+        SpectralUtils.fft2d(KERNEL2D); // should be real sinc
         DATA.mmul(KERNEL2D); // no need for conj. with real fft...
-        MathUtilities.ifft2d(DATA);  // convolution, but still complex...
+        SpectralUtils.ifft2d(DATA);  // convolution, but still complex...
         return DATA.real(); // you know it is real only...
 
     }

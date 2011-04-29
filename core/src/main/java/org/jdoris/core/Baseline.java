@@ -4,12 +4,13 @@ import org.apache.log4j.Logger;
 import org.jblas.Decompose;
 import org.jblas.DoubleMatrix;
 import org.jblas.Solve;
+import org.jdoris.core.utils.LinearAlgebraUtils;
 
 import static org.jblas.MatrixFunctions.abs;
-import static org.jdoris.core.MathUtilities.normalize;
-import static org.jdoris.core.MathUtilities.sqr;
-import static org.jdoris.core.MathUtilities.rad2deg;
-import static org.jdoris.core.MathUtilities.matTxmat;
+import static org.jdoris.core.utils.LinearAlgebraUtils.matTxmat;
+import static org.jdoris.core.utils.MathUtils.rad2deg;
+import static org.jdoris.core.utils.MathUtils.sqr;
+import static org.jdoris.core.utils.PolyUtils.normalize;
 
 /**
  * User: pmar@ppolabs.com
@@ -281,7 +282,7 @@ public class Baseline {
                     aMatrix.put(cnt, 1, normalize(line, linMin, linMax));
 
                     aMatrix.put(cnt, 2, normalize(pixel, pixMin, pixMax));
-                    aMatrix.put(cnt, 3, MathUtilities.normalize(height, hMin, hMax));
+                    aMatrix.put(cnt, 3, normalize(height, hMin, hMax));
                     aMatrix.put(cnt, 4, normalize(line, linMin, linMax) * normalize(pixel, pixMin, pixMax));
                     aMatrix.put(cnt, 5, normalize(line, linMin, linMax) * normalize(height, hMin, hMax));
                     aMatrix.put(cnt, 6, normalize(pixel, pixMin, pixMax) * normalize(height, hMin, hMax));
@@ -324,7 +325,7 @@ public class Baseline {
         DoubleMatrix rhsThetaInc = matTxmat(aMatrix, thetaIncMatrix);
 //        DoubleMatrix Qx_hat   = nMatrix;
 
-        final DoubleMatrix Qx_hat = MathUtilities.invertCholesky(Decompose.cholesky(nMatrix).transpose());
+        final DoubleMatrix Qx_hat = LinearAlgebraUtils.invertCholesky(Decompose.cholesky(nMatrix).transpose());
 
         // TODO: refactor to _internal_ cholesky decomposition
         // choles(Qx_hat);               // Cholesky factorisation normalmatrix
