@@ -6,6 +6,38 @@ public class MathUtils {
 
 //    static Logger logger = Logger.getLogger(MathUtils.class.getName());
 
+    public static boolean isOdd(long value) {
+        return value % 2 == 0;
+    }
+
+    public static boolean isEven(long value) {
+        return !isOdd(value);
+    }
+
+    public static boolean isPower2(long value) {
+        return value == 1 || value == 2 || value == 4 || value == 8 || value == 16 ||
+                value == 32 || value == 64 || value == 128 || value == 256 ||
+                value == 512 || value == 1024 || value == 2048 || value == 4096;
+    }
+
+    public static double rad2deg(double valueInRadians) {
+//        return Math.toDegrees(rad);
+        return valueInRadians * Constants.RTOD;
+    }
+
+    public static double deg2rad(double valueInDegrees) {
+//        return Math.toDegrees(rad);
+        return valueInDegrees * Constants.DTOR;
+    }
+
+    public static double sqr(double value) {
+        return Math.pow(value, 2);
+    }
+
+    public static double sqrt(double value) {
+        return Math.sqrt(value);
+    }
+
     public static int[][] distributePoints(final int numOfPoints, final Window window) {
 
         final double lines = window.lines();
@@ -51,39 +83,15 @@ public class MathUtils {
         return result;
     }
 
-
-    public static boolean isOdd(long value) {
-        return value % 2 == 0;
-    }
-
-    public static boolean isEven(long value) {
-        return !isOdd(value);
-    }
-
-    public static boolean isPower2(long value) {
-        return value == 1 || value == 2 || value == 4 || value == 8 || value == 16 ||
-                value == 32 || value == 64 || value == 128 || value == 256 ||
-                value == 512 || value == 1024 || value == 2048 || value == 4096;
+    public static double[] increment(int m, double begin, double pitch) {
+        double[] array = new double[m];
+        for (int i = 0; i < m; i++) {
+            array[i] = begin + i * pitch;
+        }
+        return array;
     }
 
 
-    public static double rad2deg(double valueInRadians) {
-//        return Math.toDegrees(rad);
-        return valueInRadians * Constants.RTOD;
-    }
-
-    public static double deg2rad(double valueInDegrees) {
-//        return Math.toDegrees(rad);
-        return valueInDegrees * Constants.DTOR;
-    }
-
-    public static double sqr(double value) {
-        return Math.pow(value, 2);
-    }
-
-    public static double sqrt(double value) {
-        return Math.sqrt(value);
-    }
 
 }
 
