@@ -52,7 +52,7 @@ public class WeightWindows {
 
         double[] hamWin = new double[fr.length];
         for (int i = 0; i < fr.length; ++i) {
-            if (Math.abs(fr[i]) < 0.5) {   // rect window
+            if (Math.abs(fr[i]/br) < 0.5) {   // rect window
                 hamWin[i] = (alpha + (1 - alpha) * Math.cos((2 * Math.PI / fs) * fr[i]));
             }
         }
