@@ -52,7 +52,7 @@ public class SarUtils {
         if (factorRow == 1) {
 
             // 1d fourier transform per row
-            SpectralUtils.fft(inputMatrix, 2);
+            SpectralUtils.fft_inplace(inputMatrix, 2);
 
             // divide by 2 because even fftlength
             inputMatrix.putColumn(halfP, inputMatrix.getColumn(halfP).mmuli(half));
@@ -70,12 +70,12 @@ public class SarUtils {
             LinearAlgebraUtils.setdata(outputMatrix, winR2, inputMatrix, winA2);
 
             // inverse fft per row
-            SpectralUtils.ifft(outputMatrix, 2);
+            SpectralUtils.fft_inplace(outputMatrix, 2);
 
         } else if (factorCol == 1) {
 
             // 1d fourier transform per column
-            SpectralUtils.fft(inputMatrix, 1);
+            SpectralUtils.fft_inplace(inputMatrix, 1);
 
             // divide by 2 'cause even fftlength
             inputMatrix.putRow(halfL, inputMatrix.getRow(halfL).mmuli(half));
@@ -93,7 +93,7 @@ public class SarUtils {
             LinearAlgebraUtils.setdata(outputMatrix, winR2, inputMatrix, winA2);
 
             // inverse fft per row
-            SpectralUtils.ifft(outputMatrix, 1);
+            SpectralUtils.fft_inplace(outputMatrix, 1);
 
         } else {
 
@@ -104,7 +104,7 @@ public class SarUtils {
             Window winR4;
 
             // A=fft2d(A)
-            SpectralUtils.fft2d(inputMatrix);
+            SpectralUtils.fft2D_inplace(inputMatrix);
 
             // divide by 2 'cause even fftlength
             inputMatrix.putColumn(halfP, inputMatrix.getColumn(halfP).mmuli(half));
@@ -132,7 +132,7 @@ public class SarUtils {
             LinearAlgebraUtils.setdata(outputMatrix, winR4, inputMatrix, winA4);
 
             // inverse back in 2d
-            SpectralUtils.ifft2d(outputMatrix);
+            SpectralUtils.invfft2d_inplace(outputMatrix);
         }
 
         // scale

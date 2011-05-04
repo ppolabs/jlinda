@@ -134,7 +134,7 @@ public class RangeFilter {
 
         logger.debug("is real4 accurate enough?");// seems so
 
-        SpectralUtils.fft(cplxIfg, 2);                          // cplxIfg = fft over rows
+        SpectralUtils.fft_inplace(cplxIfg, 2);                          // cplxIfg = fft over rows
         DoubleMatrix power = SarUtils.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
 
         // Use weighted correlation due to bias in normal definition
@@ -146,8 +146,8 @@ public class RangeFilter {
         }
 
         // Average power to reduce noise
-        SpectralUtils.fft(masterDataBlock, 2); // fft.ing over rows
-        SpectralUtils.fft(slaveDataBlock, 2);
+        SpectralUtils.fft_inplace(masterDataBlock, 2); // fft.ing over rows
+        SpectralUtils.fft_inplace(slaveDataBlock, 2);
         logger.trace("Took FFT over rows of master, slave.");
 
         DoubleMatrix nlMeanPower = computeNlMeanPower(nlmean, fftLength, power);
@@ -207,7 +207,7 @@ public class RangeFilter {
             // Use freq. as returned by fft
             // Note that filter_s = fliplr(filter_m)
             // and that this is also valid after ifftshift
-            SpectralUtils.ifftshift(filter);
+            SpectralUtils.ifftshift_inplace(filter);
 
             // ====== Actual spectral filtering ======
             // Decide which side to filter, may be dependent on definition of FFT??
@@ -232,8 +232,8 @@ public class RangeFilter {
         } // loop over outLines
 
         // IFFT of spectrally filtered data, and return these
-        SpectralUtils.ifft(masterDataBlock, 2);
-        SpectralUtils.ifft(slaveDataBlock, 2);
+        SpectralUtils.fft_inplace(masterDataBlock, 2);
+        SpectralUtils.fft_inplace(slaveDataBlock, 2);
 
         // Return these to main
         meanShift /= (outputLines - notFiltered);

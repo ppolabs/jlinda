@@ -144,7 +144,7 @@ public class AzimuthFilter {
 
             }
 
-            SpectralUtils.ifftshift(filterVector);           // fftsh works on data!
+            SpectralUtils.ifftshift_inplace(filterVector);           // fftsh works on data!
             filterMatrix.putColumn((int) i, filterVector);   // store filter Vector in filter Matrix
 
         } // foreach column
@@ -152,9 +152,9 @@ public class AzimuthFilter {
 
         // Filter slcdata
         ComplexDoubleMatrix slcDataFiltered = slcData.dup();
-        SpectralUtils.fft(slcDataFiltered, 1);                         // fft foreach column
+        SpectralUtils.fft_inplace(slcDataFiltered, 1);                         // fft foreach column
         slcDataFiltered.mmuli(new ComplexDoubleMatrix(filterMatrix));
-        SpectralUtils.ifft(slcDataFiltered, 1);                        // ifft foreach column
+        SpectralUtils.invfft_inplace(slcDataFiltered, 1);                        // ifft foreach column
         return slcDataFiltered;
 
     }
