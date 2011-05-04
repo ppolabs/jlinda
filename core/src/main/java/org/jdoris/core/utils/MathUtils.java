@@ -1,17 +1,17 @@
 package org.jdoris.core.utils;
+
 import org.jdoris.core.Constants;
 import org.jdoris.core.Window;
 
 public class MathUtils {
 
-//    static Logger logger = Logger.getLogger(MathUtils.class.getName());
-
-    public static boolean isOdd(long value) {
+    //    static Logger logger = Logger.getLogger(MathUtils.class.getName());
+    public static boolean isEven(long value) {
         return value % 2 == 0;
     }
 
-    public static boolean isEven(long value) {
-        return !isOdd(value);
+    public static boolean isOdd(long value) {
+        return !isEven(value);
     }
 
     public static boolean isPower2(long value) {
@@ -30,14 +30,6 @@ public class MathUtils {
         return valueInDegrees * Constants.DTOR;
     }
 
-    public static double sqr(double value) {
-        return Math.pow(value, 2);
-    }
-
-    public static double sqrt(double value) {
-        return Math.sqrt(value);
-    }
-
     public static int[][] distributePoints(final int numOfPoints, final Window window) {
 
         final double lines = window.lines();
@@ -47,7 +39,7 @@ public class MathUtils {
 
         // Distribution for dl=dp
         double winP = sqrt(numOfPoints / (lines / pixels));   // wl: #windows in line direction
-        double winL = numOfPoints / winP;                   // wp: #windows in pixel direction
+        double winL = numOfPoints / winP;                     // wp: #windows in pixel direction
         if (winL < winP) {
             // switch wl,wp : later back
             winL = winP;
@@ -57,11 +49,11 @@ public class MathUtils {
         final double deltaLin = (lines - 1) / (winL_int - 1);
         final double totalPix = Math.ceil(pixels * winL_int);
         final double deltaPix = (totalPix - 1) / (numOfPoints - 1);
+
         double pix = -deltaPix;
-        double lin = 0.;
+        double lin;
         double lCounter = 0;
-        int i;
-        for (i = 0; i < numOfPoints; i++) {
+        for (int i = 0; i < numOfPoints; i++) {
             pix += deltaPix;
             while (Math.ceil(pix) >= pixels) // ceil
             {
@@ -74,15 +66,10 @@ public class MathUtils {
             result[i][0] = (int) (Math.ceil(lin) + window.linelo);
             result[i][1] = (int) (Math.ceil(pix) + window.pixlo);
         }
-
-//        // Correct distribution to window
-//        for (i = 0; i < numOfPoints; i++) {
-//            result[i][0] += (int)window.linelo;
-//            result[i][1] += (int)window.pixlo;
-//        }
         return result;
     }
 
+    // 1D increment
     public static double[] increment(int m, double begin, double pitch) {
         double[] array = new double[m];
         for (int i = 0; i < m; i++) {
@@ -91,7 +78,28 @@ public class MathUtils {
         return array;
     }
 
+    // 2D increment
+    public static double[][] increment(int m, int n, double begin, double pitch) {
+        double[][] array = new double[m][n];
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                array[i][j] = begin + i * pitch;
+            }
+        }
+        return array;
+    }
 
+
+    /// only for legacy support ///
+    @Deprecated
+    public static double sqrt(double value) {
+        return Math.sqrt(value);
+    }
+
+    @Deprecated
+    public static double sqr(double value) {
+        return Math.pow(value, 2);
+    }
 
 }
 
