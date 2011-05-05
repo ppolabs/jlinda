@@ -81,20 +81,20 @@ public class SpectralUtils {
         }
     }
 
-    public static ComplexDoubleMatrix fft(ComplexDoubleMatrix A, final int dimension) {
-        return fftTransform(A, dimension, 1);
+    public static ComplexDoubleMatrix fft(ComplexDoubleMatrix inMatrix, final int dimension) {
+        return fftTransform(inMatrix, dimension, 1);
     }
 
-    public static ComplexDoubleMatrix invfft(ComplexDoubleMatrix A, final int dimension) {
-        return fftTransform(A, dimension, -1);
+    public static ComplexDoubleMatrix invfft(ComplexDoubleMatrix inMatrix, final int dimension) {
+        return fftTransform(inMatrix, dimension, -1);
     }
 
-    public static void fft_inplace(ComplexDoubleMatrix A, int dimension) {
-        fftTransformInPlace(A, dimension, 1);
+    public static void fft_inplace(ComplexDoubleMatrix inMatrix, int dimension) {
+        fftTransformInPlace(inMatrix, dimension, 1);
     }
 
-    public static void invfft_inplace(ComplexDoubleMatrix A, int dimension) {
-        fftTransformInPlace(A, dimension, -1);
+    public static void invfft_inplace(ComplexDoubleMatrix inMatrix, int dimension) {
+        fftTransformInPlace(inMatrix, dimension, -1);
     }
 
     public static void fft2D_inplace(ComplexDoubleMatrix A) {
@@ -114,14 +114,14 @@ public class SpectralUtils {
         fft2d.realForwardFull(A.data);
     }
 
-    public static void invfft2d_inplace(ComplexDoubleMatrix A) {
+    public static void invfft2D_inplace(ComplexDoubleMatrix A) {
         DoubleFFT_2D fft2d = new DoubleFFT_2D(A.rows, A.columns);
         fft2d.complexInverse(A.data, true);
     }
 
     public static ComplexDoubleMatrix invfft2d(ComplexDoubleMatrix inMatrix) {
         ComplexDoubleMatrix outMatrix = inMatrix.dup();
-        invfft2d_inplace(outMatrix);
+        invfft2D_inplace(outMatrix);
         return outMatrix;
     }
 
@@ -131,8 +131,25 @@ public class SpectralUtils {
             throw new IllegalArgumentException("ifftshift: works only for vectors!");
         }
 
+        final int cplxMatrixLength = 2*inMatrix.length;
+
         ComplexDoubleMatrix outMatrix = new ComplexDoubleMatrix(inMatrix.rows, inMatrix.columns);
-        final int start = (int) (Math.floor(inMatrix.length / 2));
+        final int start = (int) (Math.floor((double) cplxMatrixLength / 2) + 1);
+
+        System.arraycopy(inMatrix.data, start, outMatrix.data, 0, cplxMatrixLength - start);
+        System.arraycopy(inMatrix.data, 0, outMatrix.data, cplxMatrixLength - start, start);
+
+        return outMatrix;
+    }
+
+    public static DoubleMatrix fftshift(DoubleMatrix inMatrix) {
+        if (!inMatrix.isVector()) {
+            logger.error("ifftshift: only vectors");
+            throw new IllegalArgumentException("ifftshift: works only for vectors!");
+        }
+
+        DoubleMatrix outMatrix = new DoubleMatrix(inMatrix.rows, inMatrix.columns);
+        final int start = (int) (Math.ceil((double) inMatrix.length / 2));
 
         System.arraycopy(inMatrix.data, start, outMatrix.data, 0, inMatrix.length - start);
         System.arraycopy(inMatrix.data, 0, outMatrix.data, inMatrix.length - start, start);
@@ -141,6 +158,11 @@ public class SpectralUtils {
     }
 
     public static void fftshift_inplace(ComplexDoubleMatrix inMatrix) {
+        // NOT very efficient! Allocating and copying! //
+        inMatrix.copy(fftshift(inMatrix));
+    }
+
+    public static void fftshift_inplace(DoubleMatrix inMatrix) {
         // NOT very efficient! Allocating and copying! //
         inMatrix.copy(fftshift(inMatrix));
     }
@@ -157,18 +179,15 @@ public class SpectralUtils {
             throw new IllegalArgumentException("ifftshift: works only for vectors!");
         }
 
-        ComplexDoubleMatrix outMatrix = new ComplexDoubleMatrix(inMatrix.rows, inMatrix.columns);
-        final int start = (int) (Math.ceil(inMatrix.length) / 2);
+        final int cplxMatrixLength = 2*inMatrix.length;
 
-        System.arraycopy(inMatrix.data, start, outMatrix.data, 0, inMatrix.length - start);
-        System.arraycopy(inMatrix.data, 0, outMatrix.data, inMatrix.length - start, start);
+        ComplexDoubleMatrix outMatrix = new ComplexDoubleMatrix(inMatrix.rows, inMatrix.columns);
+        final int start = (int) (Math.floor((double) cplxMatrixLength / 2) - 1);
+
+        System.arraycopy(inMatrix.data, start, outMatrix.data, 0, cplxMatrixLength - start);
+        System.arraycopy(inMatrix.data, 0, outMatrix.data, cplxMatrixLength - start, start);
 
         return outMatrix;
-    }
-
-    public static void ifftshift_inplace(ComplexDoubleMatrix inMatrix) throws IllegalArgumentException {
-        // NOT very efficient! Allocating and copying! //
-        inMatrix.copy(ifftshift(inMatrix));
     }
 
     public static DoubleMatrix ifftshift(DoubleMatrix inMatrix) throws IllegalArgumentException {
@@ -179,12 +198,17 @@ public class SpectralUtils {
         }
 
         DoubleMatrix outMatrix = new DoubleMatrix(inMatrix.rows, inMatrix.columns);
-        final int start = (int) (Math.ceil(inMatrix.length) / 2);
+        final int start = (int) (Math.ceil((double) inMatrix.length) / 2);
 
         System.arraycopy(inMatrix.data, start, outMatrix.data, 0, inMatrix.length - start);
         System.arraycopy(inMatrix.data, 0, outMatrix.data, inMatrix.length - start, start);
 
         return outMatrix;
+    }
+
+    public static void ifftshift_inplace(ComplexDoubleMatrix inMatrix) throws IllegalArgumentException {
+        // NOT very efficient! Allocating and copying! //
+        inMatrix.copy(ifftshift(inMatrix));
     }
 
     public static void ifftshift_inplace(DoubleMatrix inMatrix) throws IllegalArgumentException {

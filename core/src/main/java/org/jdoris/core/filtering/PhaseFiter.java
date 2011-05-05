@@ -172,7 +172,7 @@ public class PhaseFiter {
                         logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
                     }
 
-                    SpectralUtils.invfft2d_inplace(BLOCK);
+                    SpectralUtils.invfft2D_inplace(BLOCK);
 
                 }
 
@@ -338,7 +338,7 @@ public class PhaseFiter {
             BLOCK.mmul(KERNEL2D);                  // the filter...
 
 
-            SpectralUtils.invfft2d_inplace(BLOCK);
+            SpectralUtils.invfft2D_inplace(BLOCK);
 
 
             // Set correct part that is filtered in output matrix
@@ -384,7 +384,7 @@ public class PhaseFiter {
         //fft2d(KERNEL2D);                            // should be real sinc
 
         DATA.mmuli(KERNEL2D);
-        SpectralUtils.invfft2d_inplace(DATA);                   // convolution, but still complex...
+        SpectralUtils.invfft2D_inplace(DATA);                   // convolution, but still complex...
         return DATA.real();                           // you know it is real only...
     }
 
@@ -445,7 +445,7 @@ public class PhaseFiter {
         ComplexDoubleMatrix KERNEL2D = LinearAlgebraUtils.matTxmat(kernel, kernel);
         SpectralUtils.fft2D_inplace(KERNEL2D); // should be real sinc
         DATA.mmul(KERNEL2D); // no need for conj. with real fft...
-        SpectralUtils.invfft2d_inplace(DATA);  // convolution, but still complex...
+        SpectralUtils.invfft2D_inplace(DATA);  // convolution, but still complex...
         return DATA.real(); // you know it is real only...
 
     }

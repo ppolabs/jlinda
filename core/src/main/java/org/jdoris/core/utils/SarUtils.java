@@ -132,7 +132,7 @@ public class SarUtils {
             LinearAlgebraUtils.setdata(outputMatrix, winR4, inputMatrix, winA4);
 
             // inverse back in 2d
-            SpectralUtils.invfft2d_inplace(outputMatrix);
+            SpectralUtils.invfft2D_inplace(outputMatrix);
         }
 
         // scale
