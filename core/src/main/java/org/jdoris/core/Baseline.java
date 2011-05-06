@@ -325,7 +325,7 @@ public class Baseline {
         DoubleMatrix rhsThetaInc = matTxmat(aMatrix, thetaIncMatrix);
 //        DoubleMatrix Qx_hat   = nMatrix;
 
-        final DoubleMatrix Qx_hat = LinearAlgebraUtils.invertCholesky(Decompose.cholesky(nMatrix).transpose());
+        final DoubleMatrix Qx_hat = LinearAlgebraUtils.invertChol(Decompose.cholesky(nMatrix).transpose());
 
         // TODO: refactor to _internal_ cholesky decomposition
         // choles(Qx_hat);               // Cholesky factorisation normalmatrix

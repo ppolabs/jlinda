@@ -128,19 +128,19 @@ public class AzimuthFilter {
 
                 // Shift this circular by myshift pixels
                 long myShift = (long) (Math.rint((size * fDC_m / PRF))); // round
-                LinearAlgebraUtils.wshift(inVerseHamming, (int) -myShift);    // center at fDC_m
+                LinearAlgebraUtils.wshift_inplace(inVerseHamming, (int) -myShift);    // center at fDC_m
 
                 // Newhamming is scaled and centered around new mean
                 myShift = (long) (Math.rint((size * fDC_mean / PRF)));                   // round
                 filterVector = WeightWindows.hamming(freqAxis, ABW_new, PRF, hamming); // fftshifted
-                LinearAlgebraUtils.wshift(filterVector, (int) -myShift);                      // center at fDC_mean
+                LinearAlgebraUtils.wshift_inplace(filterVector, (int) -myShift);                      // center at fDC_mean
                 filterVector.mmuli(inVerseHamming);
 
             } else {       // no weighting, but center at fDC_mean, size ABW_new
 
                 long myShift = (long) (Math.rint((size * fDC_mean / PRF)));          // round
                 filterVector = WeightWindows.rect(freqAxis.divi((float) ABW_new)); // fftshifted
-                LinearAlgebraUtils.wshift(filterVector, (int) -myShift);                  // center at fDC_mean
+                LinearAlgebraUtils.wshift_inplace(filterVector, (int) -myShift);                  // center at fDC_mean
 
             }
 

@@ -102,7 +102,7 @@ public class PolyUtils {
         DoubleMatrix Qx_hat = Decompose.cholesky(N).transpose();
 
         // get covarinace matrix of normalized unknowns
-        Qx_hat = LinearAlgebraUtils.invertCholesky(Qx_hat); // this could be more efficient
+        Qx_hat = LinearAlgebraUtils.invertChol(Qx_hat); // this could be more efficient
 
         // Test inverse: repair matrix!!
         logger.debug("reparing cholesky decomposed matrix");
@@ -399,7 +399,6 @@ public class PolyUtils {
                         result.put(i, j, polyval(xx, yy, coeff, degree));
                     }
                 }
-
         } // switch degree
 
         return result;
