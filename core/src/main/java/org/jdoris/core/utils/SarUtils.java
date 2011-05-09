@@ -29,25 +29,23 @@ public class SarUtils {
 
         if (inputMatrix.isVector()) {
             logger.error("oversample: only 2d matrices.");
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("oversample: only 2d matrices");
         }
         if (!MathUtils.isPower2(l) && factorRow != 1) {
-            logger.error("oversample: numlines != 2^n.");
-            throw new IllegalArgumentException();
+            logger.error("oversample: numlines != 2^n");
+            throw new IllegalArgumentException("oversample: numlines != 2^n");
         }
         if (!MathUtils.isPower2(p) && factorCol != 1) {
-            logger.error("oversample: numcols != 2^n.");
-            throw new IllegalArgumentException();
+            logger.error("oversample: numcols != 2^n");
+            throw new IllegalArgumentException("oversample: numcols != 2^n");
         }
 
         final ComplexDouble half = new ComplexDouble(0.5);
         ComplexDoubleMatrix outputMatrix = new ComplexDoubleMatrix(L2, P2);
 
-
         final Window winA1;
         final Window winA2;
         final Window winR2;
-
 
         if (factorRow == 1) {
 
@@ -78,7 +76,7 @@ public class SarUtils {
             SpectralUtils.fft_inplace(inputMatrix, 1);
 
             // divide by 2 'cause even fftlength
-            inputMatrix.putRow(halfL, inputMatrix.getRow(halfL).mmuli(half));
+            inputMatrix.putRow(halfL, inputMatrix.getRow(halfL).mmul(half));
 //            for (i=0; i<p; ++i){
 //                A(halfl,i) *= half;
 //            }
@@ -154,10 +152,12 @@ public class SarUtils {
         logger.trace("coherence ver #2");
         if (!(winL >= winP)) {
             logger.debug("coherence: estimator window size L<P not very efficiently programmed.");
+            throw new IllegalArgumentException("coherence: estimator window size L<P not very efficiently programmed.");
         }
 
         if (inputMatrix.rows != norms.rows || inputMatrix.rows != inputMatrix.rows) {
-            logger.debug("coherence2::not same dimensions.");
+            logger.debug("coherence: not same dimensions.");
+            throw new IllegalArgumentException("coherence: not the same dimensions.");
         }
 
         // allocate output :: account for window overlap
@@ -201,7 +201,7 @@ public class SarUtils {
         return outputMatrix;
     }
 
-    // TODO: how fast is this?
+    // TODO: check how fast is this?
     public static ComplexDoubleMatrix multilook(ComplexDoubleMatrix inputMatrix, int factorRow, int factorColumn) {
 
         if (factorRow == 1 && factorColumn == 1) {
@@ -217,14 +217,15 @@ public class SarUtils {
         }
 
         ComplexDouble sum;
-        final ComplexDouble factorLP = new ComplexDouble(factorRow, factorColumn);
+//        final ComplexDouble factorLP = new ComplexDouble(factorRow, factorColumn);
+        final ComplexDouble factorLP = new ComplexDouble(factorRow * factorColumn);
         ComplexDoubleMatrix outputMatrix = new ComplexDoubleMatrix(inputMatrix.rows / factorRow, inputMatrix.columns / factorColumn);
-        for (int i = 0; i < inputMatrix.rows; i++) {
-            for (int j = 0; j < inputMatrix.columns; j++) {
+        for (int i = 0; i < outputMatrix.rows; i++) {
+            for (int j = 0; j < outputMatrix.columns; j++) {
                 sum = new ComplexDouble(0);
                 for (int k = i * factorRow; k < (i + 1) * factorRow; k++) {
                     for (int l = j * factorColumn; l < (j + 1) * factorColumn; l++) {
-                        sum.add(inputMatrix.get(k, l));
+                        sum.addi(inputMatrix.get(k, l));
                     }
                 }
                 outputMatrix.put(i, j, sum.divi(factorLP));
