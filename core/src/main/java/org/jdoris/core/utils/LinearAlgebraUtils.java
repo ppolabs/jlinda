@@ -147,9 +147,31 @@ public class LinearAlgebraUtils {
     }
 
     public static void invertChol_inplace(DoubleMatrix inMatrix) {
-        invertChol_inplace(inMatrix.toArray2());
+        final int numOfRows = inMatrix.rows;
+        double sum;
+        int i, j, k;
+        // Compute inv(L) store in lower of inMatrix
+        for (i = 0; i < numOfRows; ++i) {
+            inMatrix.put(i, i, 1. / inMatrix.get(i, i));
+            for (j = i + 1; j < numOfRows; ++j) {
+                sum = 0.;
+                for (k = i; k < j; ++k) {
+                    sum -= inMatrix.get(j,k) * inMatrix.get(k,i);
+                }
+                inMatrix.put(j, i, sum / inMatrix.get(j, j));
+            }
+        }
+        // Compute inv(inMatrix)=inv(LtL) store in lower of inMatrix
+        for (i = 0; i < numOfRows; ++i) {
+            for (j = i; j < numOfRows; ++j) {
+                sum = 0.;
+                for (k = j; k < numOfRows; ++k) {
+                    sum += inMatrix.get(k,i) * inMatrix.get(k,j);
+                }
+                inMatrix.put(j, i, sum);
+            }
+        }
     }
-
     public static DoubleMatrix invertChol(DoubleMatrix inMatrix) {
         DoubleMatrix outMatrix = inMatrix.dup();
         invertChol_inplace(outMatrix);
@@ -169,7 +191,7 @@ public class LinearAlgebraUtils {
      * B.fliplr()
      * Mirror in center vertical (flip left right).
      */
-    public static void fliplr(DoubleMatrix A) {
+    public static void fliplr_inplace(DoubleMatrix A) {
 
         final int nRows = A.rows;
         final int nCols = A.columns;
@@ -201,35 +223,35 @@ public class LinearAlgebraUtils {
     }
 
     /**
-     * wshift(A,n)                                                  *
-     * circular shift of vector A by n pixels. positive n for    *
-     * right to left shift.                                      *
-     * implementation: WSHIFT(A,n) == WSHIFT(A,n-sizeA);         *
-     * A is changed itself!                                      *
+     * wshift(inVector,n)
+     * circular shift of vector inVector by n slots. positive n for
+     * right to left shift.
+     * implementation: WSHIFT(inVector,n) == WSHIFT(inVector,n-sizeA);
+     * inVector is changed itself!
      */
-    public static void wshift_inplace(DoubleMatrix A, int n) throws Exception {
+    public static void wshift_inplace(DoubleMatrix inVector, int n) throws Exception {
 
-        if (n >= A.length) {
+        if (n >= inVector.length) {
             System.err.println("wshift: shift larger than matrix not implemented.");
-            throw new Exception();
+            throw new IllegalArgumentException("wshift: shift larger than matrix not implemented.");
         }
 
-        if (!A.isVector()) {
-            System.err.println("wshift: only vectors");
-            throw new Exception();
+        if (!inVector.isVector()) {
+            System.err.println("wshift: only vectors supported!");
+            throw new IllegalArgumentException("wshift: only vectors supported!");
         }
 
-        // positive only, use rem!  n = n%A.nsize;
+        // positive only, use rem!  n = n%inVector.nsize;
         if (n == 0) return;
-        if (n < 0) n += A.length;
+        if (n < 0) n += inVector.length;
 
-        DoubleMatrix Res = new DoubleMatrix(A.rows, A.columns);
+        DoubleMatrix Res = new DoubleMatrix(inVector.rows, inVector.columns);
 
         //  n always >0 here
-        System.arraycopy(A.data, n, Res.data, 0, A.length - n);
-        System.arraycopy(A.data, 0, Res.data, A.length - n, n);
+        System.arraycopy(inVector.data, n, Res.data, 0, inVector.length - n);
+        System.arraycopy(inVector.data, 0, Res.data, inVector.length - n, n);
 
-        A.copy(Res);
+        inVector.copy(Res);
 
     }
 
@@ -240,125 +262,203 @@ public class LinearAlgebraUtils {
     }
 
     /**
-     * setdata(B, winB, A, winA):
-     * set winB of B to winA of A
-     * if winB==0 defaults to totalB, winA==0 defaults to totalA
+     * setdata(outMatrix, outWin, inMatrix, inWin):
+     * set outWin of outMatrix to inWin of inMatrix
+     * if outWin==0 defaults to totalB, inWin==0 defaults to totalA
      * first line matrix =0 (?)
      */
-    public static void setdata(DoubleMatrix B, Window winB, DoubleMatrix A, Window winA) {
+    public static void setdata(DoubleMatrix outMatrix, Window outWin, DoubleMatrix inMatrix, Window inWin) {
 
-        // Check default request
-        if (winB.linehi == 0 && winB.pixhi == 0) {
-            winB.linehi = B.rows - 1;
-            winB.pixhi = B.columns - 1;
+        if (outWin.linehi == 0 && outWin.pixhi == 0) {
+            outWin.linehi = outMatrix.rows - 1;
+            outWin.pixhi = outMatrix.columns - 1;
         }
-        if (winA.linehi == 0 && winA.pixhi == 0) {
-            winA.linehi = A.rows - 1;
-            winA.pixhi = A.columns - 1;
+        if (inWin.linehi == 0 && inWin.pixhi == 0) {
+            inWin.linehi = inMatrix.rows - 1;
+            inWin.pixhi = inMatrix.columns - 1;
         }
 
-        // TODO: for now errors only logged, introduce exceptions
-        // More sanity checks
-        if (((winB.linehi - winB.linelo) != (winA.linehi - winA.linelo)) ||
-                ((winB.pixhi - winB.pixlo) != (winA.pixhi - winA.pixlo)))
+        if (((outWin.linehi - outWin.linelo) != (inWin.linehi - inWin.linelo)) ||
+                ((outWin.pixhi - outWin.pixlo) != (inWin.pixhi - inWin.pixlo))) {
             logger.error("setdata: wrong input.");
+            throw new IllegalArgumentException("setdata: wrong input.");
 
-        if (winB.linehi < winB.linelo || winB.pixhi < winB.pixlo)
+        }
+        if (outWin.linehi < outWin.linelo || outWin.pixhi < outWin.pixlo) {
             logger.error("setdata: wrong input.1");
+            throw new IllegalArgumentException("setdata: wrong input.1");
+        }
 
-        if ((winB.linehi > B.rows - 1) ||
-                (winB.pixhi > B.columns - 1))
+        if ((outWin.linehi > outMatrix.rows - 1) ||
+                (outWin.pixhi > outMatrix.columns - 1)) {
             logger.error("setdata: wrong input.2");
+            throw new IllegalArgumentException("setdata: wrong input.2");
+        }
 
-        if ((winA.linehi > A.rows - 1) ||
-                (winA.pixhi > A.columns - 1))
+        if ((inWin.linehi > inMatrix.rows - 1) ||
+                (inWin.pixhi > inMatrix.columns - 1)) {
             logger.error("setdata: wrong input.3");
+            throw new IllegalArgumentException("setdata: wrong input.3");
+        }
 
-        // Fill data
-        int sizeLin = (int) winA.pixels();
-        for (int i = (int) winB.linelo; i <= winB.linehi; i++) {
+        //// Fill data ////
+        int sizeLin = (int) inWin.pixels();
+        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
 
-            int startA = (int) (i * A.columns + winA.pixlo);
-            int startB = (int) (i * B.columns + winB.pixlo);
+            int startIn = (int) (i * inMatrix.columns + inWin.pixlo);
+            int startOut = (int) (i * outMatrix.columns + outWin.pixlo);
 
-            System.arraycopy(A.data, startA, B.data, startB, sizeLin);
+            System.arraycopy(inMatrix.data, startIn, outMatrix.data, startOut, sizeLin);
 
         }
     }
 
-    public static void setdata(ComplexDoubleMatrix B, Window winB, ComplexDoubleMatrix A, Window winA) {
+    public static void setdata(ComplexDoubleMatrix outMatrix, Window outWin, ComplexDoubleMatrix inMatrix, Window inWin) {
 
         // Check default request
-        if (winB.linehi == 0 && winB.pixhi == 0) {
-            winB.linehi = B.rows - 1;
-            winB.pixhi = B.columns - 1;
+        if (outWin.linehi == 0 && outWin.pixhi == 0) {
+            outWin.linehi = outMatrix.rows - 1;
+            outWin.pixhi = outMatrix.columns - 1;
         }
-        if (winA.linehi == 0 && winA.pixhi == 0) {
-            winA.linehi = A.rows - 1;
-            winA.pixhi = A.columns - 1;
+        if (inWin.linehi == 0 && inWin.pixhi == 0) {
+            inWin.linehi = inMatrix.rows - 1;
+            inWin.pixhi = inMatrix.columns - 1;
         }
 
-        // TODO: for now errors only logged, introduce exceptions
-        // More sanity checks
-        if (((winB.linehi - winB.linelo) != (winA.linehi - winA.linelo)) ||
-                ((winB.pixhi - winB.pixlo) != (winA.pixhi - winA.pixlo)))
+        if (((outWin.linehi - outWin.linelo) != (inWin.linehi - inWin.linelo)) ||
+                ((outWin.pixhi - outWin.pixlo) != (inWin.pixhi - inWin.pixlo))) {
             logger.error("setdata: wrong input.");
+            throw new IllegalArgumentException("setdata: wrong input.");
 
-        if (winB.linehi < winB.linelo || winB.pixhi < winB.pixlo)
+        }
+        if (outWin.linehi < outWin.linelo || outWin.pixhi < outWin.pixlo) {
             logger.error("setdata: wrong input.1");
+            throw new IllegalArgumentException("setdata: wrong input.1");
+        }
 
-        if ((winB.linehi > B.rows - 1) ||
-                (winB.pixhi > B.columns - 1))
+        if ((outWin.linehi > outMatrix.rows - 1) ||
+                (outWin.pixhi > outMatrix.columns - 1)) {
             logger.error("setdata: wrong input.2");
+            throw new IllegalArgumentException("setdata: wrong input.2");
+        }
 
-        if ((winA.linehi > A.rows - 1) ||
-                (winA.pixhi > A.columns - 1))
+        if ((inWin.linehi > inMatrix.rows - 1) ||
+                (inWin.pixhi > inMatrix.columns - 1)) {
             logger.error("setdata: wrong input.3");
+            throw new IllegalArgumentException("setdata: wrong input.3");
+        }
 
-        // Fill data
-        int sizeLin = (int) winA.pixels() * 2;
-        for (int i = (int) winB.linelo; i <= winB.linehi; i++) {
+        //// Fill data ////
+        int sizeLin = (int) inWin.pixels() * 2;
+        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
 
-            int startA = (int) (i * A.columns * 2 + winA.pixlo * 2);
-            int startB = (int) (i * B.columns * 2 + winB.pixlo * 2);
+            int startOut = (int) (i * inMatrix.columns * 2 + inWin.pixlo * 2);
+            int startIn = (int) (i * outMatrix.columns * 2 + outWin.pixlo * 2);
 
-            System.arraycopy(A.data, startA, B.data, startB, sizeLin);
+            System.arraycopy(inMatrix.data, startOut, outMatrix.data, startIn, sizeLin);
         }
     }
 
-    public static void setdata(ComplexDoubleMatrix B, ComplexDoubleMatrix A, Window winA) {
-        setdata(B, new Window(0, B.rows, 0, B.columns), A, winA);
+    public static void setdata(ComplexDoubleMatrix outMatrix, ComplexDoubleMatrix inMatrix, Window inWin) {
+        setdata(outMatrix, new Window(0, outMatrix.rows, 0, outMatrix.columns), inMatrix, inWin);
+    }
+
+    public static void setdata(DoubleMatrix outMatrix, DoubleMatrix inMatrix, Window inWin) {
+        //setdata(outMatrix, new Window(0, outMatrix.rows, 0, outMatrix.columns), inMatrix, inWin);
+        setdata(outMatrix, new Window(0, outMatrix.rows - 1, 0, outMatrix.columns - 1), inMatrix, inWin);
     }
 
 
     /**
-     * *************************************************************
-     * choles(A);   cholesky factorisation internal implementation  *
-     * lower triangle of A is changed on output                     *
-     * upper reamins un referenced                                  *
-     * this one is a lot slower then veclib and there may be more   *
-     * efficient implementations.                                   *
-     * **************************************************************
+     * choles(inMatrix);   cholesky factorisation internal implementation
+     * lower triangle of inMatrix is changed on output
+     * upper reamins un referenced
+     * this one is a lot slower then veclib and there may be more
+     * efficient implementations.
      */
-    public static void choles_inplace(double[][] A) {
-        final int N = A.length;
+    public static void chol_inplace(double[][] inMatrix) {
+        final int N = inMatrix.length;
         double sum;
         for (int i = 0; i < N; ++i) {
             for (int j = i; j < N; ++j) {
-                sum = A[i][j];
+                sum = inMatrix[i][j];
                 for (int k = i - 1; k >= 0; --k) {
-                    sum -= A[i][k] * A[j][k];
+                    sum -= inMatrix[i][k] * inMatrix[j][k];
                 }
                 if (i == j) {
                     if (sum <= 0.) {
-                        logger.error("choles: internal: A not pos. def.");
+                        logger.error("choles: internal: inMatrix not pos. def.");
                     }
-                    A[i][i] = Math.sqrt(sum);
+                    inMatrix[i][i] = Math.sqrt(sum);
                 } else {
-                    A[j][i] = sum / A[i][i];
+                    inMatrix[j][i] = sum / inMatrix[i][i];
                 }
             }
         }
     }
 
+    public static void chol_inplace(DoubleMatrix inMatrix) {
+        final int N = inMatrix.rows;
+        double sum;
+        for (int i = 0; i < N; ++i) {
+            for (int j = i; j < N; ++j) {
+                sum = inMatrix.get(i,j);
+                for (int k = i - 1; k >= 0; --k) {
+                    sum -= inMatrix.get(i,k) * inMatrix.get(j,k);
+                }
+                if (i == j) {
+                    if (sum <= 0.) {
+                        logger.error("choles: internal: inMatrix not pos. def.");
+                    }
+                    inMatrix.put(i, i, Math.sqrt(sum));
+                } else {
+                    inMatrix.put(j, i, sum / inMatrix.get(i, i));
+                }
+            }
+        }
+    }
+
+    // TODO: new invert() _wrapper_ methods, to be documented and unit tested
+    public static void invert_inplace(double[][] inMatrix) {
+        chol_inplace(inMatrix);
+        invertChol_inplace(inMatrix);
+        arrangeCholesky_inplace(inMatrix);
+    }
+
+    public static double[][] invert(double[][] inMatrix) {
+        double[][] outMatrix = inMatrix.clone();
+        invert_inplace(outMatrix);
+        return outMatrix;
+    }
+
+    public static void invert_inplace(DoubleMatrix inMatrix) {
+        chol_inplace(inMatrix);
+        invertChol_inplace(inMatrix);
+        arrangeCholesky_inplace(inMatrix);
+    }
+
+    public static DoubleMatrix invert(DoubleMatrix inMatrix) {
+        DoubleMatrix outMatrix = inMatrix.dup();
+        invert_inplace(outMatrix);
+        return outMatrix;
+    }
+
+
+    public static void arrangeCholesky_inplace(DoubleMatrix inMatrix) {
+        // assume squared
+        for (int i = 0; i < inMatrix.rows; i++) {
+            for (int j = 0; j < i; j++) {
+                inMatrix.put(j, i, inMatrix.get(i, j));
+            }
+        }
+    }
+
+    // assume squared
+    public static void arrangeCholesky_inplace(double[][] inArray) {
+        for (int i = 0; i < inArray.length; i++) {
+            for (int j = 0; j < i; j++) {
+                inArray[j][i] = inArray[i][j];
+            }
+        }
+    }
 }

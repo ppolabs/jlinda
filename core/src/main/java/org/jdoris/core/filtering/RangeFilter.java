@@ -214,11 +214,11 @@ public class RangeFilter {
             ComplexDoubleMatrix filterComplex = new ComplexDoubleMatrix(filter);
             if (!negShift) {
                 LinearAlgebraUtils.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
-                LinearAlgebraUtils.fliplr(filter);
+                LinearAlgebraUtils.fliplr_inplace(filter);
                 LinearAlgebraUtils.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
             } else {
                 LinearAlgebraUtils.dotmult(slaveDataBlock.getRow((int) outLine), filterComplex);
-                LinearAlgebraUtils.fliplr(filter);
+                LinearAlgebraUtils.fliplr_inplace(filter);
                 LinearAlgebraUtils.dotmult(masterDataBlock.getRow((int) outLine), filterComplex);
             }
 
