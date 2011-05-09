@@ -156,7 +156,7 @@ public class LinearAlgebraUtils {
             for (j = i + 1; j < numOfRows; ++j) {
                 sum = 0.;
                 for (k = i; k < j; ++k) {
-                    sum -= inMatrix.get(j,k) * inMatrix.get(k,i);
+                    sum -= inMatrix.get(j, k) * inMatrix.get(k, i);
                 }
                 inMatrix.put(j, i, sum / inMatrix.get(j, j));
             }
@@ -166,12 +166,13 @@ public class LinearAlgebraUtils {
             for (j = i; j < numOfRows; ++j) {
                 sum = 0.;
                 for (k = j; k < numOfRows; ++k) {
-                    sum += inMatrix.get(k,i) * inMatrix.get(k,j);
+                    sum += inMatrix.get(k, i) * inMatrix.get(k, j);
                 }
                 inMatrix.put(j, i, sum);
             }
         }
     }
+
     public static DoubleMatrix invertChol(DoubleMatrix inMatrix) {
         DoubleMatrix outMatrix = inMatrix.dup();
         invertChol_inplace(outMatrix);
@@ -303,7 +304,9 @@ public class LinearAlgebraUtils {
 
         //// Fill data ////
         int sizeLin = (int) inWin.pixels();
-        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
+//        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
+        for (int i = 0; i <= outWin.lines() - 1; i++) {
+
 
             int startIn = (int) (i * inMatrix.columns + inWin.pixlo);
             int startOut = (int) (i * outMatrix.columns + outWin.pixlo);
@@ -350,12 +353,13 @@ public class LinearAlgebraUtils {
 
         //// Fill data ////
         int sizeLin = (int) inWin.pixels() * 2;
-        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
+//        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
+        for (int i = 0; i <= outWin.lines() - 1; i++) {
 
-            int startOut = (int) (i * inMatrix.columns * 2 + inWin.pixlo * 2);
-            int startIn = (int) (i * outMatrix.columns * 2 + outWin.pixlo * 2);
+            int startIn = (int) (i * inMatrix.columns * 2 + inWin.pixlo * 2);
+            int startOut = (int) (i * outMatrix.columns * 2 + outWin.pixlo * 2);
 
-            System.arraycopy(inMatrix.data, startOut, outMatrix.data, startIn, sizeLin);
+            System.arraycopy(inMatrix.data, startIn, outMatrix.data, startOut, sizeLin);
         }
     }
 
@@ -402,9 +406,9 @@ public class LinearAlgebraUtils {
         double sum;
         for (int i = 0; i < N; ++i) {
             for (int j = i; j < N; ++j) {
-                sum = inMatrix.get(i,j);
+                sum = inMatrix.get(i, j);
                 for (int k = i - 1; k >= 0; --k) {
-                    sum -= inMatrix.get(i,k) * inMatrix.get(j,k);
+                    sum -= inMatrix.get(i, k) * inMatrix.get(j, k);
                 }
                 if (i == j) {
                     if (sum <= 0.) {
