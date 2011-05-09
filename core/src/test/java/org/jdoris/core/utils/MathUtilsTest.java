@@ -1,7 +1,9 @@
 package org.jdoris.core.utils;
 
+import org.jblas.DoubleMatrix;
 import org.jdoris.core.Window;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -19,6 +21,13 @@ public class MathUtilsTest {
     final static double VALUE = 2;
     final static double EXPONENT = 2;
     final static double DELTA = Math.pow(10, -6);
+
+    /// for RAMP ///
+    static int nRows;
+    static int nCols;
+    static double[] ramp_1D_EXPECTED;
+    static DoubleMatrix ramp_2D_EXPECTED;
+
 
 
     /// DISTRIBUTION ///
@@ -120,6 +129,43 @@ public class MathUtilsTest {
     public void testSqrt() throws Exception {
         Assert.assertEquals(Math.sqrt(VALUE), MathUtils.sqrt(VALUE), DELTA);
     }
+
+
+    @Test
+    public void testLying() throws Exception{
+        DoubleMatrix inMatrix = DoubleMatrix.ones(2, 2);
+        DoubleMatrix lying_EXPECTED = DoubleMatrix.ones(1, 4);
+
+        Assert.assertEquals(lying_EXPECTED, MathUtils.lying(inMatrix));
+
+        // redefine inputMatrix to test vectors
+        inMatrix = DoubleMatrix.ones(4, 1);
+        Assert.assertEquals(lying_EXPECTED, MathUtils.lying(inMatrix));
+
+    }
+
+
+
+    @Before
+    public void setUpTestDataForRamp() {
+
+        nRows = 5;
+        nCols = 5;
+
+        ramp_1D_EXPECTED = increment_1D_EXPECTED.clone();
+        ramp_2D_EXPECTED = new DoubleMatrix(nRows, nCols);
+        for (int i = 0; i < nRows; i++) {
+            ramp_2D_EXPECTED.putRow(i, new DoubleMatrix(ramp_1D_EXPECTED));
+        }
+    }
+
+    @Test
+    public void testRamp() throws Exception {
+
+        DoubleMatrix ramp_2D_ACTUAL = MathUtils.ramp(nRows, nCols);
+        Assert.assertEquals(ramp_2D_EXPECTED, ramp_2D_ACTUAL);
+    }
+
 
 
 }

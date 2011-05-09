@@ -1,5 +1,6 @@
 package org.jdoris.core.utils;
 
+import org.jblas.DoubleMatrix;
 import org.jdoris.core.Constants;
 import org.jdoris.core.Window;
 
@@ -87,6 +88,19 @@ public class MathUtils {
             }
         }
         return array;
+    }
+
+    // TODO: move to simulation package
+    // generates unit ramp (left to right)
+    public static DoubleMatrix ramp(final int nRows, final int nColumns) {
+        // Ramp generation (to easy for function?)
+        final double maxHeight = 1;
+        return DoubleMatrix.ones(nRows, 1).mmul(lying(new DoubleMatrix(increment(nColumns, 0, maxHeight / (nColumns - 1)))));
+    }
+
+    // lying vector (vectorize)
+    public static DoubleMatrix lying(DoubleMatrix inMatrix) {
+        return new DoubleMatrix(inMatrix.toArray()).transpose();
     }
 
 
