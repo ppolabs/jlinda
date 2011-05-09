@@ -17,10 +17,10 @@ public class FlatBinaryTest {
     public static void setupTestData() throws Exception {
 
         testDataRectangle = new Rectangle(123, 321);
-        testData = new double[testDataRectangle.width][testDataRectangle.height];
+        testData = new double[testDataRectangle.height][testDataRectangle.width];
 
-        for (int i = 0; i < testDataRectangle.width; i++) {
-            for (int j = 0; j < testDataRectangle.height; j++) {
+        for (int i = 0; i < testDataRectangle.height; i++) {
+            for (int j = 0; j < testDataRectangle.width; j++) {
                 testData[i][j] = Math.random();
             }
         }
@@ -69,8 +69,7 @@ public class FlatBinaryTest {
         flatBinaryRead.setInStream();
         flatBinaryRead.readDoubleFromStream();
 
-        Assert.assertArrayEquals(flatBinaryRead.data,testData);
-
+        Assert.assertArrayEquals(flatBinaryRead.data, testData);
     }
 
     @Ignore

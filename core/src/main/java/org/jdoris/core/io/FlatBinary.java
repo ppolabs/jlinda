@@ -43,9 +43,9 @@ public class FlatBinary {
     }
 
     public void readDoubleFromStream() throws FileNotFoundException {
-        data = new double[dimensions.width][dimensions.height];
-        for (int i = 0; i < dimensions.width; i++) {
-            for (int j = 0; j < dimensions.height; j++) {
+        data = new double[dimensions.height][dimensions.width];
+        for (int i = 0; i < dimensions.height; i++) {
+            for (int j = 0; j < dimensions.width; j++) {
                 try {
                     data[i][j] = inStream.readDouble();
                 } catch (IOException e) {
@@ -57,10 +57,12 @@ public class FlatBinary {
     }
 
     public void writeDoubleToStream() throws FileNotFoundException {
-        for (int i = 0; i < dimensions.width; i++) {
-            for (int j = 0; j < dimensions.height; j++) {
+        for (int i = 0; i < dimensions.height; i++) {
+            for (int j = 0; j < dimensions.width; j++) {
                 try {
+//                    outStream.writeLong(Double.doubleToLongBits(data[i][j]));
                     outStream.writeDouble(data[i][j]);
+//                    System.out.println("data[" + i + "]" + "[" + j + "]:  " + data[i][j]);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
