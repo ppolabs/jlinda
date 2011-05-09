@@ -1,34 +1,31 @@
 package org.jdoris.core.io;
 
+import org.jdoris.core.Window;
 import org.junit.*;
 
-import java.awt.*;
 import java.io.File;
 
 public class FlatBinaryTest {
 
     private static FlatBinary flatBinaryRead;
     private static FlatBinary flatBinaryWrite;
-    private static Rectangle testDataRectangle;
 
     private static double[][] testData;
+    private static Window testDataWindow;
 
     @BeforeClass
     public static void setupTestData() throws Exception {
 
-        testDataRectangle = new Rectangle(123, 321);
-        testData = new double[testDataRectangle.height][testDataRectangle.width];
+        testDataWindow = new Window(0, 123, 0, 321);
+        int lines = (int) testDataWindow.lines() - 1;
+        int pixels = (int) testDataWindow.pixels() - 1;
 
-        for (int i = 0; i < testDataRectangle.height; i++) {
-            for (int j = 0; j < testDataRectangle.width; j++) {
-                testData[i][j] = Math.random();
-            }
-        }
+        testData = new double[lines][pixels];
 
         flatBinaryRead = new FlatBinary();
         flatBinaryWrite = new FlatBinary();
 
-        flatBinaryRead.setFile(new File("test.in"));
+//        flatBinaryRead.setFile(new File("test.in"));
         flatBinaryWrite.setFile(new File("test.out"));
 
         flatBinaryWrite.setOutStream();
@@ -60,25 +57,25 @@ public class FlatBinaryTest {
     @Test
     public void testWritingReadingData() throws Exception {
 
-        flatBinaryWrite.setDimensions(new Rectangle(testDataRectangle));
+        flatBinaryWrite.setDataWindow(new Window(testDataWindow));
         flatBinaryWrite.setData(testData);
         flatBinaryWrite.writeDoubleToStream();
 
         flatBinaryRead.setFile(flatBinaryWrite.file);
-        flatBinaryRead.setDimensions(new Rectangle(testDataRectangle));
+        flatBinaryRead.setDataWindow(new Window(testDataWindow));
         flatBinaryRead.setInStream();
         flatBinaryRead.readDoubleFromStream();
 
-        Assert.assertArrayEquals(flatBinaryRead.data, testData);
+        Assert.assertArrayEquals(testData, flatBinaryRead.data);
     }
 
-    @Ignore
-    @Test
-    public void testCanRead() throws Exception {
-    }
-
-    @Ignore
-    @Test
-    public void testCanWrite() throws Exception {
-    }
+//    @Ignore
+//    @Test
+//    public void testCanRead() throws Exception {
+//    }
+//
+//    @Ignore
+//    @Test
+//    public void testCanWrite() throws Exception {
+//    }
 }

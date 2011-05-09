@@ -1,8 +1,8 @@
 package org.jdoris.core.io;
 
 import org.apache.log4j.Logger;
+import org.jdoris.core.Window;
 
-import java.awt.*;
 import java.io.*;
 
 public class FlatBinary {
@@ -12,14 +12,13 @@ public class FlatBinary {
     File file;
     String format;
     long sizeBytes;
-    Rectangle dimensions;
+    Window dataWindow;
     DataOutputStream outStream;
     DataInputStream inStream;
 
     public double[][] data;
 
     public FlatBinary() {
-
     }
 
     public boolean checkExists() {
@@ -43,9 +42,11 @@ public class FlatBinary {
     }
 
     public void readDoubleFromStream() throws FileNotFoundException {
-        data = new double[dimensions.height][dimensions.width];
-        for (int i = 0; i < dimensions.height; i++) {
-            for (int j = 0; j < dimensions.width; j++) {
+        int lines = (int) dataWindow.lines() - 1;
+        int pixels = (int) dataWindow.pixels() - 1;
+        data = new double[lines][pixels];
+        for (int i = 0; i < lines; i++) {
+            for (int j = 0; j < pixels; j++) {
                 try {
                     data[i][j] = inStream.readDouble();
                 } catch (IOException e) {
@@ -57,12 +58,12 @@ public class FlatBinary {
     }
 
     public void writeDoubleToStream() throws FileNotFoundException {
-        for (int i = 0; i < dimensions.height; i++) {
-            for (int j = 0; j < dimensions.width; j++) {
+        int lines = (int) dataWindow.lines() - 1;
+        int pixels = (int) dataWindow.pixels() - 1;
+        for (int i = 0; i < lines; i++) {
+            for (int j = 0; j < pixels; j++) {
                 try {
-//                    outStream.writeLong(Double.doubleToLongBits(data[i][j]));
                     outStream.writeDouble(data[i][j]);
-//                    System.out.println("data[" + i + "]" + "[" + j + "]:  " + data[i][j]);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -108,7 +109,7 @@ public class FlatBinary {
         sb.append("{file=").append(file.getAbsoluteFile());
         sb.append(", format='").append(format).append('\'');
         sb.append(", sizeBytes=").append(sizeBytes);
-        sb.append(", dimensions=").append(dimensions);
+        sb.append(", dimensions=").append(dataWindow.toString());
         sb.append('}');
         return sb.toString();
     }
@@ -121,7 +122,7 @@ public class FlatBinary {
         FlatBinary that = (FlatBinary) o;
 
         if (sizeBytes != that.sizeBytes) return false;
-        if (dimensions != null ? !dimensions.equals(that.dimensions) : that.dimensions != null) return false;
+        if (dataWindow != null ? !dataWindow.equals(that.dataWindow) : that.dataWindow != null) return false;
         if (file != null ? !file.equals(that.file) : that.file != null) return false;
         if (format != null ? !format.equals(that.format) : that.format != null) return false;
 
@@ -133,7 +134,7 @@ public class FlatBinary {
         int result = file != null ? file.hashCode() : 0;
         result = 31 * result + (format != null ? format.hashCode() : 0);
         result = 31 * result + (int) (sizeBytes ^ (sizeBytes >>> 32));
-        result = 31 * result + (dimensions != null ? dimensions.hashCode() : 0);
+        result = 31 * result + (dataWindow != null ? dataWindow.hashCode() : 0);
         return result;
     }
 
@@ -153,8 +154,8 @@ public class FlatBinary {
         this.sizeBytes = sizeBytes;
     }
 
-    public void setDimensions(Rectangle dimensions) {
-        this.dimensions = dimensions;
+    public void setDataWindow(Window window) {
+        this.dataWindow = window;
     }
 
     public File getFile() {
@@ -169,8 +170,8 @@ public class FlatBinary {
         return sizeBytes;
     }
 
-    public Rectangle getDimensions() {
-        return dimensions;
+    public Window getDataWindow() {
+        return dataWindow;
     }
 
 }
