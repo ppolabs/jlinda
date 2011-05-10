@@ -122,7 +122,7 @@ public class RangeFilter {
             inverseHamming = doHamming(RSR, RBW, alphaHamming, numPixs, freqAxis);
         }
 
-        // COMPUTE CPLX IFG ON THE FLY -> power
+        //// COMPUTE CPLX IFG ON THE FLY -> power ////
         ComplexDoubleMatrix cplxIfg;
         if (doOversampleFlag) {
             cplxIfg = computeOvsIfg(masterDataBlock, slaveDataBlock, (int) ovsFactor);
@@ -132,8 +132,9 @@ public class RangeFilter {
 
         long fftLength = cplxIfg.columns;
 
-        logger.debug("is real4 accurate enough?");// seems so
+        logger.debug("is real4 accurate enough? it seems so!");
 
+        // inplace
         SpectralUtils.fft(cplxIfg, 2);                          // cplxIfg = fft over rows
         DoubleMatrix power = SarUtils.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
 
@@ -146,14 +147,15 @@ public class RangeFilter {
         }
 
         // Average power to reduce noise
+        // inplace
         SpectralUtils.fft(masterDataBlock, 2); // fft.ing over rows
         SpectralUtils.fft(slaveDataBlock, 2);
         logger.trace("Took FFT over rows of master, slave.");
 
         DoubleMatrix nlMeanPower = computeNlMeanPower(nlmean, fftLength, power);
 
-        long shift = 0;                          // returned by max
-        long dummy = 0;                          // returned by max
+        long shift = 0;   // returned by max
+        long dummy = 0;   // returned by max
         meanSNR = 0.;
         double meanShift = 0.;
 
@@ -198,7 +200,7 @@ public class RangeFilter {
                         freqAxis.subi(0.5 * shift * deltaF),
                         RBW - (shift * deltaF),
                         RSR, alphaHamming);
-                filter.mmul(inverseHamming);
+                filter.mmuli(inverseHamming);
             } else { // no weighting of spectra
                 // filter is fftshifted
                 filter = WeightWindows.myrect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
@@ -306,6 +308,8 @@ public class RangeFilter {
 
     private static DoubleMatrix doHamming(float RSR, float RBW, float alphaHamming, long numPixs, DoubleMatrix freqAxis) throws Exception {
         DoubleMatrix inverseHamming = WeightWindows.myhamming(freqAxis, RBW, RSR, alphaHamming);
+        // TODO: use more advanced JBLAS calls -- non-zero element indices
+        // e.g. int[] nonZeroIndices = inverseHamming.findIndices();
         for (int i = 0; i < numPixs; ++i)
             if (inverseHamming.get(0, i) != 0.)
                 inverseHamming.put(0, i, 1. / inverseHamming.get(0, i));
