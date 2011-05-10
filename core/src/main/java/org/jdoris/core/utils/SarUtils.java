@@ -14,6 +14,7 @@ public class SarUtils {
     static Logger logger = Logger.getLogger(SarUtils.class.getName());
 
     /**
+     * HARMONIC INTERPOLATION
      * B=oversample(A, factorrow, factorcol);
      * 2 factors possible, extrapolation at end.
      * no vectors possible.
@@ -24,8 +25,8 @@ public class SarUtils {
         final int p = inputMatrix.columns;
         final int halfL = l / 2;
         final int halfP = p / 2;
-        final int L2 = factorRow * l;      // numrows of output matrix
-        final int P2 = factorCol * p;      // columns of output matrix
+        final int L2 = factorRow * l;  // numRows of output matrix
+        final int P2 = factorCol * p;  // columns of output matrix
 
         if (inputMatrix.isVector()) {
             logger.error("oversample: only 2d matrices.");
@@ -40,23 +41,28 @@ public class SarUtils {
             throw new IllegalArgumentException("oversample: numcols != 2^n");
         }
 
+        if (factorRow == 1 && factorCol == 1) {
+            logger.info("oversample: both azimuth and range oversampling factors equal to 1!");
+            logger.info("oversample: returning inputMatrix!");
+            return inputMatrix;
+        }
+
         final ComplexDouble half = new ComplexDouble(0.5);
-        ComplexDoubleMatrix outputMatrix = new ComplexDoubleMatrix(L2, P2);
+        ComplexDoubleMatrix returnMatrix = new ComplexDoubleMatrix(L2, P2);
 
         final Window winA1;
         final Window winA2;
         final Window winR2;
 
+        ComplexDoubleMatrix tempMatrix;
         if (factorRow == 1) {
 
             // 1d fourier transform per row
-            SpectralUtils.fft_inplace(inputMatrix, 2);
+            tempMatrix = SpectralUtils.fft(inputMatrix, 2);
 
+            // TODO: check this
             // divide by 2 because even fftlength
-            inputMatrix.putColumn(halfP, inputMatrix.getColumn(halfP).mmuli(half));
-//            for (i=0; i<l; ++i) {
-//                A.put(i, halfp, A.get(i, halfp).mul(half));
-//            }
+            tempMatrix.putColumn(halfP, tempMatrix.getColumn(halfP).mmuli(half));
 
             // zero padding windows
             winA1 = new Window(0, l - 1, 0, halfP);
@@ -64,34 +70,34 @@ public class SarUtils {
             winR2 = new Window(0, l - 1, P2 - halfP, P2 - 1);
 
             // prepare data
-            LinearAlgebraUtils.setdata(outputMatrix, winA1, inputMatrix, winA1);
-            LinearAlgebraUtils.setdata(outputMatrix, winR2, inputMatrix, winA2);
+            LinearAlgebraUtils.setdata(returnMatrix, winA1, tempMatrix, winA1);
+            LinearAlgebraUtils.setdata(returnMatrix, winR2, tempMatrix, winA2);
 
             // inverse fft per row
-            SpectralUtils.fft_inplace(outputMatrix, 2);
+            SpectralUtils.invfft_inplace(returnMatrix, 2);
 
         } else if (factorCol == 1) {
 
             // 1d fourier transform per column
-            SpectralUtils.fft_inplace(inputMatrix, 1);
+            tempMatrix = SpectralUtils.fft(inputMatrix, 1);
 
             // divide by 2 'cause even fftlength
-            inputMatrix.putRow(halfL, inputMatrix.getRow(halfL).mmul(half));
+            tempMatrix.putRow(halfL, tempMatrix.getRow(halfL).mmul(half));
 //            for (i=0; i<p; ++i){
 //                A(halfl,i) *= half;
 //            }
 
             // zero padding windows
             winA1 = new Window(0, halfL, 0, p - 1);
-            winA2 = new Window(halfL, l - 1, 0, p - 1);
             winR2 = new Window(L2 - halfL, L2 - 1, 0, p - 1);
+            winA2 = new Window(halfL, l - 1, 0, p - 1);
 
             // prepare data
-            LinearAlgebraUtils.setdata(outputMatrix, winA1, inputMatrix, winA1);
-            LinearAlgebraUtils.setdata(outputMatrix, winR2, inputMatrix, winA2);
+            LinearAlgebraUtils.setdata(returnMatrix, winA1, tempMatrix, winA1);
+            LinearAlgebraUtils.setdata(returnMatrix, winR2, tempMatrix, winA2);
 
             // inverse fft per row
-            SpectralUtils.fft_inplace(outputMatrix, 1);
+            SpectralUtils.invfft_inplace(returnMatrix, 1);
 
         } else {
 
@@ -102,11 +108,11 @@ public class SarUtils {
             Window winR4;
 
             // A=fft2d(A)
-            SpectralUtils.fft2D_inplace(inputMatrix);
+            tempMatrix = SpectralUtils.fft2D(inputMatrix);
 
             // divide by 2 'cause even fftlength
-            inputMatrix.putColumn(halfP, inputMatrix.getColumn(halfP).mmuli(half));
-            inputMatrix.putRow(halfL, inputMatrix.getRow(halfL).mmuli(half));
+            tempMatrix.putColumn(halfP, tempMatrix.getColumn(halfP).mmuli(half));
+            tempMatrix.putRow(halfL, tempMatrix.getRow(halfL).mmuli(half));
 //            for (i=0; i<l; ++i) {
 //                A(i,halfp) *= half;
 //            }
@@ -124,30 +130,30 @@ public class SarUtils {
             winR4 = new Window(L2 - halfL, L2 - 1, P2 - halfP, P2 - 1);
 
             // prepare data
-            LinearAlgebraUtils.setdata(outputMatrix, winA1, inputMatrix, winA1);
-            LinearAlgebraUtils.setdata(outputMatrix, winR2, inputMatrix, winA2);
-            LinearAlgebraUtils.setdata(outputMatrix, winR3, inputMatrix, winA3);
-            LinearAlgebraUtils.setdata(outputMatrix, winR4, inputMatrix, winA4);
+            LinearAlgebraUtils.setdata(returnMatrix, winA1, tempMatrix, winA1);
+            LinearAlgebraUtils.setdata(returnMatrix, winR2, tempMatrix, winA2);
+            LinearAlgebraUtils.setdata(returnMatrix, winR3, tempMatrix, winA3);
+            LinearAlgebraUtils.setdata(returnMatrix, winR4, tempMatrix, winA4);
 
             // inverse back in 2d
-            SpectralUtils.invfft2D_inplace(outputMatrix);
+            SpectralUtils.invfft2D_inplace(returnMatrix);
         }
 
         // scale
-        outputMatrix.mmuli((double) (factorRow * factorCol));
-        return outputMatrix;
+        returnMatrix.mmuli((double) (factorRow * factorCol));
+        return returnMatrix;
 
     }
 
-    public static DoubleMatrix intensity(ComplexDoubleMatrix inputMatrix) {
+    public static DoubleMatrix intensity(final ComplexDoubleMatrix inputMatrix) {
         return pow(inputMatrix.real(), 2).add(pow(inputMatrix.imag(), 2));
     }
 
-    public static DoubleMatrix magnitude(ComplexDoubleMatrix inputMatrix) {
+    public static DoubleMatrix magnitude(final ComplexDoubleMatrix inputMatrix) {
         return sqrt(intensity(inputMatrix));
     }
 
-    public static ComplexDoubleMatrix coherence(ComplexDoubleMatrix inputMatrix, ComplexDoubleMatrix norms, final int winL, final int winP) {
+    public static ComplexDoubleMatrix coherence(final ComplexDoubleMatrix inputMatrix, final ComplexDoubleMatrix norms, final int winL, final int winP) {
 
         logger.trace("coherence ver #2");
         if (!(winL >= winP)) {
@@ -202,7 +208,7 @@ public class SarUtils {
     }
 
     // TODO: check how fast is this?
-    public static ComplexDoubleMatrix multilook(ComplexDoubleMatrix inputMatrix, int factorRow, int factorColumn) {
+    public static ComplexDoubleMatrix multilook(final ComplexDoubleMatrix inputMatrix, final int factorRow, final int factorColumn) {
 
         if (factorRow == 1 && factorColumn == 1) {
             return inputMatrix;
@@ -228,7 +234,7 @@ public class SarUtils {
                         sum.addi(inputMatrix.get(k, l));
                     }
                 }
-                outputMatrix.put(i, j, sum.divi(factorLP));
+                outputMatrix.put(i, j, sum.div(factorLP));
             }
         }
         return outputMatrix;

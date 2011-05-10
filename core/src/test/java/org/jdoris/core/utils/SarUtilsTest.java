@@ -2,12 +2,12 @@ package org.jdoris.core.utils;
 
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
+import org.jdoris.core.Window;
 import org.jdoris.core.io.FlatBinary;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 
@@ -16,8 +16,8 @@ import static org.jblas.MatrixFunctions.sin;
 
 public class SarUtilsTest {
 
-    static int nRows = 100;
-    static int nCols = 200;
+    static int nRows = 128;
+    static int nCols = 256;
 
     static DoubleMatrix phaseMatrix;
     static DoubleMatrix magMatrix;
@@ -26,6 +26,7 @@ public class SarUtilsTest {
     static ComplexDoubleMatrix temp1;
     private static final double DELTA = 1e-08;
 
+    // TODO: make unit tests more systematic and robust, setdata tests are _leaking_
 
     @Before
     public void setUpMultilookTestData() {
@@ -43,33 +44,79 @@ public class SarUtilsTest {
 
     @Test
     public void testMultilook() throws Exception {
-        ComplexDoubleMatrix cpxData_ml_ACTUAL = SarUtils.multilook(cplxData, 5, 5);
-        DoubleMatrix cpxData_ml_real_EXPECTED = setData("/d2/test_real.out", cpxData_ml_ACTUAL.rows, cpxData_ml_ACTUAL.columns);
-        DoubleMatrix cpxData_ml_imag_EXPECTED = setData("/d2/test_imag.out", cpxData_ml_ACTUAL.rows, cpxData_ml_ACTUAL.columns);
-        ComplexDoubleMatrix cpxData_ml_EXPECTED = new ComplexDoubleMatrix(cpxData_ml_real_EXPECTED, cpxData_ml_imag_EXPECTED);
 
-        Assert.assertArrayEquals(cpxData_ml_ACTUAL.real().toArray(), cpxData_ml_ACTUAL.real().toArray(), DELTA);
-        Assert.assertArrayEquals(cpxData_ml_ACTUAL.imag().toArray(), cpxData_ml_ACTUAL.imag().toArray(), DELTA);
+        // TODO: make test files someplace reasonable
+        ComplexDoubleMatrix cplxData_ml_ACTUAL = SarUtils.multilook(cplxData, 5, 5);
+        ComplexDoubleMatrix cplxData_ml_EXPECTED = readCplxData("/d2/simulation_mlook55_testdata.out", cplxData_ml_ACTUAL.rows, cplxData_ml_ACTUAL.columns);
+        Assert.assertEquals(cplxData_ml_EXPECTED, cplxData_ml_ACTUAL);
+    }
 
+    @Test
+    public void testOversample12() throws Exception {
+        ComplexDoubleMatrix cplxData_ovsmp_12_ACTUAL = SarUtils.oversample(cplxData, 1, 2);
+        ComplexDoubleMatrix cplxData_ovsmp_12_EXPECTED = readCplxData("/d2/simulation_ovsmp12_testdata.out", cplxData_ovsmp_12_ACTUAL.rows, cplxData_ovsmp_12_ACTUAL.columns);
+        Assert.assertEquals(cplxData_ovsmp_12_EXPECTED, cplxData_ovsmp_12_ACTUAL);
+//        System.out.println("cplxData_ovsmp_22_ACTUAL.toString() = " + cplxData_ovsmp_12_ACTUAL.toString());
+//        System.out.println("cplxData_ovsmp_22_EXPECTED.toString() = " + cplxData_ovsmp_12_EXPECTED.toString());
 
     }
 
-    private void dumpData(double[][] data, String fileName, int rows, int columns) throws FileNotFoundException {
-        FlatBinary outRealFile = new FlatBinary();
-        outRealFile.setFile(new File(fileName));
-        outRealFile.setDimensions(new Rectangle(columns, rows));
-        outRealFile.setOutStream();
-        outRealFile.setData(data);
-        outRealFile.writeDoubleToStream();
+    @Test
+    public void testOversample21() throws Exception {
+        ComplexDoubleMatrix cplxData_ovsmp_21_ACTUAL = SarUtils.oversample(cplxData, 2, 1);
+        ComplexDoubleMatrix cplxData_ovsmp_21_EXPECTED = readCplxData("/d2/simulation_ovsmp21_testdata.out", cplxData_ovsmp_21_ACTUAL.rows, cplxData_ovsmp_21_ACTUAL.columns);
+        Assert.assertEquals(cplxData_ovsmp_21_EXPECTED, cplxData_ovsmp_21_ACTUAL);
     }
 
-    private DoubleMatrix setData(String fileName, int rows, int columns) throws FileNotFoundException {
-        FlatBinary outRealFile = new FlatBinary();
-        outRealFile.setFile(new File(fileName));
-        outRealFile.setDimensions(new Rectangle(columns, rows));
-        outRealFile.setInStream();
-        outRealFile.readDoubleFromStream();
-        return new DoubleMatrix(outRealFile.data);
+    @Test
+    public void testOversample22() throws Exception {
+//        long startTime = System.currentTimeMillis();
+        ComplexDoubleMatrix cplxData_ovsmp_22_ACTUAL = SarUtils.oversample(cplxData, 2, 2);
+//        long endTime = System.currentTimeMillis();
+//        System.out.println("endTime = " + ((endTime - startTime)));
+        ComplexDoubleMatrix cplxData_ovsmp_22_EXPECTED = readCplxData("/d2/simulation_ovsmp22_testdata.out", cplxData_ovsmp_22_ACTUAL.rows, cplxData_ovsmp_22_ACTUAL.columns);
+        Assert.assertEquals(cplxData_ovsmp_22_EXPECTED, cplxData_ovsmp_22_ACTUAL);
+    }
+
+    @Test
+    public void testOversample33() throws Exception {
+//        long startTime = System.currentTimeMillis();
+        ComplexDoubleMatrix cplxData_ovsmp_33_ACTUAL = SarUtils.oversample(cplxData, 3, 3);
+//        long endTime = System.currentTimeMillis();
+//        System.out.println("endTime = " + ((endTime - startTime)));
+        ComplexDoubleMatrix cplxData_ovsmp_33_EXPECTED = readCplxData("/d2/simulation_ovsmp33_testdata.out", cplxData_ovsmp_33_ACTUAL.rows, cplxData_ovsmp_33_ACTUAL.columns);
+        Assert.assertEquals(cplxData_ovsmp_33_EXPECTED, cplxData_ovsmp_33_ACTUAL);
+    }
+
+    private ComplexDoubleMatrix readCplxData(String fileName, int rows, int columns) throws FileNotFoundException {
+        FlatBinary inRealFile = new FlatBinary();
+        inRealFile.setFile(new File(fileName));
+        inRealFile.setDataWindow(new Window(0, rows, 0, 2 * columns));
+        inRealFile.setInStream();
+        inRealFile.readDoubleFromStream();
+
+        // TODO: very slow!
+        // real data
+        DoubleMatrix realData = new DoubleMatrix(rows, columns);
+        int cnt;
+        for (int i = 0; i < rows; i++) {
+            cnt = 0;
+            for (int j = 0; j < 2 * columns; j = j + 2) {
+                realData.put(i, cnt, inRealFile.data[i][j]);
+                cnt++;
+            }
+        }
+
+        DoubleMatrix cplxData = new DoubleMatrix(rows, columns);
+        for (int i = 0; i < rows; i++) {
+            cnt = 0;
+            for (int j = 1; j < 2 * columns; j = j + 2) {
+                cplxData.put(i, cnt, inRealFile.data[i][j]);
+                cnt++;
+            }
+        }
+
+        return new ComplexDoubleMatrix(realData,cplxData);
     }
 
 //    @Test
@@ -84,11 +131,6 @@ public class SarUtilsTest {
 //
 //    @Test
 //    public void testCoherence() throws Exception {
-//
-//    }
-//
-//    @Test
-//    public void testMultilook() throws Exception {
 //
 //    }
 
