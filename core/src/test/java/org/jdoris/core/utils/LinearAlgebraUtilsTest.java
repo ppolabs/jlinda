@@ -6,6 +6,7 @@ import org.jblas.DoubleMatrix;
 import org.jdoris.core.Window;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class LinearAlgebraUtilsTest {
@@ -189,7 +190,7 @@ public class LinearAlgebraUtilsTest {
     @Test
     public void testMatTxmatComplex_JBLASS() throws Exception {
         ComplexDoubleMatrix ATA_33_CPLX_ACTUAL =
-                LinearAlgebraUtils.matTxmat(new ComplexDoubleMatrix(A_33, A_33),new ComplexDoubleMatrix(A_33, A_33));
+                LinearAlgebraUtils.matTxmat(new ComplexDoubleMatrix(A_33, A_33), new ComplexDoubleMatrix(A_33, A_33));
         ComplexDoubleMatrix ATA_33_CPLX_EXPECTED =
                 new ComplexDoubleMatrix(DoubleMatrix.zeros(A_33.rows, A_33.columns), ATA_33_EXPECTED.mmul(2));
 
@@ -331,15 +332,29 @@ public class LinearAlgebraUtilsTest {
         Assert.assertEquals(A_PASCAL_22, outMatrix);
 
     }
+
+
+    @Test
+    public void testSetdataFor() throws Exception {
+
+        double[][] doubles = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+
+        DoubleMatrix inMatrix = new DoubleMatrix(doubles);
+        DoubleMatrix outMatrix_ACTUAL = new DoubleMatrix(2*inMatrix.rows, inMatrix.columns);
+        DoubleMatrix outMatrix_EXPECTED = new DoubleMatrix(2*inMatrix.rows, inMatrix.columns);
+        outMatrix_EXPECTED.put(0, 1, 5);
+        outMatrix_EXPECTED.put(1, 1, 8);
+
+        LinearAlgebraUtils.setdata(outMatrix_ACTUAL, new Window(0, 1, 1, 1), inMatrix, new Window(1, 2, 1, 1));
+
+        Assert.assertEquals(outMatrix_ACTUAL, outMatrix_EXPECTED);
+
+//        System.out.println("inMatrix = " + inMatrix.toString());
+//        System.out.println("outMatrix_ACTUAL = " + outMatrix_ACTUAL.toString());
 //
-//    @Test
-//    public void testSetdata() throws Exception {
-//
-//    }
-//
-//    @Test
-//    public void testWshift() throws Exception {
-//
-//    }
+//        System.out.println("inMatrix = " + Arrays.toString(inMatrix.data));
+//        System.out.println("outMatrix_ACTUAL = " + Arrays.toString(outMatrix_ACTUAL.data));
+
+    }
 
 }

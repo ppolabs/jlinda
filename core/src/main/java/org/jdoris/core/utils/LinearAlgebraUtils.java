@@ -303,18 +303,66 @@ public class LinearAlgebraUtils {
         }
 
         //// Fill data ////
-        int sizeLin = (int) inWin.pixels();
-//        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
-        for (int i = 0; i <= outWin.lines() - 1; i++) {
+        int sizeLin = (int) inWin.lines();
+        for (int i = (int) outWin.pixlo, j = (int) inWin.pixlo; i <= outWin.pixhi; i++, j++) {
 
-
-            int startIn = (int) (i * inMatrix.columns + inWin.pixlo);
-            int startOut = (int) (i * outMatrix.columns + outWin.pixlo);
+            int startOut = (int) (i * outMatrix.rows + outWin.linelo);
+            int startIn = (int) (j * inMatrix.rows + inWin.linelo);
 
             System.arraycopy(inMatrix.data, startIn, outMatrix.data, startOut, sizeLin);
 
         }
     }
+
+/*
+    public static void setdata(double[][] outMatrix, Window outWin, double[][] inMatrix, Window inWin) {
+
+        if (outWin.linehi == 0 && outWin.pixhi == 0) {
+            outWin.linehi = outMatrix.length - 1;
+            outWin.pixhi = outMatrix[0].length - 1;
+        }
+        if (inWin.linehi == 0 && inWin.pixhi == 0) {
+            inWin.linehi = inMatrix.length - 1;
+            inWin.pixhi = inMatrix[0].length - 1;
+        }
+
+        if (((outWin.linehi - outWin.linelo) != (inWin.linehi - inWin.linelo)) ||
+                ((outWin.pixhi - outWin.pixlo) != (inWin.pixhi - inWin.pixlo))) {
+            logger.error("setdata: wrong input.");
+            throw new IllegalArgumentException("setdata: wrong input.");
+
+        }
+        if (outWin.linehi < outWin.linelo || outWin.pixhi < outWin.pixlo) {
+            logger.error("setdata: wrong input.1");
+            throw new IllegalArgumentException("setdata: wrong input.1");
+        }
+
+        if ((outWin.linehi > outMatrix.length - 1) ||
+                (outWin.pixhi > outMatrix[0].length - 1)) {
+            logger.error("setdata: wrong input.2");
+            throw new IllegalArgumentException("setdata: wrong input.2");
+        }
+
+        if ((inWin.linehi > inMatrix.length - 1) ||
+                (inWin.pixhi > inMatrix[0].length - 1)) {
+            logger.error("setdata: wrong input.3");
+            throw new IllegalArgumentException("setdata: wrong input.3");
+        }
+
+        //// Fill data ////
+        int sizeLin = (int) inWin.pixels();
+//        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
+        for (int i = 0; i <= outWin.lines(); i++) {
+
+
+            int startIn = (int) (i * inMatrix.length + inWin.pixlo);
+            int startOut = (int) (i * outMatrix.length + outWin.pixlo);
+
+            System.arraycopy(inMatrix[i], startIn, outMatrix[i], startOut, sizeLin);
+
+        }
+    }
+*/
 
     public static void setdata(ComplexDoubleMatrix outMatrix, Window outWin, ComplexDoubleMatrix inMatrix, Window inWin) {
 
@@ -352,12 +400,12 @@ public class LinearAlgebraUtils {
         }
 
         //// Fill data ////
-        int sizeLin = (int) inWin.pixels() * 2;
-//        for (int i = (int) outWin.linelo; i <= outWin.linehi; i++) {
-        for (int i = 0; i <= outWin.lines() - 1; i++) {
+        int sizeLin = (int) inWin.lines() * 2;
+//        int sizeLin = (int) inWin.lines();
+        for (int i = (int) outWin.pixlo, j = (int) inWin.pixlo; i <= outWin.pixhi; i++, j++) {
 
-            int startIn = (int) (i * inMatrix.columns * 2 + inWin.pixlo * 2);
-            int startOut = (int) (i * outMatrix.columns * 2 + outWin.pixlo * 2);
+            int startIn = (int) (j * (2 * inMatrix.rows) + (2 * inWin.linelo));
+            int startOut = (int) (i * (2 * outMatrix.rows) + (2 * outWin.linelo));
 
             System.arraycopy(inMatrix.data, startIn, outMatrix.data, startOut, sizeLin);
         }
