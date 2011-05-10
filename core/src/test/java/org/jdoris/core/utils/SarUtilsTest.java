@@ -119,7 +119,7 @@ public class SarUtilsTest {
         return new ComplexDoubleMatrix(realData,cplxData);
     }
 
-//    @Test
+    //    @Test
 //    public void testIntensity() throws Exception {
 //
 //    }
@@ -129,9 +129,15 @@ public class SarUtilsTest {
 //
 //    }
 //
-//    @Test
-//    public void testCoherence() throws Exception {
-//
-//    }
+    @Test
+    public void testCoherence() throws Exception {
+
+        for (int winAz = 1; winAz <= 20; winAz++) {
+            for (int winRg = 1; winRg <= 20; winRg++) {
+                DoubleMatrix coherence_ACTUAL = SarUtils.coherence(cplxData, cplxData, winAz, winRg);
+            }
+        }
+
+    }
 
 }

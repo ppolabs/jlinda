@@ -153,12 +153,12 @@ public class SarUtils {
         return sqrt(intensity(inputMatrix));
     }
 
-    public static ComplexDoubleMatrix coherence(final ComplexDoubleMatrix inputMatrix, final ComplexDoubleMatrix norms, final int winL, final int winP) {
+    public static DoubleMatrix coherence(final ComplexDoubleMatrix inputMatrix, final ComplexDoubleMatrix norms, final int winL, final int winP) {
 
         logger.trace("coherence ver #2");
         if (!(winL >= winP)) {
             logger.debug("coherence: estimator window size L<P not very efficiently programmed.");
-            throw new IllegalArgumentException("coherence: estimator window size L<P not very efficiently programmed.");
+//            throw new IllegalArgumentException("coherence: estimator window size L<P not very efficiently programmed.");
         }
 
         if (inputMatrix.rows != norms.rows || inputMatrix.rows != inputMatrix.rows) {
@@ -167,7 +167,7 @@ public class SarUtils {
         }
 
         // allocate output :: account for window overlap
-        ComplexDoubleMatrix outputMatrix = new ComplexDoubleMatrix(inputMatrix.rows - winL + 1, inputMatrix.columns);
+        DoubleMatrix outputMatrix = new DoubleMatrix(inputMatrix.rows - winL + 1, inputMatrix.columns);
 
         // temp variables
         int i, j, k, l;
@@ -189,9 +189,8 @@ public class SarUtils {
                     power.add(norms.get(k, l));
                 }
             }
-
             product = power.real() * power.imag();
-            outputMatrix.put(0, j, (product > 0.0) ? sum.divi(product) : new ComplexDouble(0.0));
+            outputMatrix.put(0, j, (product > 0.0) ? Math.sqrt((sum.abs() / product)) : 0.0);
 
             //// Compute (relatively) sum over rest of data blocks ////
             for (i = 0; i < outputMatrix.rows - 1; i++) {
@@ -199,15 +198,13 @@ public class SarUtils {
                     sum.add(inputMatrix.get(i + winL, l).sub(inputMatrix.get(i, l)));
                     power.add(norms.get(i + winL, l).sub(norms.get(i, l)));
                 }
-
                 product = power.real() * power.imag();
-                outputMatrix.put(i + 1, j, (product > 0.0) ? sum.divi(product) : new ComplexDouble(0.0));
+                outputMatrix.put(i + 1, j, (product > 0.0) ? Math.sqrt((sum.abs() / product)) : 0.0);
             }
         }
         return outputMatrix;
     }
 
-    // TODO: check how fast is this?
     public static ComplexDoubleMatrix multilook(final ComplexDoubleMatrix inputMatrix, final int factorRow, final int factorColumn) {
 
         if (factorRow == 1 && factorColumn == 1) {
