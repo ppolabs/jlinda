@@ -1,40 +1,30 @@
 package org.jdoris.core.io;
 
-import org.apache.log4j.Logger;
 
 import java.awt.*;
 import java.io.*;
+import java.nio.ByteOrder;
 
-public class FlatBinary {
+abstract class FlatBinary implements DataReadersWriters {
 
-    private static Logger logger = Logger.getLogger(FlatBinary.class.getName());
+//    private static Logger logger = Logger.getLogger(FlatBinary.class.getName());
 
     File file;
     String format;
-    long sizeBytes;
+    long size;
     Rectangle dimensions;
-    DataOutputStream outStream;
+    ByteOrder byteOrder = ByteOrder.BIG_ENDIAN;
+
     DataInputStream inStream;
+    DataOutputStream outStream;
 
-    public double[][] data;
+    double[][] data;
 
-    public FlatBinary() {
+    public abstract void readFromStream() throws FileNotFoundException;
+    public abstract void writeToStream() throws FileNotFoundException;
 
-    }
-
-    public boolean checkExists() {
-        return file.exists();
-    }
-
-    public boolean checkCanRead() throws FileNotFoundException {
-        return file.canRead();
-    }
-
-    public boolean checkCanWrite() throws FileNotFoundException {
-        return file.canWrite();
-    }
-
-    public void setInStream() throws FileNotFoundException {
+    //// Setters for Streams ///
+    void setInStream() throws FileNotFoundException {
         inStream = new DataInputStream(new BufferedInputStream(new FileInputStream(file.getAbsoluteFile())));
     }
 
@@ -42,43 +32,7 @@ public class FlatBinary {
         outStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file.getAbsoluteFile())));
     }
 
-    public void readDoubleFromStream() throws FileNotFoundException {
-        data = new double[dimensions.width][dimensions.height];
-        for (int i = 0; i < dimensions.width; i++) {
-            for (int j = 0; j < dimensions.height; j++) {
-                try {
-                    data[i][j] = inStream.readDouble();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-    }
-
-    public void writeDoubleToStream() throws FileNotFoundException {
-        for (int i = 0; i < dimensions.width; i++) {
-            for (int j = 0; j < dimensions.height; j++) {
-                try {
-                    outStream.writeDouble(data[i][j]);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        try {
-            this.outStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    public void setData(double[][] data) {
-        this.data = data;
-    }
-
+    //// Creating Files ////
     public void create() {
         try {
             file.createNewFile();
@@ -99,41 +53,21 @@ public class FlatBinary {
         this.create(new File(genericFileName));
     }
 
-    @Override
-    public String toString() {
-        final StringBuffer sb = new StringBuffer();
-        sb.append("FlatBinary");
-        sb.append("{file=").append(file.getAbsoluteFile());
-        sb.append(", format='").append(format).append('\'');
-        sb.append(", sizeBytes=").append(sizeBytes);
-        sb.append(", dimensions=").append(dimensions);
-        sb.append('}');
-        return sb.toString();
+    //// Checkers ////
+    public boolean checkExists() {
+        return file.exists();
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        FlatBinary that = (FlatBinary) o;
-
-        if (sizeBytes != that.sizeBytes) return false;
-        if (dimensions != null ? !dimensions.equals(that.dimensions) : that.dimensions != null) return false;
-        if (file != null ? !file.equals(that.file) : that.file != null) return false;
-        if (format != null ? !format.equals(that.format) : that.format != null) return false;
-
-        return true;
+    public boolean checkCanRead() throws FileNotFoundException {
+        return file.canRead();
     }
 
-    @Override
-    public int hashCode() {
-        int result = file != null ? file.hashCode() : 0;
-        result = 31 * result + (format != null ? format.hashCode() : 0);
-        result = 31 * result + (int) (sizeBytes ^ (sizeBytes >>> 32));
-        result = 31 * result + (dimensions != null ? dimensions.hashCode() : 0);
-        return result;
+    public boolean checkCanWrite() throws FileNotFoundException {
+        return file.canWrite();
     }
+
+
+    //// Geters and Setters ////
 
     public void setFile(File file) {
         this.file = file;
@@ -147,8 +81,8 @@ public class FlatBinary {
         this.format = format;
     }
 
-    public void setSizeBytes(long sizeBytes) {
-        this.sizeBytes = sizeBytes;
+    public void setSize(long size) {
+        this.size = size;
     }
 
     public void setDimensions(Rectangle dimensions) {
@@ -163,12 +97,63 @@ public class FlatBinary {
         return format;
     }
 
-    public long getSizeBytes() {
-        return sizeBytes;
+    public long getSize() {
+        return size;
     }
 
     public Rectangle getDimensions() {
         return dimensions;
     }
+
+    public ByteOrder getByteOrder() {
+        return byteOrder;
+    }
+
+    public void setByteOrder(ByteOrder byteOrder) {
+        this.byteOrder = byteOrder;
+    }
+
+    public void setData(double[][] data) {
+        this.data = data;
+    }
+
+    //// Overrides ////
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        FlatBinaryDouble that = (FlatBinaryDouble) o;
+
+        if (size != that.size) return false;
+        if (dimensions != null ? !dimensions.equals(that.dimensions) : that.dimensions != null) return false;
+        if (file != null ? !file.equals(that.file) : that.file != null) return false;
+        if (format != null ? !format.equals(that.format) : that.format != null) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = file != null ? file.hashCode() : 0;
+        result = 31 * result + (format != null ? format.hashCode() : 0);
+        result = 31 * result + (int) (size ^ (size >>> 32));
+        result = 31 * result + (dimensions != null ? dimensions.hashCode() : 0);
+        return result;
+    }
+
+
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer();
+        sb.append("FlatBinary");
+        sb.append("{file=").append(file.getAbsoluteFile());
+        sb.append(", format='").append(format).append('\'');
+        sb.append(", size=").append(size);
+        sb.append(", dimensions=").append(dimensions);
+        sb.append('}');
+        return sb.toString();
+    }
+
 
 }
