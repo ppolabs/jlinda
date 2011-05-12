@@ -6,17 +6,27 @@ import java.nio.ByteOrder;
 
 public final class FlatBinaryDouble extends FlatBinary {
 
-    double [][] data;
+    public double [][] data;
+
+    private int lines;
+    private int pixels;
 
     public FlatBinaryDouble() {
         this.byteOrder = ByteOrder.BIG_ENDIAN;
     }
 
+    public void setData(double[][] data) {
+        this.data = data;
+    }
+
     @Override
     public void readFromStream() throws FileNotFoundException {
-        data = new double[dimensions.width][dimensions.height];
-        for (int i = 0; i < dimensions.width; i++) {
-            for (int j = 0; j < dimensions.height; j++) {
+
+        setLinesPixels();
+
+        data = new double[lines][pixels];
+        for (int i = 0; i < lines; i++) {
+            for (int j = 0; j < pixels; j++) {
                 try {
                     if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
                         data[i][j] = ByteSwapper.swap(inStream.readDouble());
@@ -33,8 +43,11 @@ public final class FlatBinaryDouble extends FlatBinary {
 
     @Override
     public void writeToStream() throws FileNotFoundException {
-        for (int i = 0; i < dimensions.width; i++) {
-            for (int j = 0; j < dimensions.height; j++) {
+
+        setLinesPixels();
+
+        for (int i = 0; i < lines; i++) {
+            for (int j = 0; j < pixels; j++) {
                 try {
                     if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
                         outStream.writeDouble(ByteSwapper.swap(data[i][j]));
@@ -46,12 +59,16 @@ public final class FlatBinaryDouble extends FlatBinary {
                 }
             }
         }
-
         try {
             this.outStream.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    private void setLinesPixels() {
+        lines = (int) dataWindow.lines();
+        pixels = (int) dataWindow.pixels();
     }
 }

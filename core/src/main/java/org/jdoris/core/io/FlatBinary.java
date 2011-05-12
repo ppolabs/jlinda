@@ -1,7 +1,8 @@
 package org.jdoris.core.io;
 
 
-import java.awt.*;
+import org.jdoris.core.*;
+
 import java.io.*;
 import java.nio.ByteOrder;
 
@@ -12,19 +13,17 @@ abstract class FlatBinary implements DataReadersWriters {
     File file;
     String format;
     long size;
-    Rectangle dimensions;
+    public Window dataWindow;
     ByteOrder byteOrder = ByteOrder.BIG_ENDIAN;
 
     DataInputStream inStream;
     DataOutputStream outStream;
 
-    double[][] data;
-
     public abstract void readFromStream() throws FileNotFoundException;
     public abstract void writeToStream() throws FileNotFoundException;
 
     //// Setters for Streams ///
-    void setInStream() throws FileNotFoundException {
+    public void setInStream() throws FileNotFoundException {
         inStream = new DataInputStream(new BufferedInputStream(new FileInputStream(file.getAbsoluteFile())));
     }
 
@@ -85,8 +84,8 @@ abstract class FlatBinary implements DataReadersWriters {
         this.size = size;
     }
 
-    public void setDimensions(Rectangle dimensions) {
-        this.dimensions = dimensions;
+    public void setDataWindow(Window dataWindow) {
+        this.dataWindow = dataWindow;
     }
 
     public File getFile() {
@@ -101,8 +100,8 @@ abstract class FlatBinary implements DataReadersWriters {
         return size;
     }
 
-    public Rectangle getDimensions() {
-        return dimensions;
+    public Window getDataWindow() {
+        return dataWindow;
     }
 
     public ByteOrder getByteOrder() {
@@ -111,10 +110,6 @@ abstract class FlatBinary implements DataReadersWriters {
 
     public void setByteOrder(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
-    }
-
-    public void setData(double[][] data) {
-        this.data = data;
     }
 
     //// Overrides ////
@@ -126,7 +121,7 @@ abstract class FlatBinary implements DataReadersWriters {
         FlatBinaryDouble that = (FlatBinaryDouble) o;
 
         if (size != that.size) return false;
-        if (dimensions != null ? !dimensions.equals(that.dimensions) : that.dimensions != null) return false;
+        if (dataWindow != null ? !dataWindow.equals(that.dataWindow) : that.dataWindow != null) return false;
         if (file != null ? !file.equals(that.file) : that.file != null) return false;
         if (format != null ? !format.equals(that.format) : that.format != null) return false;
 
@@ -138,7 +133,7 @@ abstract class FlatBinary implements DataReadersWriters {
         int result = file != null ? file.hashCode() : 0;
         result = 31 * result + (format != null ? format.hashCode() : 0);
         result = 31 * result + (int) (size ^ (size >>> 32));
-        result = 31 * result + (dimensions != null ? dimensions.hashCode() : 0);
+        result = 31 * result + (dataWindow != null ? dataWindow.hashCode() : 0);
         return result;
     }
 
@@ -150,10 +145,9 @@ abstract class FlatBinary implements DataReadersWriters {
         sb.append("{file=").append(file.getAbsoluteFile());
         sb.append(", format='").append(format).append('\'');
         sb.append(", size=").append(size);
-        sb.append(", dimensions=").append(dimensions);
+        sb.append(", dataWindow=").append(dataWindow);
         sb.append('}');
         return sb.toString();
     }
-
 
 }
