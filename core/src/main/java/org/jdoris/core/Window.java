@@ -172,7 +172,6 @@ public class Window implements Comparable, Cloneable, Serializable {
                 (pixlo == other.pixlo) && (pixhi == other.pixhi);
     }
 
-
     public Object clone() throws CloneNotSupportedException {
         try {
             return super.clone();
