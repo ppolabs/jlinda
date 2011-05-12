@@ -3,7 +3,7 @@ package org.jdoris.core.utils;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
 import org.jdoris.core.Window;
-import org.jdoris.core.io.FlatBinary;
+import org.jdoris.core.io.FlatBinaryDouble;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -89,11 +89,11 @@ public class SarUtilsTest {
     }
 
     private ComplexDoubleMatrix readCplxData(String fileName, int rows, int columns) throws FileNotFoundException {
-        FlatBinary inRealFile = new FlatBinary();
+        FlatBinaryDouble inRealFile = new FlatBinaryDouble();
         inRealFile.setFile(new File(fileName));
         inRealFile.setDataWindow(new Window(0, rows, 0, 2 * columns));
         inRealFile.setInStream();
-        inRealFile.readDoubleFromStream();
+        inRealFile.readFromStream();
 
         // TODO: very slow!
         // real data
