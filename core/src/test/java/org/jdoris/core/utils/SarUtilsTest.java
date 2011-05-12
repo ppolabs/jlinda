@@ -47,14 +47,14 @@ public class SarUtilsTest {
 
         // TODO: make test files someplace reasonable
         ComplexDoubleMatrix cplxData_ml_ACTUAL = SarUtils.multilook(cplxData, 5, 5);
-        ComplexDoubleMatrix cplxData_ml_EXPECTED = readCplxData("/d2/simulation_mlook55_testdata.out", cplxData_ml_ACTUAL.rows, cplxData_ml_ACTUAL.columns);
+        ComplexDoubleMatrix cplxData_ml_EXPECTED = readCplxData("test/simulation_mlook55_testdata.out", cplxData_ml_ACTUAL.rows, cplxData_ml_ACTUAL.columns);
         Assert.assertEquals(cplxData_ml_EXPECTED, cplxData_ml_ACTUAL);
     }
 
     @Test
     public void testOversample12() throws Exception {
         ComplexDoubleMatrix cplxData_ovsmp_12_ACTUAL = SarUtils.oversample(cplxData, 1, 2);
-        ComplexDoubleMatrix cplxData_ovsmp_12_EXPECTED = readCplxData("/d2/simulation_ovsmp12_testdata.out", cplxData_ovsmp_12_ACTUAL.rows, cplxData_ovsmp_12_ACTUAL.columns);
+        ComplexDoubleMatrix cplxData_ovsmp_12_EXPECTED = readCplxData("test/simulation_ovsmp12_testdata.out", cplxData_ovsmp_12_ACTUAL.rows, cplxData_ovsmp_12_ACTUAL.columns);
         Assert.assertEquals(cplxData_ovsmp_12_EXPECTED, cplxData_ovsmp_12_ACTUAL);
 //        System.out.println("cplxData_ovsmp_22_ACTUAL.toString() = " + cplxData_ovsmp_12_ACTUAL.toString());
 //        System.out.println("cplxData_ovsmp_22_EXPECTED.toString() = " + cplxData_ovsmp_12_EXPECTED.toString());
@@ -64,7 +64,7 @@ public class SarUtilsTest {
     @Test
     public void testOversample21() throws Exception {
         ComplexDoubleMatrix cplxData_ovsmp_21_ACTUAL = SarUtils.oversample(cplxData, 2, 1);
-        ComplexDoubleMatrix cplxData_ovsmp_21_EXPECTED = readCplxData("/d2/simulation_ovsmp21_testdata.out", cplxData_ovsmp_21_ACTUAL.rows, cplxData_ovsmp_21_ACTUAL.columns);
+        ComplexDoubleMatrix cplxData_ovsmp_21_EXPECTED = readCplxData("test/simulation_ovsmp21_testdata.out", cplxData_ovsmp_21_ACTUAL.rows, cplxData_ovsmp_21_ACTUAL.columns);
         Assert.assertEquals(cplxData_ovsmp_21_EXPECTED, cplxData_ovsmp_21_ACTUAL);
     }
 
@@ -74,7 +74,7 @@ public class SarUtilsTest {
         ComplexDoubleMatrix cplxData_ovsmp_22_ACTUAL = SarUtils.oversample(cplxData, 2, 2);
 //        long endTime = System.currentTimeMillis();
 //        System.out.println("endTime = " + ((endTime - startTime)));
-        ComplexDoubleMatrix cplxData_ovsmp_22_EXPECTED = readCplxData("/d2/simulation_ovsmp22_testdata.out", cplxData_ovsmp_22_ACTUAL.rows, cplxData_ovsmp_22_ACTUAL.columns);
+        ComplexDoubleMatrix cplxData_ovsmp_22_EXPECTED = readCplxData("test/simulation_ovsmp22_testdata.out", cplxData_ovsmp_22_ACTUAL.rows, cplxData_ovsmp_22_ACTUAL.columns);
         Assert.assertEquals(cplxData_ovsmp_22_EXPECTED, cplxData_ovsmp_22_ACTUAL);
     }
 
@@ -84,7 +84,7 @@ public class SarUtilsTest {
         ComplexDoubleMatrix cplxData_ovsmp_33_ACTUAL = SarUtils.oversample(cplxData, 3, 3);
 //        long endTime = System.currentTimeMillis();
 //        System.out.println("endTime = " + ((endTime - startTime)));
-        ComplexDoubleMatrix cplxData_ovsmp_33_EXPECTED = readCplxData("/d2/simulation_ovsmp33_testdata.out", cplxData_ovsmp_33_ACTUAL.rows, cplxData_ovsmp_33_ACTUAL.columns);
+        ComplexDoubleMatrix cplxData_ovsmp_33_EXPECTED = readCplxData("test/simulation_ovsmp33_testdata.out", cplxData_ovsmp_33_ACTUAL.rows, cplxData_ovsmp_33_ACTUAL.columns);
         Assert.assertEquals(cplxData_ovsmp_33_EXPECTED, cplxData_ovsmp_33_ACTUAL);
     }
 
