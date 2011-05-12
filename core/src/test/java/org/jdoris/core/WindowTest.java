@@ -1,7 +1,8 @@
 package org.jdoris.core;
 
+import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import static junit.framework.Assert.assertEquals;
 
 /**
  * User: pmar@ppolabs.com
@@ -10,44 +11,59 @@ import static junit.framework.Assert.assertEquals;
  */
 public class WindowTest {
 
-    Window refWin = new Window(11, 21, 103, 114);
+    private final static Window win_EXPECTED = new Window(11, 21, 103, 114);
+    private static Window win_ACTUAL;
+
+
+    @BeforeClass
+    public static void setupTestData() {
+
+        win_ACTUAL = new Window(win_EXPECTED);
+
+    }
+
+
+    @Test
+    public void testConstructor() throws Exception {
+
+        Assert.assertEquals(win_EXPECTED.linelo, win_ACTUAL.linelo);
+        Assert.assertEquals(win_EXPECTED.linehi, win_ACTUAL.linehi);
+        Assert.assertEquals(win_EXPECTED.pixlo, win_ACTUAL.pixlo);
+        Assert.assertEquals(win_EXPECTED.pixhi, win_ACTUAL.pixhi);
+
+    }
 
     @Test
     public void testSetWindow() throws Exception {
 
-        Window testWin = new Window();
-        testWin.setWindow(refWin);
-
-        assertEquals(refWin.linelo, testWin.linelo);
-        assertEquals(refWin.linehi, testWin.linehi);
-        assertEquals(refWin.pixlo, testWin.pixlo);
-        assertEquals(refWin.pixhi, testWin.pixhi);
+        Assert.assertEquals(win_EXPECTED.linelo, win_ACTUAL.linelo);
+        Assert.assertEquals(win_EXPECTED.linehi, win_ACTUAL.linehi);
+        Assert.assertEquals(win_EXPECTED.pixlo, win_ACTUAL.pixlo);
+        Assert.assertEquals(win_EXPECTED.pixhi, win_ACTUAL.pixhi);
 
     }
 
     @Test
     public void testCompareTo() throws Exception {
-        Window testWin = new Window();
-        testWin.setWindow(refWin);
-        assertEquals(0, testWin.compareTo(refWin));
+        Assert.assertEquals(0, win_ACTUAL.compareTo(win_EXPECTED));
     }
 
     @Test
     public void testClone() throws Exception {
-        Window testWin = (Window) refWin.clone();
-        assertEquals(refWin,testWin);
+        Window win_ACTUAL_CLONE = (Window) win_EXPECTED.clone();
+        Assert.assertEquals(win_EXPECTED, win_ACTUAL_CLONE);
     }
 
     @Test
     public void testLines() throws Exception {
-        Window testWin = (Window) refWin.clone();
-        assertEquals(refWin.lines(), testWin.lines());
+        Assert.assertEquals(win_EXPECTED.lines(), win_ACTUAL.lines());
+        Assert.assertEquals(win_EXPECTED.lines(), Window.lines(win_ACTUAL));
     }
 
     @Test
     public void testPixels() throws Exception {
-        Window testWin = (Window) refWin.clone();
-        assertEquals(refWin.pixels(), testWin.pixels());
+        Assert.assertEquals(win_EXPECTED.pixels(), win_ACTUAL.pixels());
+        Assert.assertEquals(win_EXPECTED.pixels(), Window.pixels(win_ACTUAL));
     }
 
 }
