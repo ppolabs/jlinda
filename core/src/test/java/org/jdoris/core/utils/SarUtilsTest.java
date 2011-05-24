@@ -166,7 +166,21 @@ public class SarUtilsTest {
 
     }
 
-/*
+    // TODO: make it more robust -- sanity checks
+    @Test
+    public void testIntensity() throws Exception {
+        DoubleMatrix intensity_ACTUAL = SarUtils.intensity(cplxData);
+        Assert.assertEquals(DoubleMatrix.ones(cplxData.rows, cplxData.columns), intensity_ACTUAL);
+    }
+
+    // TODO: make it more robust -- sanity checks
+    @Test
+    public void testMagnitude() throws Exception {
+        DoubleMatrix magnitude_ACTUAL = SarUtils.magnitude(cplxData);
+        Assert.assertEquals(DoubleMatrix.ones(cplxData.rows, cplxData.columns), magnitude_ACTUAL);
+    }
+
+    /*
     // declared after test as private
     @Test
     public void testCoherenceProduct() throws Exception {
