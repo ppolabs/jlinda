@@ -10,7 +10,7 @@ import java.util.InputMismatchException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ResFile {
+public final class ResFile {
 
     private static Logger logger = Logger.getLogger(ResFile.class.getName());
 

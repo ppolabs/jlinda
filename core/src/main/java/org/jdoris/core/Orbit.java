@@ -117,9 +117,9 @@ public final class Orbit {
 
         logger.info("Computing coefficients for orbit polyfit degree: " + poly_degree);
 //        poly_degree = degree;
-        this.coeff_X = PolyUtils.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_X), poly_degree);
-        this.coeff_Y = PolyUtils.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Y), poly_degree);
-        this.coeff_Z = PolyUtils.polyFit(new DoubleMatrix(time), new DoubleMatrix(data_Z), poly_degree);
+        this.coeff_X = PolyUtils.polyFitNormalized(new DoubleMatrix(time), new DoubleMatrix(data_X), poly_degree);
+        this.coeff_Y = PolyUtils.polyFitNormalized(new DoubleMatrix(time), new DoubleMatrix(data_Y), poly_degree);
+        this.coeff_Z = PolyUtils.polyFitNormalized(new DoubleMatrix(time), new DoubleMatrix(data_Z), poly_degree);
 
         isInterpolated = true;
 
@@ -310,9 +310,9 @@ public final class Orbit {
         // normalize time
         azTime = (azTime - time[time.length / 2]) / 10;
 
-        satelliteXYZPosition.x = PolyUtils.polyVal1d(azTime, coeff_X);
-        satelliteXYZPosition.y = PolyUtils.polyVal1d(azTime, coeff_Y);
-        satelliteXYZPosition.z = PolyUtils.polyVal1d(azTime, coeff_Z);
+        satelliteXYZPosition.x = PolyUtils.polyVal1D(azTime, coeff_X);
+        satelliteXYZPosition.y = PolyUtils.polyVal1D(azTime, coeff_Y);
+        satelliteXYZPosition.z = PolyUtils.polyVal1D(azTime, coeff_Z);
 
         return satelliteXYZPosition;  //To change body of created methods use File | Settings | File Templates.
     }

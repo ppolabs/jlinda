@@ -124,27 +124,27 @@ public class AzimuthFilter {
                 // TODO: not a briliant implementation for per col.. cause wshift AND fftshift.
                 // DE-weight spectrum at centered at fDC_m
                 // spectrum should be periodic -> use of wshift
-                DoubleMatrix inVerseHamming = invertHamming(WeightWindows.myhamming(freqAxis, ABW, PRF, hamming), size);
+                DoubleMatrix inVerseHamming = invertHamming(WeightWindows.hamming(freqAxis, ABW, PRF, hamming), size);
 
                 // Shift this circular by myshift pixels
                 long myShift = (long) (Math.rint((size * fDC_m / PRF))); // round
-                LinearAlgebraUtils.wshift(inVerseHamming, (int) -myShift);    // center at fDC_m
+                LinearAlgebraUtils.wshift_inplace(inVerseHamming, (int) -myShift);    // center at fDC_m
 
                 // Newhamming is scaled and centered around new mean
                 myShift = (long) (Math.rint((size * fDC_mean / PRF)));                   // round
-                filterVector = WeightWindows.myhamming(freqAxis, ABW_new, PRF, hamming); // fftshifted
-                LinearAlgebraUtils.wshift(filterVector, (int) -myShift);                      // center at fDC_mean
+                filterVector = WeightWindows.hamming(freqAxis, ABW_new, PRF, hamming); // fftshifted
+                LinearAlgebraUtils.wshift_inplace(filterVector, (int) -myShift);                      // center at fDC_mean
                 filterVector.mmuli(inVerseHamming);
 
             } else {       // no weighting, but center at fDC_mean, size ABW_new
 
                 long myShift = (long) (Math.rint((size * fDC_mean / PRF)));          // round
-                filterVector = WeightWindows.myrect(freqAxis.divi((float) ABW_new)); // fftshifted
-                LinearAlgebraUtils.wshift(filterVector, (int) -myShift);                  // center at fDC_mean
+                filterVector = WeightWindows.rect(freqAxis.divi((float) ABW_new)); // fftshifted
+                LinearAlgebraUtils.wshift_inplace(filterVector, (int) -myShift);                  // center at fDC_mean
 
             }
 
-            SpectralUtils.ifftshift(filterVector);           // fftsh works on data!
+            SpectralUtils.ifftshift_inplace(filterVector);           // fftsh works on data!
             filterMatrix.putColumn((int) i, filterVector);   // store filter Vector in filter Matrix
 
         } // foreach column
@@ -152,9 +152,9 @@ public class AzimuthFilter {
 
         // Filter slcdata
         ComplexDoubleMatrix slcDataFiltered = slcData.dup();
-        SpectralUtils.fft(slcDataFiltered, 1);                         // fft foreach column
+        SpectralUtils.fft_inplace(slcDataFiltered, 1);                         // fft foreach column
         slcDataFiltered.mmuli(new ComplexDoubleMatrix(filterMatrix));
-        SpectralUtils.ifft(slcDataFiltered, 1);                        // ifft foreach column
+        SpectralUtils.invfft_inplace(slcDataFiltered, 1);                        // ifft foreach column
         return slcDataFiltered;
 
     }

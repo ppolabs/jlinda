@@ -127,7 +127,7 @@ public class PhaseFiter {
                 }
 
                 kernel2D = LinearAlgebraUtils.matTxmat(kernel1D, kernel1D);
-                SpectralUtils.fft2d(kernel2D);  // should be real sinc
+                SpectralUtils.fft2D_inplace(kernel2D);  // should be real sinc
             }
             logger.debug("kernel created for smoothing spectrum");
 
@@ -154,7 +154,7 @@ public class PhaseFiter {
                 if (checkIndexOnly) {
 
                     // Get spectrum/amplitude/smooth/filter ______
-                    SpectralUtils.fft2d(BLOCK);
+                    SpectralUtils.fft2D_inplace(BLOCK);
                     DoubleMatrix AMPLITUDE = SarUtils.magnitude(BLOCK);
 
                     // ______ use FFT's for convolution with rect ______
@@ -172,7 +172,7 @@ public class PhaseFiter {
                         logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
                     }
 
-                    SpectralUtils.ifft2d(BLOCK);
+                    SpectralUtils.invfft2D_inplace(BLOCK);
 
                 }
 
@@ -334,11 +334,11 @@ public class PhaseFiter {
             LinearAlgebraUtils.setdata(BLOCK, CINT, wincint);
 
             // ______ Get spectrum/filter/ifft ______
-            SpectralUtils.fft2d(BLOCK);
+            SpectralUtils.fft2D_inplace(BLOCK);
             BLOCK.mmul(KERNEL2D);                  // the filter...
 
 
-            SpectralUtils.ifft2d(BLOCK);
+            SpectralUtils.invfft2D_inplace(BLOCK);
 
 
             // Set correct part that is filtered in output matrix
@@ -371,7 +371,7 @@ public class PhaseFiter {
             final ComplexDoubleMatrix KERNEL2D) {
 
         ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(A);      // or define fft(R4)
-        SpectralUtils.fft2d(DATA);                                  // or define fft(R4)
+        SpectralUtils.fft2D_inplace(DATA);                                  // or define fft(R4)
 
         // ______ create kernel in calling routine, e.g., like ______
         // ______ Kernel has to be even! ______
@@ -384,7 +384,7 @@ public class PhaseFiter {
         //fft2d(KERNEL2D);                            // should be real sinc
 
         DATA.mmuli(KERNEL2D);
-        SpectralUtils.ifft2d(DATA);                   // convolution, but still complex...
+        SpectralUtils.invfft2D_inplace(DATA);                   // convolution, but still complex...
         return DATA.real();                           // you know it is real only...
     }
 
@@ -434,7 +434,7 @@ public class PhaseFiter {
         int P = A.columns;
         ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(L, P); // init to zero...
 
-        SpectralUtils.fft2d(DATA); // or define fft(R4)
+        SpectralUtils.fft2D_inplace(DATA); // or define fft(R4)
         ComplexDoubleMatrix kernel = new ComplexDoubleMatrix(1, L); // init to zeros
 
         // design 1d kernel function of block
@@ -443,9 +443,9 @@ public class PhaseFiter {
         }
 
         ComplexDoubleMatrix KERNEL2D = LinearAlgebraUtils.matTxmat(kernel, kernel);
-        SpectralUtils.fft2d(KERNEL2D); // should be real sinc
+        SpectralUtils.fft2D_inplace(KERNEL2D); // should be real sinc
         DATA.mmul(KERNEL2D); // no need for conj. with real fft...
-        SpectralUtils.ifft2d(DATA);  // convolution, but still complex...
+        SpectralUtils.invfft2D_inplace(DATA);  // convolution, but still complex...
         return DATA.real(); // you know it is real only...
 
     }

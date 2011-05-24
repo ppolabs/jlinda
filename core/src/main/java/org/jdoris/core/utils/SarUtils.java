@@ -4,101 +4,115 @@ import org.apache.log4j.Logger;
 import org.jblas.ComplexDouble;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
-import org.jblas.MatrixFunctions;
 import org.jdoris.core.Window;
+
+import static org.jblas.MatrixFunctions.pow;
+import static org.jblas.MatrixFunctions.sqrt;
 
 public class SarUtils {
 
     static Logger logger = Logger.getLogger(SarUtils.class.getName());
 
-
     /**
+     * HARMONIC INTERPOLATION
      * B=oversample(A, factorrow, factorcol);
      * 2 factors possible, extrapolation at end.
      * no vectors possible.
      */
-    public static ComplexDoubleMatrix oversample(ComplexDoubleMatrix AA, final int factorrow, final int factorcol) throws Exception {
+    public static ComplexDoubleMatrix oversample(ComplexDoubleMatrix inputMatrix, final int factorRow, final int factorCol) throws IllegalArgumentException {
 
-        ComplexDoubleMatrix A = AA.dup(); // copy, AA is changed by in-place fft;
+        final int l = inputMatrix.rows;
+        final int p = inputMatrix.columns;
+        final int halfL = l / 2;
+        final int halfP = p / 2;
+        final int L2 = factorRow * l;  // numRows of output matrix
+        final int P2 = factorCol * p;  // columns of output matrix
 
-        final int l = A.rows;
-        final int p = A.columns;
-        final int halfl = l / 2;
-        final int halfp = p / 2;
-        final int L2 = factorrow * l;      // numrows of output matrix
-        final int P2 = factorcol * p;      // columns of output matrix
-
-
-        if (A.isVector()) {
-            logger.error("OVERSAMPLE: only 2d matrices.");
-            throw new Exception();
+        if (inputMatrix.isVector()) {
+            logger.error("oversample: only 2d matrices.");
+            throw new IllegalArgumentException("oversample: only 2d matrices");
         }
-        if (!MathUtils.ispower2(l) && factorrow != 1) {
-            logger.error("OVERSAMPLE: numlines != 2^n.");
+        if (!MathUtils.isPower2(l) && factorRow != 1) {
+            logger.error("oversample: numlines != 2^n");
+            throw new IllegalArgumentException("oversample: numlines != 2^n");
         }
-        if (!MathUtils.ispower2(p) && factorcol != 1) {
-            logger.error("OVERSAMPLE: numcols != 2^n.");
+        if (!MathUtils.isPower2(p) && factorCol != 1) {
+            logger.error("oversample: numcols != 2^n");
+            throw new IllegalArgumentException("oversample: numcols != 2^n");
+        }
+
+        if (factorRow == 1 && factorCol == 1) {
+            logger.info("oversample: both azimuth and range oversampling factors equal to 1!");
+            logger.info("oversample: returning inputMatrix!");
+            return inputMatrix;
         }
 
         final ComplexDouble half = new ComplexDouble(0.5);
+        ComplexDoubleMatrix returnMatrix = new ComplexDoubleMatrix(L2, P2);
 
-        ComplexDoubleMatrix Res = new ComplexDoubleMatrix(L2, P2);
+        final Window winA1;
+        final Window winA2;
+        final Window winR2;
 
-//        int i, j;
-        if (factorrow == 1) {
+        ComplexDoubleMatrix tempMatrix;
+        if (factorRow == 1) {
 
             // 1d fourier transform per row
-            SpectralUtils.fft(A, 2);
+            tempMatrix = SpectralUtils.fft(inputMatrix, 2);
 
+            // TODO: check this
             // divide by 2 because even fftlength
-            A.putColumn(halfp, A.getColumn(halfp).mmuli(half));
-//            for (i=0; i<l; ++i) {
-//                A.put(i, halfp, A.get(i, halfp).mul(half));
-//            }
+            tempMatrix.putColumn(halfP, tempMatrix.getColumn(halfP).mmuli(half));
 
             // zero padding windows
-            Window winA1 = new Window(0, l - 1, 0, halfp);
-            Window winA2 = new Window(0, l - 1, halfp, p - 1);
-            Window winR2 = new Window(0, l - 1, P2 - halfp, P2 - 1);
+            winA1 = new Window(0, l - 1, 0, halfP);
+            winA2 = new Window(0, l - 1, halfP, p - 1);
+            winR2 = new Window(0, l - 1, P2 - halfP, P2 - 1);
 
             // prepare data
-            LinearAlgebraUtils.setdata(Res, winA1, A, winA1);
-            LinearAlgebraUtils.setdata(Res, winR2, A, winA2);
+            LinearAlgebraUtils.setdata(returnMatrix, winA1, tempMatrix, winA1);
+            LinearAlgebraUtils.setdata(returnMatrix, winR2, tempMatrix, winA2);
 
             // inverse fft per row
-            SpectralUtils.ifft(Res, 2);
+            SpectralUtils.invfft_inplace(returnMatrix, 2);
 
-        } else if (factorcol == 1) {
+        } else if (factorCol == 1) {
 
             // 1d fourier transform per column
-            SpectralUtils.fft(A, 1);
+            tempMatrix = SpectralUtils.fft(inputMatrix, 1);
 
             // divide by 2 'cause even fftlength
-            A.putRow(halfl, A.getRow(halfl).mmuli(half));
+            tempMatrix.putRow(halfL, tempMatrix.getRow(halfL).mmul(half));
 //            for (i=0; i<p; ++i){
 //                A(halfl,i) *= half;
 //            }
 
             // zero padding windows
-            Window winA1 = new Window(0, halfl, 0, p - 1);
-            Window winA2 = new Window(halfl, l - 1, 0, p - 1);
-            Window winR2 = new Window(L2 - halfl, L2 - 1, 0, p - 1);
+            winA1 = new Window(0, halfL, 0, p - 1);
+            winR2 = new Window(L2 - halfL, L2 - 1, 0, p - 1);
+            winA2 = new Window(halfL, l - 1, 0, p - 1);
 
             // prepare data
-            LinearAlgebraUtils.setdata(Res, winA1, A, winA1);
-            LinearAlgebraUtils.setdata(Res, winR2, A, winA2);
+            LinearAlgebraUtils.setdata(returnMatrix, winA1, tempMatrix, winA1);
+            LinearAlgebraUtils.setdata(returnMatrix, winR2, tempMatrix, winA2);
 
             // inverse fft per row
-            SpectralUtils.ifft(Res, 1);
+            SpectralUtils.invfft_inplace(returnMatrix, 1);
 
         } else {
 
+            // define extra windows for 2d oversampling
+            Window winA3;
+            Window winA4;
+            Window winR3;
+            Window winR4;
+
             // A=fft2d(A)
-            SpectralUtils.fft2d(A);
+            tempMatrix = SpectralUtils.fft2D(inputMatrix);
 
             // divide by 2 'cause even fftlength
-            A.putColumn(halfp, A.getColumn(halfp).mmuli(half));
-            A.putRow(halfl, A.getRow(halfl).mmuli(half));
+            tempMatrix.putColumn(halfP, tempMatrix.getColumn(halfP).mmuli(half));
+            tempMatrix.putRow(halfL, tempMatrix.getRow(halfL).mmuli(half));
 //            for (i=0; i<l; ++i) {
 //                A(i,halfp) *= half;
 //            }
@@ -107,35 +121,123 @@ public class SarUtils {
 //            }
 
             // zero padding windows
-            Window winA1 = new Window(0, halfl, 0, halfp);   // zero padding windows
-            Window winA2 = new Window(0, halfl, halfp, p - 1);
-            Window winA3 = new Window(halfl, l - 1, 0, halfp);
-            Window winA4 = new Window(halfl, l - 1, halfp, p - 1);
-            Window winR2 = new Window(0, halfl, P2 - halfp, P2 - 1);
-            Window winR3 = new Window(L2 - halfl, L2 - 1, 0, halfp);
-            Window winR4 = new Window(L2 - halfl, L2 - 1, P2 - halfp, P2 - 1);
+            winA1 = new Window(0, halfL, 0, halfP);   // zero padding windows
+            winA2 = new Window(0, halfL, halfP, p - 1);
+            winA3 = new Window(halfL, l - 1, 0, halfP);
+            winA4 = new Window(halfL, l - 1, halfP, p - 1);
+            winR2 = new Window(0, halfL, P2 - halfP, P2 - 1);
+            winR3 = new Window(L2 - halfL, L2 - 1, 0, halfP);
+            winR4 = new Window(L2 - halfL, L2 - 1, P2 - halfP, P2 - 1);
 
             // prepare data
-            LinearAlgebraUtils.setdata(Res, winA1, A, winA1);
-            LinearAlgebraUtils.setdata(Res, winR2, A, winA2);
-            LinearAlgebraUtils.setdata(Res, winR3, A, winA3);
-            LinearAlgebraUtils.setdata(Res, winR4, A, winA4);
+            LinearAlgebraUtils.setdata(returnMatrix, winA1, tempMatrix, winA1);
+            LinearAlgebraUtils.setdata(returnMatrix, winR2, tempMatrix, winA2);
+            LinearAlgebraUtils.setdata(returnMatrix, winR3, tempMatrix, winA3);
+            LinearAlgebraUtils.setdata(returnMatrix, winR4, tempMatrix, winA4);
 
             // inverse back in 2d
-            SpectralUtils.ifft2d(Res);
+            SpectralUtils.invfft2D_inplace(returnMatrix);
         }
 
         // scale
-        Res.mmul((double) (factorrow * factorcol));
-        return Res;
+        returnMatrix.mmuli((double) (factorRow * factorCol));
+        return returnMatrix;
 
     }
 
-    public static DoubleMatrix intensity(ComplexDoubleMatrix cint) {
-        return MatrixFunctions.pow(cint.real(), 2).add(MatrixFunctions.pow(cint.imag(), 2));
+    public static DoubleMatrix intensity(final ComplexDoubleMatrix inputMatrix) {
+        return pow(inputMatrix.real(), 2).add(pow(inputMatrix.imag(), 2));
     }
 
-    public static DoubleMatrix magnitude(ComplexDoubleMatrix A) {
-        return null;  //To change body of created methods use File | Settings | File Templates.
+    public static DoubleMatrix magnitude(final ComplexDoubleMatrix inputMatrix) {
+        return sqrt(intensity(inputMatrix));
     }
+
+    public static DoubleMatrix coherence(final ComplexDoubleMatrix inputMatrix, final ComplexDoubleMatrix normsMatrix, final int winL, final int winP) {
+
+        logger.trace("coherence ver #2");
+        if (!(winL >= winP)) {
+            logger.debug("coherence: estimator window size L<P not very efficiently programmed.");
+//            throw new IllegalArgumentException("coherence: estimator window size L<P not very efficiently programmed.");
+        }
+
+        if (inputMatrix.rows != normsMatrix.rows || inputMatrix.rows != inputMatrix.rows) {
+            logger.debug("coherence: not same dimensions.");
+            throw new IllegalArgumentException("coherence: not the same dimensions.");
+        }
+
+        // allocate output :: account for window overlap
+        DoubleMatrix outputMatrix = new DoubleMatrix(inputMatrix.rows - winL + 1, inputMatrix.columns);
+
+        // temp variables
+        int i, j, k, l;
+        ComplexDouble sum;
+        ComplexDouble power;
+        int leadingZeros = (winP - 1) / 2;  // number of pixels=0 floor...
+        int trailingZeros = (winP) / 2;     // floor...
+
+        for (j = leadingZeros; j < outputMatrix.columns - trailingZeros; j++) {
+
+            sum = new ComplexDouble(0);
+            power = new ComplexDouble(0);
+
+            //// Compute sum over first data block ////
+            for (k = 0; k < winL; k++) {
+                for (l = j - leadingZeros; l < j - leadingZeros + winP; l++) {
+                    sum.addi(inputMatrix.get(k, l));
+                    power.addi(normsMatrix.get(k, l));
+                }
+            }
+//            outputMatrix.put(0, j, (product > 0.0) ? Math.sqrt((sum.abs() / product)) : 0.0);
+            outputMatrix.put(0, j, coherenceProduct(sum, power));
+
+            //// Compute (relatively) sum over rest of data blocks ////
+            for (i = 0; i < outputMatrix.rows - 1; i++) {
+                for (l = j - leadingZeros; l < j - leadingZeros + winP; l++) {
+                    sum.addi(inputMatrix.get(i + winL, l).sub(inputMatrix.get(i, l)));
+                    power.addi(normsMatrix.get(i + winL, l).sub(normsMatrix.get(i, l)));
+                }
+                outputMatrix.put(i + 1, j, coherenceProduct(sum, power));
+            }
+        }
+        return outputMatrix;
+    }
+
+    static double coherenceProduct(final ComplexDouble sum, final ComplexDouble power) {
+        final double product = power.real() * power.imag();
+//        return (product > 0.0) ? Math.sqrt(Math.pow(sum.abs(),2) / product) : 0.0;
+        return (product > 0.0) ? sum.abs() / Math.sqrt(product) : 0.0;
+    }
+
+    public static ComplexDoubleMatrix multilook(final ComplexDoubleMatrix inputMatrix, final int factorRow, final int factorColumn) {
+
+        if (factorRow == 1 && factorColumn == 1) {
+            return inputMatrix;
+        }
+
+        logger.debug("multilook input [inputMatrix] size: " +
+                inputMatrix.length + " lines: " + inputMatrix.rows + " pixels: " + inputMatrix.columns);
+
+        if (inputMatrix.rows / factorRow == 0 || inputMatrix.columns / factorColumn == 0) {
+            logger.debug("Multilooking was not necessary for this inputMatrix: inputMatrix.rows < mlR or buffer.columns < mlC");
+            return inputMatrix;
+        }
+
+        ComplexDouble sum;
+        final ComplexDouble factorLP = new ComplexDouble(factorRow * factorColumn);
+        ComplexDoubleMatrix outputMatrix = new ComplexDoubleMatrix(inputMatrix.rows / factorRow, inputMatrix.columns / factorColumn);
+        for (int i = 0; i < outputMatrix.rows; i++) {
+            for (int j = 0; j < outputMatrix.columns; j++) {
+                sum = new ComplexDouble(0);
+                for (int k = i * factorRow; k < (i + 1) * factorRow; k++) {
+                    for (int l = j * factorColumn; l < (j + 1) * factorColumn; l++) {
+                        sum.addi(inputMatrix.get(k, l));
+                    }
+                }
+                outputMatrix.put(i, j, sum.div(factorLP));
+            }
+        }
+        return outputMatrix;
+    }
+
 }

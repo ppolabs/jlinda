@@ -10,7 +10,7 @@ import static org.jblas.MatrixFunctions.abs;
 import static org.jdoris.core.utils.LinearAlgebraUtils.matTxmat;
 import static org.jdoris.core.utils.MathUtils.rad2deg;
 import static org.jdoris.core.utils.MathUtils.sqr;
-import static org.jdoris.core.utils.PolyUtils.normalize;
+import static org.jdoris.core.utils.PolyUtils.normalize2;
 
 /**
  * User: pmar@ppolabs.com
@@ -279,16 +279,16 @@ public class Baseline {
                     //                a110*l*p + a101*l*h + a011*p*h +
                     //                a200*l^2 + a020*p^2 + a002*h^2
                     aMatrix.put(cnt, 0, 1.0);
-                    aMatrix.put(cnt, 1, normalize(line, linMin, linMax));
+                    aMatrix.put(cnt, 1, normalize2(line, linMin, linMax));
 
-                    aMatrix.put(cnt, 2, normalize(pixel, pixMin, pixMax));
-                    aMatrix.put(cnt, 3, normalize(height, hMin, hMax));
-                    aMatrix.put(cnt, 4, normalize(line, linMin, linMax) * normalize(pixel, pixMin, pixMax));
-                    aMatrix.put(cnt, 5, normalize(line, linMin, linMax) * normalize(height, hMin, hMax));
-                    aMatrix.put(cnt, 6, normalize(pixel, pixMin, pixMax) * normalize(height, hMin, hMax));
-                    aMatrix.put(cnt, 7, sqr(normalize(line, linMin, linMax)));
-                    aMatrix.put(cnt, 8, sqr(normalize(pixel, pixMin, pixMax)));
-                    aMatrix.put(cnt, 9, sqr(normalize(height, hMin, hMax)));
+                    aMatrix.put(cnt, 2, normalize2(pixel, pixMin, pixMax));
+                    aMatrix.put(cnt, 3, normalize2(height, hMin, hMax));
+                    aMatrix.put(cnt, 4, normalize2(line, linMin, linMax) * normalize2(pixel, pixMin, pixMax));
+                    aMatrix.put(cnt, 5, normalize2(line, linMin, linMax) * normalize2(height, hMin, hMax));
+                    aMatrix.put(cnt, 6, normalize2(pixel, pixMin, pixMax) * normalize2(height, hMin, hMax));
+                    aMatrix.put(cnt, 7, sqr(normalize2(line, linMin, linMax)));
+                    aMatrix.put(cnt, 8, sqr(normalize2(pixel, pixMin, pixMax)));
+                    aMatrix.put(cnt, 9, sqr(normalize2(height, hMin, hMax)));
                     cnt++;
 
                     // b/alpha representation of baseline
@@ -325,7 +325,7 @@ public class Baseline {
         DoubleMatrix rhsThetaInc = matTxmat(aMatrix, thetaIncMatrix);
 //        DoubleMatrix Qx_hat   = nMatrix;
 
-        final DoubleMatrix Qx_hat = LinearAlgebraUtils.invertCholesky(Decompose.cholesky(nMatrix).transpose());
+        final DoubleMatrix Qx_hat = LinearAlgebraUtils.invertChol(Decompose.cholesky(nMatrix).transpose());
 
         // TODO: refactor to _internal_ cholesky decomposition
         // choles(Qx_hat);               // Cholesky factorisation normalmatrix
@@ -428,9 +428,9 @@ public class Baseline {
      */
     public double getBperp(final double line, final double pixel, final double height) throws Exception {
         return polyVal(bperpCoeffs,
-                normalize(line, linMin, linMax),
-                normalize(pixel, pixMin, pixMax),
-                normalize(height, hMin, hMax));
+                normalize2(line, linMin, linMax),
+                normalize2(pixel, pixMin, pixMax),
+                normalize2(height, hMin, hMax));
     }
 
     // Return BPERP
@@ -445,9 +445,9 @@ public class Baseline {
     // Return BPAR
     public double getBpar(final double line, final double pixel, final double height) throws Exception {
         return polyVal(bparCoeffs,
-                normalize(line, linMin, linMax),
-                normalize(pixel, pixMin, pixMax),
-                normalize(height, hMin, hMax));
+                normalize2(line, linMin, linMax),
+                normalize2(pixel, pixMin, pixMax),
+                normalize2(height, hMin, hMax));
     }
 
     // Return BPAR
@@ -463,9 +463,9 @@ public class Baseline {
     // Return THETA
     public double getTheta(final double line, final double pixel, final double height) throws Exception {
         return polyVal(thetaCoeffs,
-                normalize(line, linMin, linMax),
-                normalize(pixel, pixMin, pixMax),
-                normalize(height, hMin, hMax));
+                normalize2(line, linMin, linMax),
+                normalize2(pixel, pixMin, pixMax),
+                normalize2(height, hMin, hMax));
     }
 
     public double getTheta(final Point p) throws Exception {
@@ -475,9 +475,9 @@ public class Baseline {
     // Return THETA_INC
     public double getThetaInc(final double line, final double pixel, final double height) throws Exception {
         return polyVal(thetaIncCoeffs,
-                normalize(line, linMin, linMax),
-                normalize(pixel, pixMin, pixMax),
-                normalize(height, hMin, hMax));
+                normalize2(line, linMin, linMax),
+                normalize2(pixel, pixMin, pixMax),
+                normalize2(height, hMin, hMax));
     }
 
     public double getThetaInc(final Point p) throws Exception {
