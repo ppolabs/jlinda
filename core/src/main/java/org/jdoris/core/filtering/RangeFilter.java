@@ -122,7 +122,7 @@ public class RangeFilter {
             inverseHamming = doHamming(RSR, RBW, alphaHamming, numPixs, freqAxis);
         }
 
-        // COMPUTE CPLX IFG ON THE FLY -> power
+        //// COMPUTE CPLX IFG ON THE FLY -> power ////
         ComplexDoubleMatrix cplxIfg;
         if (doOversampleFlag) {
             cplxIfg = computeOvsIfg(masterDataBlock, slaveDataBlock, (int) ovsFactor);
@@ -132,7 +132,7 @@ public class RangeFilter {
 
         long fftLength = cplxIfg.columns;
 
-        logger.debug("is real4 accurate enough?");// seems so
+        logger.debug("is real4 accurate enough? it seems so!");
 
         SpectralUtils.fft_inplace(cplxIfg, 2);                          // cplxIfg = fft over rows
         DoubleMatrix power = SarUtils.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
@@ -152,8 +152,8 @@ public class RangeFilter {
 
         DoubleMatrix nlMeanPower = computeNlMeanPower(nlmean, fftLength, power);
 
-        long shift = 0;                          // returned by max
-        long dummy = 0;                          // returned by max
+        long shift = 0;   // returned by max
+        long dummy = 0;   // returned by max
         meanSNR = 0.;
         double meanShift = 0.;
 
@@ -198,7 +198,7 @@ public class RangeFilter {
                         freqAxis.subi(0.5 * shift * deltaF),
                         RBW - (shift * deltaF),
                         RSR, alphaHamming);
-                filter.mmul(inverseHamming);
+                filter.mmuli(inverseHamming);
             } else { // no weighting of spectra
                 // filter is fftshifted
                 filter = WeightWindows.rect((freqAxis.subi(.5 * shift * deltaF)).divi((RBW - shift * deltaF)));
