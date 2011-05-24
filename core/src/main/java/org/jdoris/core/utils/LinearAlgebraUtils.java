@@ -192,17 +192,23 @@ public class LinearAlgebraUtils {
      * B.fliplr()
      * Mirror in center vertical (flip left right).
      */
-    public static void fliplr_inplace(DoubleMatrix A) {
+    public static void fliplr_inplace(DoubleMatrix A) throws Exception {
 
         final int nRows = A.rows;
         final int nCols = A.columns;
 
-        if (nRows == 1) {
+        if (nRows == 1 || nCols == 1) {
             double tmp;
-            for (int i = 0; i < (nCols / 2); ++i) {
-                tmp = A.get(1, i);
-                A.put(1, i, A.get(1, nRows - i));
-                A.put(1, nRows - 1, tmp);
+//            for (int i = 0; i < (nCols / 2); ++i) {
+//                tmp = A.get(0, i);
+//                A.put(0, i, A.get(0, nRows - i));
+//                A.put(0, nRows - 1, tmp);
+//            }
+            final int length = A.length;
+            for (int i = 0; i < (length / 2); i++) {
+                tmp = A.data[i];
+                A.data[i] = A.data[length - i - 1];
+                A.data[length - i - 1] = tmp;
             }
         } else {
             for (int i = 0; i < (nCols / 2); ++i)     // floor
