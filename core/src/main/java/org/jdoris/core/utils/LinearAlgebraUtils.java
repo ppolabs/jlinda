@@ -180,11 +180,11 @@ public class LinearAlgebraUtils {
     }
 
     public static ComplexDoubleMatrix dotmult(ComplexDoubleMatrix A, ComplexDoubleMatrix B) {
-        return A.mmul(B);
+        return A.mul(B);
     }
 
     public static void dotmult_inplace(ComplexDoubleMatrix A, ComplexDoubleMatrix B) {
-        A.mmuli(B);
+        A.muli(B);
     }
 
 

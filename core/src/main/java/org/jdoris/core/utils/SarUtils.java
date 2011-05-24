@@ -240,4 +240,17 @@ public class SarUtils {
         return outputMatrix;
     }
 
+    public static ComplexDoubleMatrix computeIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData) throws Exception {
+        return LinearAlgebraUtils.dotmult(masterData, slaveData.conj());
+    }
+
+    public static ComplexDoubleMatrix computeIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData,
+                                                 final int ovsFactorAz, final int ovsFactorRg) throws Exception {
+        if (ovsFactorAz == 1 && ovsFactorRg == 1) {
+            return computeIfg(masterData, slaveData);
+        }   else {
+            return computeIfg(oversample(masterData, ovsFactorAz, ovsFactorRg), oversample(slaveData, ovsFactorAz, ovsFactorRg));
+        }
+
+    }
 }

@@ -44,16 +44,16 @@ public class SarUtilsTest {
             int facAz = mlookFactorAz[i];
             int facRg = mlookFactorRg[i];
 
-                // multilook
-                ComplexDoubleMatrix cplxData_mlook_ACTUAL = SarUtils.multilook(cplxData, facAz, facRg);
+            // multilook
+            ComplexDoubleMatrix cplxData_mlook_ACTUAL = SarUtils.multilook(cplxData, facAz, facRg);
 
-                // read data
-                String fileName = testDataLocation + "testdata_mlook_" + facAz + "_" + facRg + ".cr8";
-                ComplexDoubleMatrix cplxData_mlook_EXPECTED = readCplxDoubleData(fileName,
-                        cplxData_mlook_ACTUAL.rows, cplxData_mlook_ACTUAL.columns, ByteOrder.LITTLE_ENDIAN);
+            // read data
+            String fileName = testDataLocation + "testdata_mlook_" + facAz + "_" + facRg + ".cr8";
+            ComplexDoubleMatrix cplxData_mlook_EXPECTED = readCplxDoubleData(fileName,
+                    cplxData_mlook_ACTUAL.rows, cplxData_mlook_ACTUAL.columns, ByteOrder.LITTLE_ENDIAN);
 
-                // assertEqual
-                Assert.assertArrayEquals(cplxData_mlook_EXPECTED.toDoubleArray(), cplxData_mlook_ACTUAL.toDoubleArray(), DELTA_08);
+            // assertEqual
+            Assert.assertArrayEquals(cplxData_mlook_EXPECTED.toDoubleArray(), cplxData_mlook_ACTUAL.toDoubleArray(), DELTA_08);
 
         }
     }
@@ -122,6 +122,48 @@ public class SarUtilsTest {
             Assert.assertArrayEquals(coh_EXPECTED.toArray(), coh_ACTUAL.toFloat().toArray(), (float) DELTA_04);
 
         }
+    }
+
+    @Test
+    public void testComplexOvsmpIfg() throws Exception {
+
+        // loop through tests
+        int[] ovsmpAz = new int[]{1, 2, 2, 3};
+        int[] ovsmpRg = new int[]{2, 1, 2, 3};
+
+        for (int i = 0; i < ovsmpAz.length; i++) {
+
+            int ovsAz = ovsmpAz[i];
+            int ovsRg = ovsmpRg[i];
+
+            // get test data
+            String fileTestDataName = testDataLocation + "testdata_ifg_ovsmp_" + ovsAz + "_" + ovsRg + ".cr8";
+
+            ComplexDoubleMatrix ifgCplx_EXPECTED = readCplxDoubleData(fileTestDataName, ovsAz * nRows, ovsRg * nCols, ByteOrder.LITTLE_ENDIAN);
+
+            // compute IFG
+            ComplexDoubleMatrix ifgCplx_ACTUAL = SarUtils.computeIfg(cplxData, cplxData, ovsAz, ovsRg);
+
+            // assertEqual
+            Assert.assertEquals(ifgCplx_EXPECTED, ifgCplx_ACTUAL);
+
+        }
+    }
+
+    @Test
+    public void testComplexIfg() throws Exception {
+
+        // get test data
+        String fileTestDataName = testDataLocation + "testdata_ifg_ovsmp_" + 1 + "_" + 1 + ".cr8";
+
+        ComplexDoubleMatrix ifgCplx_EXPECTED = readCplxDoubleData(fileTestDataName, nRows, nCols, ByteOrder.LITTLE_ENDIAN);
+
+        // compute IFG
+        ComplexDoubleMatrix ifgCplx_ACTUAL = SarUtils.computeIfg(cplxData, cplxData);
+
+        // assertEqual
+        Assert.assertEquals(ifgCplx_EXPECTED, ifgCplx_ACTUAL);
+
     }
 
 /*
