@@ -10,8 +10,8 @@ import java.io.File;
 
 public class BaselineTest {
 
-    private static final File masterResFile = new File("/d2/test_cr.res");
-    private static final File slaveResFile = new File("/d2/test_cr_slave.res");
+    private static final File masterResFile = new File("test/test_cr.res");
+    private static final File slaveResFile = new File("test/test_cr_slave.res");
 
     private static final SLCImage master = new SLCImage();
     private static final SLCImage slave = new SLCImage();

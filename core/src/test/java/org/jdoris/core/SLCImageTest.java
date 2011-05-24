@@ -20,7 +20,7 @@ public class SLCImageTest {
 
     @BeforeClass
     public static void setUp() throws Exception {
-        resFile = new File("/d2/test_cr.res");
+        resFile = new File("test/test_cr.res");
         master.parseResFile(resFile);
     }
 
