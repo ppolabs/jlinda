@@ -9,12 +9,12 @@ import java.io.File;
 public class OrbitTest {
 
     //    private static final File resFile = new File("/d2/delft_cr_asar.res");
-    private static final File resFile = new File("/d2/test_cr.res");
+    private static final File resFile = new File("test/test_cr.res");
 
     private static Orbit orbit_ACTUAL;
 
     public static Logger initLog() {
-        String filePathToLog4JProperties = "/d3/checkouts/jdoris/log4j.properties";
+        String filePathToLog4JProperties = "log4j.properties";
         Logger logger = Logger.getLogger(Orbit.class);
         PropertyConfigurator.configure(filePathToLog4JProperties);
         return logger;
