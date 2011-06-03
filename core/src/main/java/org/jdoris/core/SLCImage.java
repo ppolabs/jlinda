@@ -319,6 +319,14 @@ public final class SLCImage {
         this.rsr2x = rsr2x;
     }
 
+    public void setCoarseOffsetP(int offsetP) {
+        this.coarseOffsetP = offsetP;
+    }
+
+    public void setCoarseOffsetL(int offsetL) {
+        this.coarseOffsetL = offsetL;
+    }
+
     public class Doppler {
 
         // doppler
