@@ -265,7 +265,7 @@ public final class SLCImage {
 
     // critical value!
     private double maximumDopplerChange() {
-        double percent = 0.30;
+        double percent = 0.30; // 30% ~ 100 Hz or so for ERS
         return percent * Math.abs(PRF - azimuthBandwidth);
     }
 
