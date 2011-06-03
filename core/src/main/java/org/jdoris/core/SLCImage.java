@@ -45,6 +45,7 @@ public final class SLCImage {
 
     // doppler
     // private static double[] f_DC; // TODO
+    private boolean f_DC_const;
     private double f_DC_a0;                // constant term Hz
     private double f_DC_a1;                // linear term Hz/s
     private double f_DC_a2;                // quadratic term Hz/s/s
@@ -104,6 +105,9 @@ public final class SLCImage {
         f_DC_a0 = 0.0;                         // [Hz] default ERS2
         f_DC_a1 = 0.0;
         f_DC_a2 = 0.0;
+        f_DC_const = false;
+//        f_DC_const = (actualDopplerChange() < maximumDopplerChange());
+
         rsr2x = 18.9624680 * 2.0e6;            // [Hz] default ERS2
 
         coarseOffsetL = 0;                     // by default
@@ -173,10 +177,11 @@ public final class SLCImage {
         // set dopplers
         final AbstractMetadata.DopplerCentroidCoefficientList[] dopplersArray = AbstractMetadata.getDopplerCentroidCoefficients(element);
 
-        // TODO: check correctness of this!!
         f_DC_a0 = dopplersArray[0].coefficients[0];
         f_DC_a1 = dopplersArray[0].coefficients[1];
         f_DC_a2 = dopplersArray[0].coefficients[2];
+        f_DC_const = (actualDopplerChange() < maximumDopplerChange());
+
 
     }
 
@@ -210,17 +215,26 @@ public final class SLCImage {
         this.tRange1 = resFile.parseDoubleValue("Range_time_to_first_pixel \\(2way\\) \\(ms\\)")/2/1000;
         this.rangeWeightingWindow = resFile.parseStringValue("Weighting_range");
 
+        // data windows
+        final int numberOfLinesTEMP = resFile.parseIntegerValue("Number_of_lines_original");
+        final int numberOfPixelsTEMP = resFile.parseIntegerValue("Number_of_pixels_original");
+        this.originalWindow = new Window(1, numberOfLinesTEMP, 1, numberOfPixelsTEMP);
+
+        resFile.resetSubBuffer();
+        resFile.setSubBuffer("_Start_crop","End_crop");
+
+        this.currentWindow.linelo = resFile.parseIntegerValue("First_line \\(w.r.t. original_image\\)");
+        this.currentWindow.linehi = resFile.parseIntegerValue("Last_line \\(w.r.t. original_image\\)");
+        this.currentWindow.pixlo = resFile.parseIntegerValue("First_pixel \\(w.r.t. original_image\\)");
+        this.currentWindow.pixhi = resFile.parseIntegerValue("Last_pixel \\(w.r.t. original_image\\)");
+
+        resFile.resetSubBuffer();
+        resFile.setSubBuffer("_Start_readfiles","End_readfiles");
         // doppler
         this.f_DC_a0 = resFile.parseDoubleValue("Xtrack_f_DC_constant \\(Hz, early edge\\)");
         this.f_DC_a1 = resFile.parseDoubleValue("Xtrack_f_DC_linear \\(Hz/s, early edge\\)");
         this.f_DC_a2 = resFile.parseDoubleValue("Xtrack_f_DC_quadratic \\(Hz/s/s, early edge\\)");
-
-        // data windows
-        int numberOfLinesTEMP = resFile.parseIntegerValue("Number_of_lines_original");
-        int numberOfPixelsTEMP = resFile.parseIntegerValue("Number_of_pixels_original");
-
-        this.originalWindow = new Window(1, numberOfLinesTEMP, 1, numberOfPixelsTEMP);
-        this.currentWindow = (Window) originalWindow.clone();
+        this.f_DC_const = (actualDopplerChange() < maximumDopplerChange());
 
     }
 
@@ -245,6 +259,24 @@ public final class SLCImage {
     public double pix2fdc(double pixel) {
         double tau = (pixel - 1.0) / (rsr2x / 2.0);// two-way time
         return f_DC_a0 + (f_DC_a1 * tau) + (f_DC_a2 * Math.pow(tau, 2));
+    }
+
+    /*--- DOPPLER HELPER FUNCTIONS ---*/
+
+    // critical value!
+    private double maximumDopplerChange() {
+        double percent = 0.30;
+        return percent * Math.abs(PRF - azimuthBandwidth);
+    }
+
+    // actual doppler change
+    private double actualDopplerChange() {
+        double slcFdc_p0   = pix2fdc(currentWindow.pixlo);
+        double slcFdc_p05  = pix2fdc((currentWindow.pixhi - currentWindow.pixlo) / 2);
+        double slcFdc_pN   = pix2fdc(currentWindow.pixhi);
+
+        return Math.max(Math.abs(slcFdc_p0 - slcFdc_p05), Math.abs(slcFdc_p0 - slcFdc_pN));
+
     }
 
     /*---  AZIMUTH CONVERSIONS ----*/
@@ -300,6 +332,14 @@ public final class SLCImage {
 
     public double getF_DC_a2() {
         return f_DC_a2;
+    }
+
+    public boolean isF_DC_const() {
+        return f_DC_const;
+    }
+
+    public void setF_DC_const(boolean f_DC_const) {
+        this.f_DC_const = f_DC_const;
     }
 
     public int getCoarseOffsetP() {

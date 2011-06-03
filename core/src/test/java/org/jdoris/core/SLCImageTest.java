@@ -58,4 +58,9 @@ public class SLCImageTest {
 
     }
 
+    @Test
+    public void testDopplerConst() throws Exception {
+        boolean dopplerConst_ACTUAL = master.isF_DC_const();
+        Assert.assertEquals(false, dopplerConst_ACTUAL);
+    }
 }
