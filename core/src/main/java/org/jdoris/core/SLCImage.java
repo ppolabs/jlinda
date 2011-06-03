@@ -174,9 +174,9 @@ public final class SLCImage {
         final AbstractMetadata.DopplerCentroidCoefficientList[] dopplersArray = AbstractMetadata.getDopplerCentroidCoefficients(element);
 
         // TODO: check correctness of this!!
-        f_DC_a0 = dopplersArray[1].coefficients[0];
-        f_DC_a1 = dopplersArray[1].coefficients[1];
-        f_DC_a2 = dopplersArray[1].coefficients[2];
+        f_DC_a0 = dopplersArray[0].coefficients[0];
+        f_DC_a1 = dopplersArray[0].coefficients[1];
+        f_DC_a2 = dopplersArray[0].coefficients[2];
 
     }
 
