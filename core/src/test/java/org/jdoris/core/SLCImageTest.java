@@ -39,8 +39,8 @@ public class SLCImageTest {
 
     @Test
     public void testPix2fdc() throws Exception {
-        double doppler_ACTUAL = master.pix2fdc(pixel_EXPECTED);
-        Assert.assertEquals(doppler_EXPECTED,doppler_ACTUAL, eps05);
+        double doppler_ACTUAL = master.doppler.pix2fdc(pixel_EXPECTED);
+        Assert.assertEquals(doppler_EXPECTED, doppler_ACTUAL, eps05);
     }
 
     @Test
@@ -60,7 +60,7 @@ public class SLCImageTest {
 
     @Test
     public void testDopplerConst() throws Exception {
-        boolean dopplerConst_ACTUAL = master.isF_DC_const();
+        boolean dopplerConst_ACTUAL = master.doppler.isF_DC_const();
         Assert.assertEquals(false, dopplerConst_ACTUAL);
     }
 }

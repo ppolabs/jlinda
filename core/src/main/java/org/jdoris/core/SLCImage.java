@@ -43,13 +43,6 @@ public final class SLCImage {
     private double tRange1;
     private String rangeWeightingWindow;
 
-    // doppler
-    // private static double[] f_DC; // TODO
-    private boolean f_DC_const;
-    private double f_DC_a0;                // constant term Hz
-    private double f_DC_a1;                // linear term Hz/s
-    private double f_DC_a2;                // quadratic term Hz/s/s
-
     // ______ offset = X(l,p) - X(L,P) ______
     // ______ Where l,p are in the local slave coordinate system and ______
     // ______ where L,P are in the local master coordinate system ______
@@ -78,9 +71,10 @@ public final class SLCImage {
 
     // true if it is
     //    private static Rectangle originalWindow;       // position and size of the full scene
-    Window originalWindow = new Window();       // position and size of the full scene
-    Window currentWindow = new Window();        // position and size of the subset
-    Window slaveMasterOffsets = new Window();   // overlapping slave window in master coordinates
+    Window originalWindow;       // position and size of the full scene
+    Window currentWindow;        // position and size of the subset
+    Window slaveMasterOffsets;   // overlapping slave window in master coordinates
+    public Doppler doppler;
 
     public SLCImage() {
 
@@ -101,12 +95,6 @@ public final class SLCImage {
         this.PRF = 1679.902;                        // [Hz] default ERS2
         this.azimuthBandwidth = 1378.0;             // [Hz] default ERS2
         this.azimuthWeightingWindow = "HAMMING";
-
-        this.f_DC_a0 = 0.0;                         // [Hz] default ERS2
-        this.f_DC_a1 = 0.0;
-        this.f_DC_a2 = 0.0;
-        this.f_DC_const = false;
-//        f_DC_const = (actualDopplerChange() < maximumDopplerChange());
 
         this.rsr2x = 18.9624680 * 2.0e6;            // [Hz] default ERS2
 
@@ -132,6 +120,13 @@ public final class SLCImage {
 //        slavemasteroffsets.pN0  = 0;
 //        slavemasteroffsets.lNN  = 0;
 //        slavemasteroffsets.pNN  = 0;
+
+        this.doppler = new Doppler();
+        this.doppler.f_DC_a0 = 0.0;
+        this.doppler.f_DC_a1 = 0.0;
+        this.doppler.f_DC_a2 = 0.0;
+//        f_DC_const = (actualDopplerChange() < maximumDopplerChange());
+
     }
 
     public SLCImage(MetadataElement element) {
@@ -177,13 +172,12 @@ public final class SLCImage {
         // set dopplers
         final AbstractMetadata.DopplerCentroidCoefficientList[] dopplersArray = AbstractMetadata.getDopplerCentroidCoefficients(element);
 
-        this.f_DC_a0 = dopplersArray[0].coefficients[0];
-        this.f_DC_a1 = dopplersArray[0].coefficients[1];
-        this.f_DC_a2 = dopplersArray[0].coefficients[2];
-        this.f_DC_const = (actualDopplerChange() < maximumDopplerChange());
+        this.doppler.f_DC_a0 = dopplersArray[0].coefficients[0];
+        this.doppler.f_DC_a1 = dopplersArray[0].coefficients[1];
+        this.doppler.f_DC_a2 = dopplersArray[0].coefficients[2];
+        this.doppler.checkConstant();
 
-
-    }
+   }
 
     public void parseResFile(File resFileName) throws Exception {
 
@@ -223,6 +217,7 @@ public final class SLCImage {
         resFile.resetSubBuffer();
         resFile.setSubBuffer("_Start_crop","End_crop");
 
+        // current window
         this.currentWindow.linelo = resFile.parseIntegerValue("First_line \\(w.r.t. original_image\\)");
         this.currentWindow.linehi = resFile.parseIntegerValue("Last_line \\(w.r.t. original_image\\)");
         this.currentWindow.pixlo = resFile.parseIntegerValue("First_pixel \\(w.r.t. original_image\\)");
@@ -231,10 +226,10 @@ public final class SLCImage {
         resFile.resetSubBuffer();
         resFile.setSubBuffer("_Start_readfiles","End_readfiles");
         // doppler
-        this.f_DC_a0 = resFile.parseDoubleValue("Xtrack_f_DC_constant \\(Hz, early edge\\)");
-        this.f_DC_a1 = resFile.parseDoubleValue("Xtrack_f_DC_linear \\(Hz/s, early edge\\)");
-        this.f_DC_a2 = resFile.parseDoubleValue("Xtrack_f_DC_quadratic \\(Hz/s/s, early edge\\)");
-        this.f_DC_const = (actualDopplerChange() < maximumDopplerChange());
+        this.doppler.f_DC_a0 = resFile.parseDoubleValue("Xtrack_f_DC_constant \\(Hz, early edge\\)");
+        this.doppler.f_DC_a1 = resFile.parseDoubleValue("Xtrack_f_DC_linear \\(Hz/s, early edge\\)");
+        this.doppler.f_DC_a2 = resFile.parseDoubleValue("Xtrack_f_DC_quadratic \\(Hz/s/s, early edge\\)");
+        this.doppler.checkConstant();
 
     }
 
@@ -253,29 +248,6 @@ public final class SLCImage {
     // Convert range time to pixel number (1 is first pixel)
     public double tr2pix(double rangeTime) {
         return 1.0 + (rsr2x * (rangeTime - tRange1));
-    }
-
-    // Convert range pixel to fDC (1 is first pixel, can be ovs)
-    public double pix2fdc(double pixel) {
-        final double tau = (pixel - 1.0) / (rsr2x / 2.0);// two-way time
-        return f_DC_a0 + (f_DC_a1 * tau) + (f_DC_a2 * Math.pow(tau, 2));
-    }
-
-    /*--- DOPPLER HELPER FUNCTIONS ---*/
-
-    // critical value!
-    private double maximumDopplerChange() {
-        final double percent = 0.30; // 30% ~ 100 Hz or so for ERS
-        return percent * Math.abs(PRF - azimuthBandwidth);
-    }
-
-    // actual doppler change
-    private double actualDopplerChange() {
-        final double slcFdc_p0   = pix2fdc(currentWindow.pixlo);
-        final double slcFdc_p05  = pix2fdc((currentWindow.pixhi - currentWindow.pixlo) / 2);
-        final double slcFdc_pN   = pix2fdc(currentWindow.pixhi);
-
-        return Math.max(Math.abs(slcFdc_p0 - slcFdc_p05), Math.abs(slcFdc_p0 - slcFdc_pN));
     }
 
     /*---  AZIMUTH CONVERSIONS ---*/
@@ -319,26 +291,6 @@ public final class SLCImage {
         return azimuthBandwidth;
     }
 
-    public double getF_DC_a0() {
-        return f_DC_a0;
-    }
-
-    public double getF_DC_a1() {
-        return f_DC_a1;
-    }
-
-    public double getF_DC_a2() {
-        return f_DC_a2;
-    }
-
-    public boolean isF_DC_const() {
-        return f_DC_const;
-    }
-
-    public void setF_DC_const(boolean f_DC_const) {
-        this.f_DC_const = f_DC_const;
-    }
-
     public int getCoarseOffsetP() {
         return coarseOffsetP;
     }
@@ -366,5 +318,91 @@ public final class SLCImage {
     public void setRsr2x(double rsr2x) {
         this.rsr2x = rsr2x;
     }
+
+    public class Doppler {
+
+        // doppler
+        // private static double[] f_DC; // TODO
+        boolean f_DC_const_bool;
+        double f_DC_a0;                // constant term Hz
+        double f_DC_a1;                // linear term Hz/s
+        double f_DC_a2;                // quadratic term Hz/s/s
+        double f_DC_const;
+
+        Doppler() {
+            f_DC_const_bool = false;
+            f_DC_a0 = 0;
+            f_DC_a1 = 0;
+            f_DC_a2 = 0;
+            f_DC_const = 0;
+        }
+
+        public double getF_DC_a0() {
+            return f_DC_a0;
+        }
+
+        public double getF_DC_a1() {
+            return f_DC_a1;
+        }
+
+        public double getF_DC_a2() {
+            return f_DC_a2;
+        }
+
+        public boolean isF_DC_const() {
+            return f_DC_const_bool;
+        }
+
+        public double getF_DC_const() {
+            return f_DC_const;
+        }
+
+//        public void setF_DC_const(boolean f_DC_const) {
+//            this.f_DC_const_bool = f_DC_const;
+//        }
+
+        /*--- DOPPLER HELPER FUNCTIONS ---*/
+
+        // critical value!
+        private double maximumDopplerChange() {
+            final double percent = 0.30; // 30% ~ 100 Hz or so for ERS
+            return percent * Math.abs(PRF - azimuthBandwidth);
+        }
+
+        // actual doppler change
+        private double actualDopplerChange() {
+            final double slcFdc_p0   = pix2fdc(currentWindow.pixlo);
+            final double slcFdc_p05 = computFdc_const();
+            final double slcFdc_pN   = pix2fdc(currentWindow.pixhi);
+
+            return Math.max(Math.abs(slcFdc_p0 - slcFdc_p05), Math.abs(slcFdc_p0 - slcFdc_pN));
+        }
+
+        private double computFdc_const() {
+            return pix2fdc((currentWindow.pixhi - currentWindow.pixlo) / 2);
+        }
+
+        private void checkConstant() {
+
+            if (doppler.actualDopplerChange() < doppler.maximumDopplerChange()) {
+                this.f_DC_const_bool = true;
+            } else if (this.f_DC_a1 < org.jdoris.core.Constants.EPS && this.f_DC_a2 < org.jdoris.core.Constants.EPS) {
+                this.f_DC_const_bool = true;
+            }
+
+            if (f_DC_const_bool) {
+                f_DC_const = computFdc_const();
+            }
+
+        }
+
+        // Convert range pixel to fDC (1 is first pixel, can be ovs)
+        public double pix2fdc(double pixel) {
+            final double tau = (pixel - 1.0) / (rsr2x / 2.0);// two-way time
+            return f_DC_a0 + (f_DC_a1 * tau) + (f_DC_a2 * Math.pow(tau, 2));
+        }
+
+    }
+
 
 }
