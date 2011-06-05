@@ -1,5 +1,6 @@
 package org.jdoris.core.filtering;
 
+import org.jblas.ComplexDoubleMatrix;
 import org.jdoris.core.SLCImage;
 
 /**
@@ -9,6 +10,7 @@ import org.jdoris.core.SLCImage;
  */
 public class ProductDataFilter extends SlcDataFilter {
 
+    ComplexDoubleMatrix data1;
     SLCImage metadata1;
 
     public SLCImage getMetadata1() {
@@ -18,4 +20,13 @@ public class ProductDataFilter extends SlcDataFilter {
     public void setMetadata1(SLCImage metadata1) {
         this.metadata1 = metadata1;
     }
+
+    public ComplexDoubleMatrix getData1() {
+        return data1;
+    }
+
+    public void setData1(ComplexDoubleMatrix data1) {
+        this.data1 = data1;
+    }
+
 }

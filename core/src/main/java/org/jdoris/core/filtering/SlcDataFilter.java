@@ -33,10 +33,9 @@ public abstract class SlcDataFilter implements DataFilter {
         return filter;
     }
 
-//    public void setFilter(DoubleMatrix filter) {
-//        this.filter = filter;
-//    }
-
+    public void setFilter(DoubleMatrix filter) {
+        this.filter = filter;
+    }
 
     public SLCImage getMetadata() {
         return metadata;
