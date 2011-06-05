@@ -17,13 +17,15 @@ import static org.jblas.MatrixFunctions.pow;
  * Date: 4/8/11
  * Time: 5:01 PM
  */
-public class AzimuthFilter extends ProductDataFilter {
+public class AzimuthFilter extends SlcDataFilter {
 
     static Logger logger = Logger.getLogger(AzimuthFilter.class.getName());
 
     // TODO
     todo_classes.inputgeneral generalInput;
     todo_classes.input_filtazi filtAziInput;
+
+    SLCImage metadata1;
 
     private long nRows;
     private long nCols;
@@ -68,11 +70,15 @@ public class AzimuthFilter extends ProductDataFilter {
         this.setMetadata(master);
         this.setMetadata1(slave);
         this.setData(data);
-        defineParamaters();
+        defineParameters();
 
     }
 
-    public void defineParamaters() {
+    public void setMetadata1(SLCImage metadata1) {
+        this.metadata1 = metadata1;
+    }
+
+    public void defineParameters() {
 
         // declare filter matrix
         nRows = data.rows;

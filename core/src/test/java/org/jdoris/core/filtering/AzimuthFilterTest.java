@@ -91,7 +91,7 @@ public class AzimuthFilterTest {
         testAziFilter.setTile(new Window(0, 0, 0, 0));
         testAziFilter.setData(masterCplxDataTemp);
         testAziFilter.setHammingAlpha(1);
-        testAziFilter.defineParamaters();
+        testAziFilter.defineParameters();
 
         testAziFilter.defineFilter();
 
@@ -115,7 +115,7 @@ public class AzimuthFilterTest {
         testAziFilter.setTile(new Window(0, 0, 0, 0));
         testAziFilter.setData(masterCplxDataTemp);
         testAziFilter.setHammingAlpha(1);
-        testAziFilter.defineParamaters();
+        testAziFilter.defineParameters();
 
         testAziFilter.defineFilter();
         testAziFilter.applyFilter();
@@ -140,7 +140,7 @@ public class AzimuthFilterTest {
         testAziFilter.setTile(new Window(0, 0, 0, 0));
         testAziFilter.setData(masterCplxDataTemp);
         testAziFilter.setHammingAlpha(0.75);
-        testAziFilter.defineParamaters();
+        testAziFilter.defineParameters();
 
         testAziFilter.defineFilter();
 
@@ -164,7 +164,7 @@ public class AzimuthFilterTest {
         testAziFilter.setTile(new Window(0, 0, 0, 0));
         testAziFilter.setData(masterCplxDataTemp);
         testAziFilter.setHammingAlpha(0.75);
-        testAziFilter.defineParamaters();
+        testAziFilter.defineParameters();
 
         testAziFilter.defineFilter();
         testAziFilter.applyFilter();
@@ -191,7 +191,7 @@ public class AzimuthFilterTest {
         testAziFilter.setData(masterCplxDataTemp);
         testAziFilter.setHammingAlpha(0.75);
         testAziFilter.setVariableFilter(true);
-        testAziFilter.defineParamaters();
+        testAziFilter.defineParameters();
 
         testAziFilter.defineFilter();
 
@@ -216,7 +216,7 @@ public class AzimuthFilterTest {
         testAziFilter.setData(masterCplxData);
         testAziFilter.setHammingAlpha(0.75);
         testAziFilter.setVariableFilter(true);
-        testAziFilter.defineParamaters();
+        testAziFilter.defineParameters();
 
         testAziFilter.defineFilter();
         testAziFilter.applyFilter();
