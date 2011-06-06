@@ -3,8 +3,6 @@ package org.jdoris.core.filtering;
 import org.apache.log4j.Logger;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
-import org.jdoris.core.Ellipsoid;
-import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.Window;
 import org.jdoris.core.todo_classes.todo_classes;
@@ -31,21 +29,21 @@ public class RangeFilter extends ProductDataFilter {
     // input for filtering
     private int nlMean;
     private double SNRthreshold;
-    private double RSR2X; // in MHz
+    private double RSR; // in MHz
     private double RBW; // in MHz
-    private double alphaHamming;
-    private boolean doHammingFlag;
 
-    private int ovsFactor;
+    private double alphaHamming = 0.75;
+    private boolean doHamming;
+
+    private int ovsFactor = 1;
     private boolean doOversampleFlag;
 
-    private boolean doWeightCorrelFlag;
-    // input for TILE coordinates
+    private boolean doWeightCorrelFlag = false;
 
-//    private Window absTile = new Window();
+    // input for TILE coordinates
+    // private Window absTile = new Window();
 
     //// CONSTRUCTORS /////
-
     public RangeFilter() {
     }
 
@@ -57,23 +55,36 @@ public class RangeFilter extends ProductDataFilter {
         defineParameters();
     }
 
+    //// GETTERS AND SETTERS ////
+    public void setAlphaHamming(double alphaHamming) {
+        this.alphaHamming = alphaHamming;
+    }
+
+    public void setOvsFactor(int ovsFactor) {
+        this.ovsFactor = ovsFactor;
+    }
+
+    public void setDoWeightCorrelFlag(boolean doWeightCorrelFlag) {
+        this.doWeightCorrelFlag = doWeightCorrelFlag;
+    }
+
+
     public void defineParameters() throws Exception {
 
         // declare filter matrix
         nRows = data.rows;
         nCols = data.columns;
-        filter = new DoubleMatrix((int) nRows, (int) nCols); // filter
+//        filter = new DoubleMatrix((int) nRows, (int) nCols); // filter
+        filter = DoubleMatrix.ones((int) nRows, (int) nCols); // filter
 
         // define filtering params
-        RSR2X = metadata.getRsr2x();
-        RBW = metadata.getRangeBandwidth();
+        RSR = 0.5 * metadata.getRsr2x();
+        RBW = metadata.getRangeBandwidth() * Math.pow(10,6);
 
-        nlMean = 1;
-        SNRthreshold = 0;
-        ovsFactor = 1;
+        nlMean = 15;
+        SNRthreshold = 5;
         doOversampleFlag = (ovsFactor != 1);
-        alphaHamming = 0.75;
-        doHammingFlag = (alphaHamming < 0.9999);
+        doHamming = (alphaHamming < 0.9999);
 
         computePowerMatrix(); // returns power
         fftLength = power.columns;
@@ -94,18 +105,18 @@ public class RangeFilter extends ProductDataFilter {
         final boolean doHamming = (alphaHamming < 0.9999);
 
         /// shift parameters ////
-        final double deltaF = RSR2X / nCols;
+        final double deltaF = RSR / nCols;
 
-        DoubleMatrix freqAxis = defineFrequencyAxis(nCols, RSR2X);
+        DoubleMatrix freqAxis = defineFrequencyAxis(nCols, RSR);
         DoubleMatrix inverseHamming = null;
         if (doHamming) {
-            inverseHamming = WeightWindows.inverseHamming(freqAxis, RBW, RSR2X, alphaHamming);
+            inverseHamming = WeightWindows.inverseHamming(freqAxis, RBW, RSR, alphaHamming);
         }
 
         //// Use weighted correlation due to bias in normal definition
         // Note: Actually better de-weight with autoconvoluted hamming.
         if (doWeightCorrelFlag) {
-            doWeightCorrel(RSR2X, RBW, fftLength, power);
+            doWeightCorrel(RSR, RBW, fftLength, power);
         }
 
         DoubleMatrix nlMeanPower = computeNlMeanPower(nlMean, fftLength, power);
@@ -139,24 +150,12 @@ public class RangeFilter extends ProductDataFilter {
                 logger.warn("using last shift for filter");
             }
 
-            // interim variables
             meanShift += shift;
-            DoubleMatrix filterVector;
-
-            if (doHamming) {
-                // newhamming is scaled and centered around new mean : filter is fftshifted
-                filterVector = WeightWindows.hamming(freqAxis.sub(0.5 * shift * deltaF),RBW - (shift * deltaF),
-                        RSR2X, alphaHamming);
-                filterVector.muli(inverseHamming);
-            } else {
-                // no weighting of spectra
-                filterVector = WeightWindows.rect((freqAxis.sub(.5 * shift * deltaF)).div((RBW - shift * deltaF)));
-            }
+            DoubleMatrix filterVector = defineFilterVector(deltaF, freqAxis, inverseHamming, shift);
 
             //// Use freq. as returned by fft ////
             SpectralUtils.ifftshift_inplace(filterVector);
 
-            //// Actual spectral filtering ////
             if (!negShift) {
                 filter.putRow((int) outLine, filterVector);
             } else {
@@ -175,6 +174,21 @@ public class RangeFilter extends ProductDataFilter {
 
     }
 
+    private DoubleMatrix defineFilterVector(double deltaF, DoubleMatrix freqAxis, DoubleMatrix inverseHamming, long shift) {
+
+        DoubleMatrix filterVector;
+        if (doHamming) {
+            // newhamming is scaled and centered around new mean : filter is fftshifted
+            filterVector = WeightWindows.hamming(freqAxis.sub(0.5 * shift * deltaF), RBW - (shift * deltaF),
+                    RSR, alphaHamming);
+            filterVector.muli(inverseHamming);
+        } else {
+            // no weighting of spectra
+            filterVector = WeightWindows.rect((freqAxis.sub(.5 * shift * deltaF)).div((RBW - shift * deltaF)));
+        }
+        return filterVector;
+    }
+
     @Override
     public void applyFilter() {
 
@@ -183,9 +197,9 @@ public class RangeFilter extends ProductDataFilter {
         SpectralUtils.fft_inplace(data, 2);
         SpectralUtils.fft_inplace(data1, 2);
 
-        LinearAlgebraUtils.dotmult(data, new ComplexDoubleMatrix(filter));
+        LinearAlgebraUtils.dotmult_inplace(data, new ComplexDoubleMatrix(this.filter));
         LinearAlgebraUtils.fliplr_inplace(filter);
-        LinearAlgebraUtils.dotmult(data1, new ComplexDoubleMatrix(filter));
+        LinearAlgebraUtils.dotmult_inplace(data1, new ComplexDoubleMatrix(this.filter));
 
         // IFFT of spectrally filtered data, and return these
         SpectralUtils.invfft_inplace(data, 2);
@@ -193,33 +207,112 @@ public class RangeFilter extends ProductDataFilter {
 
     }
 
-    /**
-     * filterblock
-     * Computes powerspectrum of complex interferogram.
-     * (Product oversampled master. conj oversampled slave in range)
-     * A peak in this spectrum corresponds to frequency shift.
-     * The master and slave are LPF filtered for this shift.
-     * <p/>
-     * Optionally the oversampling can be turned off, since no use if only small baseline, and flat terrain.
-     * <p/>
-     * The powerspectrum can be weighted to give more influence to higher frequencies (conv. of 2 blocks, should be hamming).
-     * <p/>
-     * The peak is detected by taking a mean of nlMean lines (odd).
-     * <p/>
-     * Filtering is applied if the SNR (N*power peak / power rest) is above a user supplied threshold.
-     * At LPF filtering of the master/slave a hamming window may be applied first to deweight, then to re-weight the spectrum
-     * <p/>
-     * Should filter based on zero terrain slope if below SNR,
-     * but this requried knowledge of orbits, pixel,line coordinate
-     * *
-     * Input:
-     * - MASTER: block of master, that will be filtered
-     * - SLAVE:  block of slave, that will be filtered
-     * Output:
-     * - MASTER (SLAVE): filtered from indeces[0:numl-1]
-     * (nlMean-1)/2 to numlines-(nlMean-1)/2-1
-     * @throws Exception
-     */
+
+    //// HELPER PRIVATE METHODS ////
+
+    private void sanityChecks() {
+        /// sanity check on input paramaters ///
+        if (!MathUtils.isOdd(nlMean)) {
+            logger.error("nlMean has to be odd.");
+            throw new IllegalArgumentException("nlMean has to be odd.");
+        }
+        if (!MathUtils.isPower2(nCols)) {
+            logger.error("numPixels (FFT) has to be power of 2.");
+            throw new IllegalArgumentException("numPixels (FFT) has to be power of 2.");
+        }
+        if (!MathUtils.isPower2(ovsFactor)) {
+            logger.error("oversample factor (FFT) has to be power of 2.");
+            throw new IllegalArgumentException("oversample factor (FFT) has to be power of 2.");
+        }
+        if (data1.rows != nRows) {
+            logger.error("slave not same size as master.");
+            throw new IllegalArgumentException("slave not same size as master.");
+        }
+        if (data1.columns != nCols) {
+            logger.error("slave not same size as master.");
+            throw new IllegalArgumentException("slave not same size as master.");
+        }
+//        if (outputLines < 1) {
+//            logger.warn("no outputLines, continuing....");
+//        }
+    }
+
+    /* COMPUTE CPLX IFG ON THE FLY -> power */
+    private void computePowerMatrix() throws Exception {
+        ComplexDoubleMatrix ifg;
+        if (doOversampleFlag) {
+            ifg = SarUtils.computeIfg(data, data1, 1, ovsFactor);
+        } else {
+            ifg = SarUtils.computeIfg(data, data1);
+        }
+        SpectralUtils.fft_inplace(ifg, 2);  // ifg = fft over rows
+        power = SarUtils.intensity(ifg);    // power   = ifg.*conj(ifg);
+    }
+
+    //// HELPER PRIVATE STATIC ////
+    private static DoubleMatrix computeNlMeanPower(final long nlMean, final long fftLength, DoubleMatrix power) {
+//        DoubleMatrix nlmeanpower = sum(power(0,nlMean-1, 0,fftlength-1),1);
+//        final IntervalRange rangeRows = new IntervalRange(0, (int) (nlMean));
+//        final IntervalRange rangeColumns = new IntervalRange(0, (int) (fftLength));
+        final Window window = new Window(0, nlMean-1, 0, fftLength-1);
+        DoubleMatrix temp = new DoubleMatrix((int)nlMean, (int)fftLength);
+        setdata(temp, window, power, window);
+        return temp.columnSums();
+    }
+
+    // EXPERIMENTAL function: not recommended with oversampling, tho results are ok?!
+    private static void doWeightCorrel(final double RSR, final double RBW,  final long fftLength, DoubleMatrix data) {
+
+        int j;
+        int i;
+
+        final long numLines = data.rows;
+        final long numPixels = data.columns;
+
+        // weigth = numpoints in spectral convolution for fft squared for power...
+        int indexNoPeak = (int) ((1. - (RBW / RSR)) * numPixels);
+        for (j = 0; j < fftLength; ++j) {
+
+            long nPnts = Math.abs(numPixels - j);
+            double weight = (nPnts < indexNoPeak) ? Math.pow(numPixels, 2) : Math.pow(nPnts, 2); // ==zero
+
+            for (i = 0; i < numLines; ++i) {
+                data.put(i, j, data.get(i, j) / weight);
+            }
+        }
+    }
+
+    // TODO: refactor to use arrays instead of loops
+    private static void doWeightCorrel(final double RSR, final double RBW, final long numLines, final long numPixels, final long fftLength, DoubleMatrix data) {
+
+        int j;
+        int i;
+
+        // weigth = numpoints in spectral convolution for fft squared for power...
+        int indexNoPeak = (int) ((1. - (RBW / RSR)) * (float) (numPixels));
+        for (j = 0; j < fftLength; ++j) {
+
+            long nPnts = Math.abs(numPixels - j);
+            double weight = (nPnts < indexNoPeak) ? Math.pow(numPixels, 2) : Math.pow(nPnts, 2); // ==zero
+
+            for (i = 0; i < numLines; ++i) {
+                data.put(i, j, data.get(i, j) / weight);
+            }
+        }
+    }
+
+
+    private static DoubleMatrix defineFrequencyAxis(final long numPixs, final double RSR) {
+        final double deltaF = RSR / numPixs;
+        final double freq = -RSR / 2.;
+        DoubleMatrix freqAxis = new DoubleMatrix(1, (int) numPixs);
+        for (int i = 0; i < numPixs; ++i) {
+            freqAxis.put(0, i, freq + (i * deltaF));
+        }
+        return freqAxis;
+    }
+
+    @Deprecated
     public void efficientFilter() throws Exception { // returned
 
         double meanSNR;
@@ -236,30 +329,17 @@ public class RangeFilter extends ProductDataFilter {
         DoubleMatrix inverseHamming = null;
 
         /// shift parameters ////
-        final double deltaF = RSR2X / nCols;
+        final double deltaF = RSR / nCols;
 
-        DoubleMatrix freqAxis = defineFrequencyAxis(nCols, RSR2X);
-        if (doHammingFlag) {
-            inverseHamming = WeightWindows.inverseHamming(freqAxis, RBW, RSR2X, alphaHamming);
+        DoubleMatrix freqAxis = defineFrequencyAxis(nCols, RSR);
+        if (doHamming) {
+            inverseHamming = WeightWindows.inverseHamming(freqAxis, RBW, RSR, alphaHamming);
         }
-
-//        //// COMPUTE CPLX IFG ON THE FLY -> power ////
-//        ComplexDoubleMatrix cplxIfg;
-//        if (doOversampleFlag) {
-//            cplxIfg = SarUtils.computeIfg(data, data1, 1, ovsFactor);
-//        } else {
-//            cplxIfg = SarUtils.computeIfg(data, data1);
-//        }
-//
-//        long fftLength = cplxIfg.columns;
-//        SpectralUtils.fft_inplace(cplxIfg, 2);             // cplxIfg = fft over rows
-//        DoubleMatrix power = SarUtils.intensity(cplxIfg);  // power   = cplxIfg.*conj(cplxIfg);
-
 
         //// Use weighted correlation due to bias in normal definition
         // Note: Actually better de-weight with autoconvoluted hamming.
         if (doWeightCorrelFlag) {
-            doWeightCorrel(RSR2X, RBW, fftLength, power);
+            doWeightCorrel(RSR, RBW, fftLength, power);
         }
 
         /// Average power to reduce noise : fft.ing in-place over data rows ///
@@ -300,35 +380,35 @@ public class RangeFilter extends ProductDataFilter {
 
             // interim variables
             meanShift += shift;
-            DoubleMatrix filter;
+            DoubleMatrix filterInternal;
 
-            if (doHammingFlag) {
+            if (doHamming) {
                 // Newhamming is scaled and centered around new mean
                 // filter is fftshifted
-                filter = WeightWindows.hamming(freqAxis.sub(0.5 * shift * deltaF),
+                filterInternal = WeightWindows.hamming(freqAxis.sub(0.5 * shift * deltaF),
                         RBW - (shift * deltaF),
-                        RSR2X, alphaHamming);
-                filter.muli(inverseHamming);
+                        RSR, alphaHamming);
+                filterInternal.muli(inverseHamming);
             } else {
                 // no weighting of spectra
                 // filter is fftshifted
-                filter = WeightWindows.rect((freqAxis.sub(.5 * shift * deltaF)).div((RBW - shift * deltaF)));
+                filterInternal = WeightWindows.rect((freqAxis.sub(.5 * shift * deltaF)).div((RBW - shift * deltaF)));
             }
 
             //// Use freq. as returned by fft ////
             // Note that filter_slave = fliplr(filter_m)
             // and that this is also valid after ifftshift
-            SpectralUtils.ifftshift_inplace(filter);
+            SpectralUtils.ifftshift_inplace(filterInternal);
 
             //// Actual spectral filtering ////
             if (!negShift) {
-                data.putRow((int) outLine, dotmult(data.getRow((int) outLine), new ComplexDoubleMatrix(filter)));
-                fliplr_inplace(filter);
-                data1.putRow((int) outLine, dotmult(data1.getRow((int) outLine), new ComplexDoubleMatrix(filter)));
+                data.putRow((int) outLine, dotmult(data.getRow((int) outLine), new ComplexDoubleMatrix(filterInternal)));
+                fliplr_inplace(filterInternal);
+                data1.putRow((int) outLine, dotmult(data1.getRow((int) outLine), new ComplexDoubleMatrix(filterInternal)));
             } else {
-                data1.putRow((int) outLine, dotmult(data1.getRow((int) outLine), new ComplexDoubleMatrix(filter)));
-                fliplr_inplace(filter);
-                data.putRow((int) outLine, dotmult(data.getRow((int) outLine), new ComplexDoubleMatrix(filter)));
+                data1.putRow((int) outLine, dotmult(data1.getRow((int) outLine), new ComplexDoubleMatrix(filterInternal)));
+                fliplr_inplace(filterInternal);
+                data.putRow((int) outLine, dotmult(data.getRow((int) outLine), new ComplexDoubleMatrix(filterInternal)));
             }
 
             /// Update 'walking' mean
@@ -364,115 +444,6 @@ public class RangeFilter extends ProductDataFilter {
         }
 
     }
-
-    //// HELPER PRIVATE METHODS ////
-
-    private void sanityChecks() {
-        /// sanity check on input paramaters ///
-        if (!MathUtils.isOdd(nlMean)) {
-            logger.error("nlMean has to be odd.");
-            throw new IllegalArgumentException("nlMean has to be odd.");
-        }
-        if (!MathUtils.isPower2(nCols)) {
-            logger.error("numPixels (FFT) has to be power of 2.");
-            throw new IllegalArgumentException("numPixels (FFT) has to be power of 2.");
-        }
-        if (!MathUtils.isPower2(ovsFactor)) {
-            logger.error("oversample factor (FFT) has to be power of 2.");
-            throw new IllegalArgumentException("oversample factor (FFT) has to be power of 2.");
-        }
-        if (data1.rows != nRows) {
-            logger.error("slave not same size as master.");
-            throw new IllegalArgumentException("slave not same size as master.");
-        }
-        if (data1.columns != nCols) {
-            logger.error("slave not same size as master.");
-            throw new IllegalArgumentException("slave not same size as master.");
-        }
-//        if (outputLines < 1) {
-//            logger.warn("no outputLines, continuing....");
-//        }
-    }
-
-    private void computePowerMatrix() throws Exception {
-        //// COMPUTE CPLX IFG ON THE FLY -> power ////
-        ComplexDoubleMatrix ifg;
-        if (doOversampleFlag) {
-            ifg = SarUtils.computeIfg(data, data1, 1, ovsFactor);
-        } else {
-            ifg = SarUtils.computeIfg(data, data1);
-        }
-        SpectralUtils.fft_inplace(ifg, 2);  // ifg = fft over rows
-        power = SarUtils.intensity(ifg);    // power   = ifg.*conj(ifg);
-    }
-
-
-    private static DoubleMatrix computeNlMeanPower(final long nlMean, final long fftLength, DoubleMatrix power) {
-//        DoubleMatrix nlmeanpower = sum(power(0,nlMean-1, 0,fftlength-1),1);
-//        final IntervalRange rangeRows = new IntervalRange(0, (int) (nlMean));
-//        final IntervalRange rangeColumns = new IntervalRange(0, (int) (fftLength));
-        final Window window = new Window(0, nlMean-1, 0, fftLength-1);
-        DoubleMatrix temp = new DoubleMatrix((int)nlMean, (int)fftLength);
-        setdata(temp, window, power, window);
-        return temp.columnSums();
-    }
-
-
-    // TODO: refactor to use arrays instead of loops
-    private static void doWeightCorrel(final double RSR, final double RBW,  final long fftLength, DoubleMatrix data) {
-
-        int j;
-        int i;
-
-        final long numLines = data.rows;
-        final long numPixels = data.columns;
-
-        // weigth = numpoints in spectral convolution for fft squared for power...
-        int indexNoPeak = (int) ((1. - (RBW / RSR)) * (float) (numPixels));
-        for (j = 0; j < fftLength; ++j) {
-
-            long nPnts = Math.abs(numPixels - j);
-            double weight = (nPnts < indexNoPeak) ? Math.pow(numPixels, 2) : Math.pow(nPnts, 2); // ==zero
-
-            for (i = 0; i < numLines; ++i) {
-                data.put(i, j, data.get(i, j) / weight);
-            }
-        }
-    }
-
-
-    private static DoubleMatrix defineFrequencyAxis(final long numPixs, final double RSR) {
-        final double deltaF = RSR / numPixs;
-        final double freq = -RSR / 2.;
-        DoubleMatrix freqAxis = new DoubleMatrix(1, (int) numPixs);
-        for (int i = 0; i < numPixs; ++i) {
-            freqAxis.put(0, i, freq + (i * deltaF));
-        }
-        return freqAxis;
-    }
-
-/*
-    private static DoubleMatrix doHammingFlag(float RSR, float RBW, float alphaHamming, long numPixs, DoubleMatrix freqAxis) throws Exception {
-        DoubleMatrix inverseHamming = WeightWindows.hamming(freqAxis, RBW, RSR, alphaHamming);
-        for (int i = 0; i < numPixs; ++i)
-            if (inverseHamming.get(0, i) != 0.)
-                inverseHamming.put(0, i, 1. / inverseHamming.get(0, i));
-        return inverseHamming;
-    }
-*/
-
-    // TODO: refactor InputEllips to "Ellipsoid" class of "org.esa.beam.framework.dataop.maptransf.Ellipsoid" and use GeoUtils of NEST;
-    @Deprecated
-    public static void rangeFilterOrbits(final todo_classes.inputgeneral generalinput,
-                                         final todo_classes.input_filtrange inputfiltrange,
-                                         final Ellipsoid ellips,
-                                         final SLCImage master,
-                                         final SLCImage slave,
-                                         Orbit masterorbit,
-                                         Orbit slaveorbit) {
-    }
-
-
 
     /**
      * filterblock
@@ -584,6 +555,7 @@ public class RangeFilter extends ProductDataFilter {
         // Note: Actually better de-weight with autoconvoluted hamming.
         if (doWeightCorrelFlag) {
             doWeightCorrel(RSR, RBW, fftLength, power);
+//            doWeightCorrel(RSR, RBW, numLines, numPixs, fftLength, power);
         }
 
         /// Average power to reduce noise : fft.ing in-place over data rows ///
@@ -689,18 +661,5 @@ public class RangeFilter extends ProductDataFilter {
         }
 
     }
-
-
-/*
-    public static void rangefilter(final todo_classes.inputgeneral input_gen,
-                                   final SLCImage master,
-                                   final SLCImage slave,
-                                   final todo_classes.productinfo interferogram,
-                                   final todo_classes.input_filtrange inputfiltrange) {
-    }
-*/
-
-
-
 
 }
