@@ -11,6 +11,7 @@ import org.jdoris.core.utils.SarUtils;
 import org.jdoris.core.utils.SpectralUtils;
 
 import static org.jblas.MatrixFunctions.powi;
+import static org.jdoris.core.utils.MathUtils.isEven;
 
 public class PhaseFiter extends SlcDataFilter {
 
@@ -77,9 +78,7 @@ public class PhaseFiter extends SlcDataFilter {
             final ComplexDoubleMatrix data,
             final float alpha,
             final int overlap,
-            final DoubleMatrix smoothKernel) { // lying down
-
-        boolean checkIndexOnly = true;
+            final double[] smoothKernel) { // lying down
 
         // ______ Allocate output matrix ______
         final int size = data.rows;
@@ -101,7 +100,7 @@ public class PhaseFiter extends SlcDataFilter {
         int smooth = 0;   // half block size, odd kernel
         boolean doSmooth;
         try {
-            smooth = smoothKernel.columns / 2;
+            smooth = smoothKernel.length / 2;
             doSmooth = (smooth != 0);
         } catch (Exception e) {
             doSmooth = false;
@@ -115,17 +114,15 @@ public class PhaseFiter extends SlcDataFilter {
         if (doSmooth) {
             ComplexDoubleMatrix kernel1D = new ComplexDoubleMatrix(1, size);             // init to zeros
             for (int ii = -smooth; ii <= smooth; ++ii) {// 1d kernel function of block
-
-                //kernel(0,(ii+SIZE)%SIZE) = smoothkernel(0,ii-SMOOTH);
-                // e.g.: [30,31,0,1,2] <--> [0,1,2,3,4]
                 int tmpValue_1 = (ii + size) % size;
                 int tmpValue_2 = ii + smooth;// used to be ii-SMOOTH: wrong
                 logger.debug("tmp1: " + tmpValue_1 + "; tmp2: " + tmpValue_2);
-                kernel1D.put(0, tmpValue_1, new ComplexDouble(smoothKernel.get(0, tmpValue_2), 0.0));
+                kernel1D.put(0, tmpValue_1, new ComplexDouble(smoothKernel[tmpValue_2]));
             }
 
             kernel2D = LinearAlgebraUtils.matTxmat(kernel1D, kernel1D);
             SpectralUtils.fft2D_inplace(kernel2D);  // should be real sinc
+
         }
         logger.debug("kernel created for smoothing spectrum");
 
@@ -151,19 +148,19 @@ public class PhaseFiter extends SlcDataFilter {
 
             // Get spectrum/amplitude/smooth/filter ______
             SpectralUtils.fft2D_inplace(block);
-            DoubleMatrix AMPLITUDE = SarUtils.magnitude(block);
+            DoubleMatrix amplitude = SarUtils.magnitude(block);
 
             // ______ use FFT's for convolution with rect ______
             if (doSmooth == true)
-                AMPLITUDE = smooth(AMPLITUDE, kernel2D);
+                amplitude = smooth(amplitude, kernel2D);
 
-            double maxamplitude = AMPLITUDE.max();
+            double maxAmplitude = amplitude.max();
 
-            if (maxamplitude > 1e-20) //?
+            if (maxAmplitude > 1e-20) //?
             {
-                AMPLITUDE.divi(maxamplitude);
-                powi(AMPLITUDE, alpha);
-                LinearAlgebraUtils.dotmult_inplace(block, new ComplexDoubleMatrix(AMPLITUDE));
+                amplitude.divi(maxAmplitude);
+                powi(amplitude, alpha);
+                LinearAlgebraUtils.dotmult_inplace(block, new ComplexDoubleMatrix(amplitude));
             } else {
                 logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
             }
@@ -213,13 +210,13 @@ public class PhaseFiter extends SlcDataFilter {
      * non symmetrical kernel, offer the conj(KERNEL2D)!
      */
     public static ComplexDoubleMatrix convbuffer(
-            final ComplexDoubleMatrix CINT,
-            final ComplexDoubleMatrix KERNEL2D,
+            final ComplexDoubleMatrix data,
+            final ComplexDoubleMatrix kernel2d,
             final int OVERLAP) {         // overlap in column direction
 
         // Allocate output matrix
-        int SIZE = CINT.rows;
-        int NPIX = CINT.columns;
+        int SIZE = data.rows;
+        int NPIX = data.columns;
         ComplexDoubleMatrix FILTERED = new ComplexDoubleMatrix(SIZE, NPIX);          // allocate output (==0)
 
         // ______ Get block from buffer ______
@@ -253,7 +250,13 @@ public class PhaseFiter extends SlcDataFilter {
 
             // Construct BLOCK as part of CINT ______
             ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
-            LinearAlgebraUtils.setdata(BLOCK, CINT, wincint);
+            LinearAlgebraUtils.setdata(BLOCK, data, wincint);
+
+            // ______ Get spectrum/filter/ifft ______
+            SpectralUtils.fft2D_inplace(BLOCK);
+//            BLOCK.muli(new ComplexDoubleMatrix(kernel2d));                  // the filter...
+            LinearAlgebraUtils.dotmult_inplace(BLOCK, kernel2d);
+            SpectralUtils.invfft2D_inplace(BLOCK);
 
             // ______ Set correct part that is filtered in output matrix ______
             LinearAlgebraUtils.setdata(FILTERED, winfiltered, BLOCK, winblock);
@@ -285,22 +288,24 @@ public class PhaseFiter extends SlcDataFilter {
      * Blocks in range direction,
      */
     public static ComplexDoubleMatrix spectralfilt(
-            final ComplexDoubleMatrix CINT,
-            final ComplexDoubleMatrix KERNEL2D,
-            final int OVERLAP) {
+            final ComplexDoubleMatrix data,
+            final DoubleMatrix kernelInput,
+            final int blockOverlap) {
 
+
+        DoubleMatrix kernel2d = arrangeKernel2d(kernelInput, 1);
 
         // Allocate output matrix
-        final int SIZE = CINT.rows;
-        final int NPIX = CINT.columns;
-        ComplexDoubleMatrix FILTERED = new ComplexDoubleMatrix(SIZE, NPIX);
+        final int nRows = data.rows;
+        final int nCols = data.columns;
+        ComplexDoubleMatrix dataFiltered = new ComplexDoubleMatrix(nRows, nCols);
 
         // ______ Get block from buffer ______
-        final int numout = SIZE - (2 * OVERLAP);       // number of output pixels
+        final int numout = nRows - (2 * blockOverlap);       // number of output pixels
         int cintpixlo = 0;                      // index in CINT to get 1st block
-        int cintpixhi = SIZE - 1;                 // index in CINT to get 1st block
+        int cintpixhi = nRows - 1;                 // index in CINT to get 1st block
         int outblockpixlo = 0;                      // index in BLOCK (only 1st block)
-        int outblockpixhi = SIZE - 1 - OVERLAP;         // index in BLOCK (except last block)
+        int outblockpixhi = nRows - 1 - blockOverlap;         // index in BLOCK (except last block)
         int outpixlo = outblockpixlo;          // index in FILTERED (1st block)
         int outpixhi = outblockpixhi;          // index in FILTERED
         boolean lastblockdone = false;                  // only just started...
@@ -309,47 +314,80 @@ public class PhaseFiter extends SlcDataFilter {
         // ====== Loop forever, stop after lastblockdone ======
         for (; ; )      //forever
         {
-            if (cintpixhi >= NPIX - 1) {                      // check if we are doing the last block
+            if (cintpixhi >= nCols - 1) {                      // check if we are doing the last block
                 lastblockdone = true;
-                cintpixhi = NPIX - 1;                   // prevent reading after file
-                cintpixlo = cintpixhi - SIZE + 1;         // but make sure SIZE pixels are read
+                cintpixhi = nCols - 1;                   // prevent reading after file
+                cintpixlo = cintpixhi - nRows + 1;         // but make sure SIZE pixels are read
                 outpixhi = cintpixhi;                // index in FILTERED 2b written
-                outblockpixhi = SIZE - 1;                   // write all to the end
+                outblockpixhi = nRows - 1;                   // write all to the end
                 outblockpixlo = outblockpixhi - (outpixhi - outpixlo + 1) + 1;
             }
 
-            final Window wincint = new Window(0, SIZE - 1, cintpixlo, cintpixhi);
-            final Window winblock = new Window(0, SIZE - 1, outblockpixlo, outblockpixhi);
-            final Window winfiltered = new Window(0, SIZE - 1, outpixlo, outpixhi);
+            final Window wincint = new Window(0, nRows - 1, cintpixlo, cintpixhi);
+            final Window winblock = new Window(0, nRows - 1, outblockpixlo, outblockpixhi);
+            final Window winfiltered = new Window(0, nRows - 1, outpixlo, outpixhi);
 
             // Construct BLOCK as part of CINT
             ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) wincint.lines(), (int) wincint.pixels());
-            LinearAlgebraUtils.setdata(BLOCK, CINT, wincint);
+            LinearAlgebraUtils.setdata(BLOCK, data, wincint);
 
             // ______ Get spectrum/filter/ifft ______
             SpectralUtils.fft2D_inplace(BLOCK);
-            BLOCK.mmul(KERNEL2D);                  // the filter...
-
-
+//            BLOCK.muli(new ComplexDoubleMatrix(kernel2d));                  // the filter...
+            LinearAlgebraUtils.dotmult_inplace(BLOCK, new ComplexDoubleMatrix(kernel2d));
             SpectralUtils.invfft2D_inplace(BLOCK);
 
-
             // Set correct part that is filtered in output matrix
-            LinearAlgebraUtils.setdata(FILTERED, winfiltered, BLOCK, winblock);
+            LinearAlgebraUtils.setdata(dataFiltered, winfiltered, BLOCK, winblock);
 
             // Exit if finished ______
             if (lastblockdone)
-                return FILTERED;                  // return
+                return dataFiltered;                  // return
 
             // ______ Update indexes in matrices, will be corrected for last block ______
             cintpixlo += numout;             // next block
             cintpixhi += numout;             // next block
-            outblockpixlo = OVERLAP;            // index in block, valid for all middle blocks
+            outblockpixlo = blockOverlap;            // index in block, valid for all middle blocks
             outpixlo = outpixhi + 1;         // index in FILTERED, next range line
             outpixhi = outpixlo + numout - 1;  // index in FILTERED
 
         } // for all blocks in this buffer
 
+    }
+
+
+    public static DoubleMatrix arrangeKernel2d(DoubleMatrix kernel2d, final double scaleFactor) {
+
+        final int KERNELSIZE_LINES = kernel2d.rows;
+        final int KERNELSIZE_PIXELS = kernel2d.columns;
+
+        final int SIZE = KERNELSIZE_LINES;
+
+        final int HBS_L = (KERNELSIZE_LINES / 2);
+	    final int HBS_P = (KERNELSIZE_PIXELS / 2);
+        final int EXTRA_L = isEven(KERNELSIZE_LINES) ? 1 : 0; // 1 less to fill
+	    final int EXTRA_P = isEven(KERNELSIZE_PIXELS)? 1 : 0; // 1 less to fill
+
+        DoubleMatrix KERNEL2D = new DoubleMatrix(SIZE, SIZE); // allocate THE matrix
+        int rowCnt = 0;
+        int colCnt;
+
+	    for (int ii = -HBS_L + EXTRA_L; ii <= HBS_L; ++ii) {
+            colCnt = 0;
+		    final int indexii = (ii + SIZE) % SIZE;
+		    for (int jj = -HBS_P + EXTRA_P; jj <= HBS_P; ++jj) {
+			    final int indexjj = (jj + SIZE) % SIZE;
+                KERNEL2D.put(indexii, indexjj, kernel2d.get(rowCnt, colCnt));
+                colCnt++;
+		    }
+            rowCnt++;
+	    }
+
+        if (scaleFactor != 1) {
+            KERNEL2D.muli(scaleFactor);
+        }
+
+        return KERNEL2D;
     }
 
     /**
@@ -359,9 +397,7 @@ public class PhaseFiter extends SlcDataFilter {
      * implementation as convolution with FFT's
      * input: KERNEL is the FFT of the kernel (block)
      */
-    public static DoubleMatrix smooth(
-            final DoubleMatrix A,
-            final ComplexDoubleMatrix KERNEL2D) {
+    public static DoubleMatrix smooth(final DoubleMatrix A, final ComplexDoubleMatrix KERNEL2D) {
 
         ComplexDoubleMatrix DATA = new ComplexDoubleMatrix(A);      // or define fft(R4)
         SpectralUtils.fft2D_inplace(DATA);                                  // or define fft(R4)
@@ -376,8 +412,9 @@ public class PhaseFiter extends SlcDataFilter {
         //matrix<complr4> KERNEL2D = matTxmat(kernel,kernel);
         //fft2d(KERNEL2D);                            // should be real sinc
 
-        DATA.mmuli(KERNEL2D);
-        SpectralUtils.invfft2D_inplace(DATA);                   // convolution, but still complex...
+        LinearAlgebraUtils.dotmult_inplace(DATA, KERNEL2D.conj());
+//        DATA.mmuli(KERNEL2D);
+        SpectralUtils.invfft2D_inplace(DATA);         // convolution, but still complex...
         return DATA.real();                           // you know it is real only...
     }
 
@@ -441,6 +478,19 @@ public class PhaseFiter extends SlcDataFilter {
         SpectralUtils.invfft2D_inplace(DATA);  // convolution, but still complex...
         return DATA.real(); // you know it is real only...
 
+    }
+
+    public static DoubleMatrix defineRectKernel2d(final int size, double[] kernel) {
+
+        final int overlapLines = (int) Math.floor(kernel.length / 2.);
+
+        // ______ 1d kernel function ______
+        DoubleMatrix kernel1d = new DoubleMatrix(1, size); // init to zeros
+        for (int ii = -overlapLines; ii <= overlapLines; ++ii) {
+            kernel1d.put(0, (ii + size) % size, kernel[ii + overlapLines]);
+        }
+
+        return LinearAlgebraUtils.matTxmat(kernel1d, kernel1d);
     }
 
 }
