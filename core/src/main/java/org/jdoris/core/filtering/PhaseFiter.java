@@ -10,15 +10,13 @@ import org.jdoris.core.utils.LinearAlgebraUtils;
 import org.jdoris.core.utils.SarUtils;
 import org.jdoris.core.utils.SpectralUtils;
 
-import static org.jblas.MatrixFunctions.pow;
+import static org.jblas.MatrixFunctions.powi;
 
-public class PhaseFiter {
+public class PhaseFiter extends SlcDataFilter {
 
     static Logger logger = Logger.getLogger(PhaseFiter.class.getName());
 
-
     //TODO: make template classes for generalInput, operatorInput, and ProductMetadata class
-
     /**
      * phasefilter: OPERATOR prototype METHOD
      * goldsteins method, see routine goldstein and smooth.
@@ -76,124 +74,119 @@ public class PhaseFiter {
      * "Radar ice motion interferometry".
      */
     public static ComplexDoubleMatrix goldstein(
-            final ComplexDoubleMatrix complexIfg,
+            final ComplexDoubleMatrix data,
             final float alpha,
             final int overlap,
             final DoubleMatrix smoothKernel) { // lying down
 
-        boolean checkIndicesScalling = false;
-        boolean checkIndexOnly = false;
+        boolean checkIndexOnly = true;
 
-        if (checkIndicesScalling) {
+        // ______ Allocate output matrix ______
+        final int size = data.rows;
+        final int npix = data.columns;
 
-            return complexIfg;
+        ComplexDoubleMatrix dataFilt = new ComplexDoubleMatrix(size, npix); // output
 
-        } else {
-            // ______ Allocate output matrix ______
-            final int size = complexIfg.rows;
-            final int npix = complexIfg.columns;
+        // ______ Get block from buffer ______
+        final int numOut = size - (2 * overlap);       // number of output pixels
+        int cIfgPixLo = 0;                      // index in CINT to get 1st block
+        int cIfgPixHi = size - 1;                 // index in CINT to get 1st block
+        int outBlockPixLo = 0;                      // index in BLOCK (only 1st block)
+        int outBlockPixHi = size - 1 - overlap;         // index in BLOCK (except last block)
+        int outPixLo = outBlockPixLo;          // index in FILTERED (1st block)
+        int outPixHi = outBlockPixHi;          // index in FILTERED
+        boolean lastBlockDone = false;                  // only just started...
 
-            ComplexDoubleMatrix filteredCplxIfg = new ComplexDoubleMatrix(size, npix); // output
-
-            // ______ Get block from buffer ______
-            final int numOut = size - (2 * overlap);       // number of output pixels
-            int cIfgPixLo = 0;                      // index in CINT to get 1st block
-            int cIfgPixHi = size - 1;                 // index in CINT to get 1st block
-            int outBlockPixLo = 0;                      // index in BLOCK (only 1st block)
-            int outBlockPixHi = size - 1 - overlap;         // index in BLOCK (except last block)
-            int outPixLo = outBlockPixLo;          // index in FILTERED (1st block)
-            int outPixHi = outBlockPixHi;          // index in FILTERED
-            boolean lastBlockDone = false;                  // only just started...
-
-            // note that int floors division
-            int smooth = smoothKernel.columns / 2;   // half block size, odd kernel
-            boolean doSmooth = (smooth != 0);
-            logger.debug("SMOOTH flag: " + smooth);  // problem with uint<0 index in smoothkernel
-
-            // use FFT's for convolution with smoothkernel
-            // this could also be done static, or in the calling routine
-            // KERNEL2D is FFT2 of even kernel (no imag part after fft!)
-            ComplexDoubleMatrix kernel2D = null;
-            if (doSmooth) {
-                ComplexDoubleMatrix kernel1D = new ComplexDoubleMatrix(1, size);             // init to zeros
-                for (int ii = -smooth; ii <= smooth; ++ii) {// 1d kernel function of block
-
-                    //kernel(0,(ii+SIZE)%SIZE) = smoothkernel(0,ii-SMOOTH);
-                    // e.g.: [30,31,0,1,2] <--> [0,1,2,3,4]
-                    int tmpValue_1 = (ii + size) % size;
-                    int tmpValue_2 = ii + smooth;// used to be ii-SMOOTH: wrong
-                    logger.debug("tmp1: " + tmpValue_1 + "; tmp2: " + tmpValue_2);
-                    kernel1D.put(0, tmpValue_1, new ComplexDouble(smoothKernel.get(0, tmpValue_2), 0.0));
-                }
-
-                kernel2D = LinearAlgebraUtils.matTxmat(kernel1D, kernel1D);
-                SpectralUtils.fft2D_inplace(kernel2D);  // should be real sinc
-            }
-            logger.debug("kernel created for smoothing spectrum");
-
-            // ====== Loop forever, stop after lastblockdone ======
-            for (; ;)      //forever, like in c!
-            {
-                if (cIfgPixHi >= npix - 1)                      // check if we are doing the last block
-                {
-                    lastBlockDone = true;
-                    cIfgPixHi = npix - 1;                   // prevent reading after file
-                    cIfgPixLo = cIfgPixHi - size + 1;         // but make sure SIZE pixels are read
-                    outPixHi = cIfgPixHi;                // index in FILTERED 2b written
-                    outBlockPixHi = size - 1;                   // write all to the end
-                    outBlockPixLo = outBlockPixHi - (outPixHi - outPixLo + 1) + 1;
-                }
-                Window winCIfg = new Window(0, size - 1, cIfgPixLo, cIfgPixHi);
-                Window winBlock = new Window(0, size - 1, outBlockPixLo, outBlockPixHi);
-                Window winFiltered = new Window(0, size - 1, outPixLo, outPixHi);
-
-                // Construct BLOCK as part of CINT
-                ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix((int) winCIfg.lines(), (int) winCIfg.pixels());
-                LinearAlgebraUtils.setdata(BLOCK, complexIfg, winCIfg);
-
-                if (checkIndexOnly) {
-
-                    // Get spectrum/amplitude/smooth/filter ______
-                    SpectralUtils.fft2D_inplace(BLOCK);
-                    DoubleMatrix AMPLITUDE = SarUtils.magnitude(BLOCK);
-
-                    // ______ use FFT's for convolution with rect ______
-                    if (doSmooth == true)
-                        AMPLITUDE = smooth(AMPLITUDE, kernel2D);
-
-                    double maxamplitude = AMPLITUDE.max();
-
-                    if (maxamplitude > 1e-20) //?
-                    {
-                        AMPLITUDE.div(maxamplitude);
-                        pow(AMPLITUDE, alpha);
-                        BLOCK.mmul(new ComplexDoubleMatrix(AMPLITUDE));           // weight spectrum
-                    } else {
-                        logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
-                    }
-
-                    SpectralUtils.invfft2D_inplace(BLOCK);
-
-                }
-
-                // ______ Set correct part that is filtered in output matrix ______
-                LinearAlgebraUtils.setdata(filteredCplxIfg, winFiltered, BLOCK, winBlock);
-
-                // ______ Exit if finished ______
-                if (lastBlockDone)
-                    return filteredCplxIfg;                  // return
-
-                // ______ Update indexes in matrices, will be corrected for last block ______
-                cIfgPixLo += numOut;             // next block
-                cIfgPixHi += numOut;             // next block
-                outBlockPixLo = overlap;            // index in block, valid for all middle blocks
-                outPixLo = outPixHi + 1;         // index in FILTERED, next range line
-                outPixHi = outPixLo + numOut - 1;  // index in FILTERED
-
-            } // for all blocks in this buffer
-
-
+        // note that int floors division
+        int smooth = 0;   // half block size, odd kernel
+        boolean doSmooth;
+        try {
+            smooth = smoothKernel.columns / 2;
+            doSmooth = (smooth != 0);
+        } catch (Exception e) {
+            doSmooth = false;
         }
+        logger.debug("SMOOTH flag: " + smooth);  // problem with uint<0 index in smoothkernel
+
+        // use FFT's for convolution with smoothkernel
+        // this could also be done static, or in the calling routine
+        // KERNEL2D is FFT2 of even kernel (no imag part after fft!)
+        ComplexDoubleMatrix kernel2D = null;
+        if (doSmooth) {
+            ComplexDoubleMatrix kernel1D = new ComplexDoubleMatrix(1, size);             // init to zeros
+            for (int ii = -smooth; ii <= smooth; ++ii) {// 1d kernel function of block
+
+                //kernel(0,(ii+SIZE)%SIZE) = smoothkernel(0,ii-SMOOTH);
+                // e.g.: [30,31,0,1,2] <--> [0,1,2,3,4]
+                int tmpValue_1 = (ii + size) % size;
+                int tmpValue_2 = ii + smooth;// used to be ii-SMOOTH: wrong
+                logger.debug("tmp1: " + tmpValue_1 + "; tmp2: " + tmpValue_2);
+                kernel1D.put(0, tmpValue_1, new ComplexDouble(smoothKernel.get(0, tmpValue_2), 0.0));
+            }
+
+            kernel2D = LinearAlgebraUtils.matTxmat(kernel1D, kernel1D);
+            SpectralUtils.fft2D_inplace(kernel2D);  // should be real sinc
+        }
+        logger.debug("kernel created for smoothing spectrum");
+
+        // ====== Loop forever, stop after lastblockdone ======
+        for (; ; )      //forever, like in c!
+        {
+            if (cIfgPixHi >= npix - 1)                      // check if we are doing the last block
+            {
+                lastBlockDone = true;
+                cIfgPixHi = npix - 1;                   // prevent reading after file
+                cIfgPixLo = cIfgPixHi - size + 1;         // but make sure SIZE pixels are read
+                outPixHi = cIfgPixHi;                // index in FILTERED 2b written
+                outBlockPixHi = size - 1;                   // write all to the end
+                outBlockPixLo = outBlockPixHi - (outPixHi - outPixLo + 1) + 1;
+            }
+            Window winData = new Window(0, size - 1, cIfgPixLo, cIfgPixHi);
+            Window winBlock = new Window(0, size - 1, outBlockPixLo, outBlockPixHi);
+            Window winFiltered = new Window(0, size - 1, outPixLo, outPixHi);
+
+            // Construct BLOCK as part of CINT
+            ComplexDoubleMatrix block = new ComplexDoubleMatrix((int) winData.lines(), (int) winData.pixels());
+            LinearAlgebraUtils.setdata(block, data, winData);
+
+            // Get spectrum/amplitude/smooth/filter ______
+            SpectralUtils.fft2D_inplace(block);
+            DoubleMatrix AMPLITUDE = SarUtils.magnitude(block);
+
+            // ______ use FFT's for convolution with rect ______
+            if (doSmooth == true)
+                AMPLITUDE = smooth(AMPLITUDE, kernel2D);
+
+            double maxamplitude = AMPLITUDE.max();
+
+            if (maxamplitude > 1e-20) //?
+            {
+                AMPLITUDE.divi(maxamplitude);
+                powi(AMPLITUDE, alpha);
+                LinearAlgebraUtils.dotmult_inplace(block, new ComplexDoubleMatrix(AMPLITUDE));
+            } else {
+                logger.warn("no filtering, maxamplitude<1e-20, zeros in this block?");
+            }
+
+            SpectralUtils.invfft2D_inplace(block);
+
+            // ______ Set correct part that is filtered in output matrix ______
+            // TODO: simplify -- always returning the whole block!
+            LinearAlgebraUtils.setdata(dataFilt, winFiltered, block, winBlock);
+
+            // ______ Exit if finished ______
+            if (lastBlockDone)
+                return dataFilt;                  // return
+
+            // ______ Update indexes in matrices, will be corrected for last block ______
+            cIfgPixLo += numOut;             // next block
+            cIfgPixHi += numOut;             // next block
+            outBlockPixLo = overlap;            // index in block, valid for all middle blocks
+            outPixLo = outPixHi + 1;         // index in FILTERED, next range line
+            outPixHi = outPixLo + numOut - 1;  // index in FILTERED
+
+        } // for all blocks in this buffer
+
 
     }
 
@@ -242,7 +235,7 @@ public class PhaseFiter {
 
 
         // Loop forever, stop after lastblockdone
-        for (; ;)      //forever
+        for (; ; )      //forever
         {
             if (cintpixhi >= NPIX - 1)                      // check if we are doing the last block
             {
@@ -314,7 +307,7 @@ public class PhaseFiter {
 
 
         // ====== Loop forever, stop after lastblockdone ======
-        for (; ;)      //forever
+        for (; ; )      //forever
         {
             if (cintpixhi >= NPIX - 1) {                      // check if we are doing the last block
                 lastblockdone = true;
