@@ -424,19 +424,18 @@ public class PhaseFiter extends SlcDataFilter {
      * See also matlab script smooth.m for some tests.
      */
     @Deprecated
-    public static DoubleMatrix smoothSpace(
-            final DoubleMatrix A,
-            int N) {
+    public static DoubleMatrix smoothSpace(final DoubleMatrix A, final int N) {
 
         if (N == 0)
             return A;
 
         int L = A.rows;
         int P = A.columns;
-        DoubleMatrix SMOOTH = new DoubleMatrix(L, P);            // init to zero...
+        DoubleMatrix SMOOTH = new DoubleMatrix(L, P);
+
         double sum = 0.;
-        int indexii;
         double Nsmooth = (2 * N + 1) * (2 * N + 1);
+        int indexii;
         for (int i = 0; i < L; ++i) {
             for (int j = 0; j < P; ++j) {
                 // Smooth this pixel
@@ -450,15 +449,12 @@ public class PhaseFiter extends SlcDataFilter {
                 sum = 0.;
             }
         }
-
         return SMOOTH;
     }
 
     // Do the same as smoothSpace but faster
     // some overhead due to conversion r4<->cr4
-    public static DoubleMatrix smoothSpectral(
-            final DoubleMatrix A,
-            int N) {
+    public static DoubleMatrix smoothSpectral(final DoubleMatrix A, int N) {
 
         int L = A.rows;
         int P = A.columns;
@@ -474,7 +470,8 @@ public class PhaseFiter extends SlcDataFilter {
 
         ComplexDoubleMatrix KERNEL2D = LinearAlgebraUtils.matTxmat(kernel, kernel);
         SpectralUtils.fft2D_inplace(KERNEL2D); // should be real sinc
-        DATA.mmul(KERNEL2D); // no need for conj. with real fft...
+//        DATA.mmul(KERNEL2D); // no need for conj. with real fft...
+        LinearAlgebraUtils.dotmult(DATA, KERNEL2D);
         SpectralUtils.invfft2D_inplace(DATA);  // convolution, but still complex...
         return DATA.real(); // you know it is real only...
 
