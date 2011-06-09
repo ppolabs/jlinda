@@ -115,14 +115,48 @@ public class todo_classes {
     }
 
     public class input_filtazi {
-        int method;                 // method selector
-        long fftlength;              // length per buffer
-        long overlap;                // 0.5overlap each buffer
-        double hammingalpha;           // alpha for hamming, 1 is no
-        File foname;        // output filename passed to routine
-        File fomaster;      // output filename
-        File foslave;       // output filename
-        long oformatflag;            // output format [cr4] ci16
+        String method;                 // method selector
+        long fftLength;                // length per buffer
+        long overlap;                  // 0.5overlap each buffer
+        double hammingAlpha;           // alpha for hamming, 1 is no
+
+        public String getMethod() {
+            return method;
+        }
+
+        public void setMethod(String method) {
+            this.method = method;
+        }
+
+        public long getFftLength() {
+            return fftLength;
+        }
+
+        public void setFftLength(long fftLength) {
+            this.fftLength = fftLength;
+        }
+
+        public long getOverlap() {
+            return overlap;
+        }
+
+        public void setOverlap(long overlap) {
+            this.overlap = overlap;
+        }
+
+        public double getHammingAlpha() {
+            return hammingAlpha;
+        }
+
+        public void setHammingAlpha(double hammingAlpha) {
+            this.hammingAlpha = hammingAlpha;
+        }
+
+
+        //        File foname;        // output filename passed to routine
+//        File fomaster;      // output filename
+//        File foslave;       // output filename
+//        long oformatflag;            // output format [cr4] ci16
     }
 
     public class input_filtrange {
@@ -131,7 +165,7 @@ public class todo_classes {
         boolean doweightcorrel;     // weighting of correlation values
         long nlmean;                // number of lines to take mean of
         long fftlength;             // length for adaptive
-        long overlap;               // half overlap between blocks of fftlength
+        long overlap;               // half overlap between blocks of fftLength
         double hammingalpha;        // alpha for hamming
         double SNRthreshold;        // spectral peak estimation
         double terrainslope;        // [rad] porbits method only

@@ -91,7 +91,8 @@ public class WeightWindows {
             System.err.println("myhamming: only lying vectors.");
             throw new IllegalArgumentException();
         }
-        return new DoubleMatrix(inverseHamming(fr.toArray(), br, fs, alpha));
+//        return new DoubleMatrix(inverseHamming(fr.toArray(), br, fs, alpha));
+        return new DoubleMatrix(inverseHamming(fr.data, br, fs, alpha));
     }
 
 
