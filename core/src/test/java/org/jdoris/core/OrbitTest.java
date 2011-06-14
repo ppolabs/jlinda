@@ -213,27 +213,35 @@ public class OrbitTest {
     @Test
     public void crLoop_Run1() throws Exception {
 
-        Point xyz_ACTUAL = Ellipsoid.ell2xyz(Math.toRadians(crGEO_EXPECTED[0]), Math.toRadians(crGEO_EXPECTED[1]), crGEO_EXPECTED[2]);
-        Point time_ACTUAL = orbit_ACTUAL.xyz2t(xyz_ACTUAL, slcimage);
-        double line_ACTUAL = slcimage.ta2line(time_ACTUAL.y);
-        double pixel_ACTUAL = slcimage.tr2pix(time_ACTUAL.x);
-        Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, crGEO_EXPECTED[2], slcimage);
-//        Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, 0, slcimage);
+        final double[] crGEO_EXPECTED_RADIANS = {crGEO_EXPECTED[0] * Constants.DTOR, crGEO_EXPECTED[1] * Constants.DTOR, crGEO_EXPECTED[2]};
+//        final Point xyz_ACTUAL = Ellipsoid.ell2xyz(Math.toRadians(crGEO_EXPECTED[0]), Math.toRadians(crGEO_EXPECTED[1]), crGEO_EXPECTED[2]);
+        final Point xyz_ACTUAL = Ellipsoid.ell2xyz(crGEO_EXPECTED_RADIANS);
+        final Point time_ACTUAL = orbit_ACTUAL.xyz2t(xyz_ACTUAL, slcimage);
+        final double line_ACTUAL = slcimage.ta2line(time_ACTUAL.y);
+        final double pixel_ACTUAL = slcimage.tr2pix(time_ACTUAL.x);
+        final Point xyz_ACTUAL_2 = orbit_ACTUAL.lph2xyz(line_ACTUAL, pixel_ACTUAL, crGEO_EXPECTED[2], slcimage);
 
         Assert.assertArrayEquals(xyz_ACTUAL.toArray(), xyz_ACTUAL_2.toArray(), eps_03);
 
+        double[] philamheight_ACTUAL = orbit_ACTUAL.lph2ell(line_ACTUAL, pixel_ACTUAL, crGEO_EXPECTED[2], slcimage);
+        Assert.assertEquals(philamheight_ACTUAL[0], crGEO_EXPECTED_RADIANS[0], eps_06);
+        Assert.assertEquals(philamheight_ACTUAL[1], crGEO_EXPECTED_RADIANS[1], eps_06);
+        Assert.assertEquals(philamheight_ACTUAL[2], crGEO_EXPECTED_RADIANS[2], eps_03);
+
+
     }
 
-//    @Test
-//    public void testEll2lp() throws Exception {
-//
-//    }
-//
-//    @Test
-//    public void testLp2ell() throws Exception {
-//
-//    }
-//
+    @Test
+    public void testEll2lp() throws Exception {
+
+
+    }
+
+    @Test
+    public void testLp2ell() throws Exception {
+
+    }
+
 
 
 }

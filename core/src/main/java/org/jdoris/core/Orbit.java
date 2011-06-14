@@ -282,13 +282,28 @@ public final class Orbit {
         return sarPixel;
     }
 
-    public Point ell2lp(double[] phi_lam_height, SLCImage slcimage) throws Exception {
-        Point pointOnEllips = Ellipsoid.ell2xyz(phi_lam_height);
+    public Point ell2lp(final double[] phi_lam_height, final SLCImage slcimage) throws Exception {
+        final Point pointOnEllips = Ellipsoid.ell2xyz(phi_lam_height);
         return xyz2lp(pointOnEllips, slcimage);
     }
 
     public double[] lp2ell(Point sarPixel, SLCImage slcimage) throws Exception {
-        Point xyz = lp2xyz(sarPixel, slcimage);
+        final Point xyz = lp2xyz(sarPixel, slcimage);
+        return Ellipsoid.xyz2ell(xyz);
+    }
+
+    public double[] lph2ell(final double line, final double pixel, final double height, final SLCImage slcimage) throws Exception {
+        Point xyz = lph2xyz(line, pixel, height, slcimage);
+        return Ellipsoid.xyz2ell(xyz);
+    }
+
+    public double[] lph2ell(final Point sarPixel, final SLCImage slcimage) throws Exception {
+        final Point xyz = lph2xyz(sarPixel.x, sarPixel.y, sarPixel.z, slcimage);
+        return Ellipsoid.xyz2ell(xyz);
+    }
+
+    public double[] lph2ell(final Point sarPixel, final double height, final SLCImage slcimage) throws Exception {
+        final Point xyz = lph2xyz(sarPixel.x, sarPixel.y, height, slcimage);
         return Ellipsoid.xyz2ell(xyz);
     }
 
