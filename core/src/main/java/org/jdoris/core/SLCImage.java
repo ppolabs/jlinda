@@ -199,8 +199,9 @@ public final class SLCImage {
         // azimuth annotations
         this.PRF = resFile.parseDoubleValue("Pulse_Repetition_Frequency \\(computed, Hz\\)");
         this.azimuthBandwidth = resFile.parseDoubleValue("Total_azimuth_band_width \\(Hz\\)");
-        ProductData.UTC tAzi1_UTC = resFile.parseTimeValue("First_pixel_azimuth_time \\(UTC\\)");
-        this.tAzi1 = (tAzi1_UTC.getMJD() - tAzi1_UTC.getDaysFraction()) * 24 * 3600;
+//        ProductData.UTC tAzi1_UTC = resFile.parseDatTimeValue("First_pixel_azimuth_time \\(UTC\\)");
+//        this.tAzi1 = (tAzi1_UTC.getMJD() - tAzi1_UTC.getDaysFraction()) * 24 * 3600;
+        this.tAzi1 = resFile.parseTimeValue("First_pixel_azimuth_time \\(UTC\\)");
         this.azimuthWeightingWindow = resFile.parseStringValue("Weighting_azimuth");
 
         // range annotations
