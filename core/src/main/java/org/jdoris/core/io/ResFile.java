@@ -214,8 +214,19 @@ public final class ResFile {
         return Double.parseDouble(parseStringValue(key));
     }
 
-    public ProductData.UTC parseTimeValue(String key) throws ParseException {
+    public ProductData.UTC parseDatTimeValue(String key) throws ParseException {
         return ProductData.UTC.parse(parseStringValue(key));
+    }
+
+    public double parseTimeValue(final String key) throws ParseException {
+        // assume format:  02-AUG-1995 21:16:42.210
+        final String dateTime = parseStringValue(key);
+        final String timeHrsMinSec = dateTime.split(" ")[1];
+        final String timeHrs = timeHrsMinSec.split(":")[0];
+        final String timeMin = timeHrsMinSec.split(":")[1];
+        final String timeSec = timeHrsMinSec.split(":")[2];
+
+        return (new Double(timeHrs)*3600 + new Double(timeMin)*60 + new Double(timeSec));
     }
 
     public double[][] parseOrbit() throws Exception {
