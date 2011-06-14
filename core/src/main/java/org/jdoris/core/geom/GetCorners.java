@@ -9,7 +9,7 @@ import org.esa.beam.framework.dataop.maptransf.Ellipsoid;
  */
 public class GetCorners {
 
-//    Ellipsoid inputEll;
+    //    Ellipsoid inputEll;
     private Ellipsoid ellips;
 
 
@@ -51,20 +51,20 @@ public class GetCorners {
                     long indexlambda0DEM,
                     long indexlambdaNDEM) {
 
-                  double phi = 0;
-                  double lambda = 0;
-                  double height = 0;
+        double phi = 0;
+        double lambda = 0;
+        double height = 0;
 
         double[] phi_and_lambda = lp2ell(l0, p0, ellips, master, masterorbit, phi, lambda, height);
 
         double phil0p0 = phi_and_lambda[0];
         double lambdal0p0 = phi_and_lambda[1];
 
-        phi_and_lambda = lp2ell(lN,p0,ellips, master, masterorbit,phi, lambda, height);          // returned
+        phi_and_lambda = lp2ell(lN, p0, ellips, master, masterorbit, phi, lambda, height);          // returned
         double philNp0 = phi_and_lambda[0];
         double lambdalNp0 = phi_and_lambda[1];
 
-        phi_and_lambda =lp2ell(lN, pN, ellips, master, masterorbit, phi, lambda, height);          // returned
+        phi_and_lambda = lp2ell(lN, pN, ellips, master, masterorbit, phi, lambda, height);          // returned
         double philNpN = phi_and_lambda[0];
         double lambdalNpN = phi_and_lambda[1];
 
@@ -89,7 +89,7 @@ public class GetCorners {
         // ______ Get indices of DEM needed ______
         // ______ Index boundary: [0:numberofx-1] ______
 
-        indexphi0DEM = (long)(Math.floor((lat0-phimax)/DEMdeltalat));
+        indexphi0DEM = (long) (Math.floor((lat0 - phimax) / DEMdeltalat));
         if (indexphi0DEM < 0) {
             System.out.println("WARNING :: indexphi0DEM: " + indexphi0DEM);
             indexphi0DEM = 0;   // default start at first
@@ -97,11 +97,11 @@ public class GetCorners {
             System.out.println("input DEM should be extended to the North.");
         }
 
-        indexphiNDEM = (long)(Math.ceil((lat0-phimin)/DEMdeltalat));
-        if (indexphiNDEM > Nlatpixels-1){
+        indexphiNDEM = (long) (Math.ceil((lat0 - phimin) / DEMdeltalat));
+        if (indexphiNDEM > Nlatpixels - 1) {
             System.out.println("WARNING :: indexphiNDEM: " + indexphiNDEM);
             System.out.println("WARNING :: indexphiNDEM: " + indexphiNDEM);
-            indexphiNDEM=Nlatpixels-1;
+            indexphiNDEM = Nlatpixels - 1;
             System.out.println("DEM does not cover entire interferogram.");
             System.out.println("input DEM should be extended to the South.");
         }
