@@ -57,6 +57,21 @@ public class DataReader {
         return readFloatData(fileName, rows, columns, ByteOrder.BIG_ENDIAN);
     }
 
+    public static DoubleMatrix readDoubleData(final String fileName, final int rows, final int columns, final ByteOrder byteOrder) throws FileNotFoundException {
+        final FlatBinaryDouble inRealFile = new FlatBinaryDouble();
+        inRealFile.setFile(new File(fileName));
+        inRealFile.setByteOrder(byteOrder);
+        inRealFile.setDataWindow(new Window(0, rows - 1, 0, columns - 1));
+        inRealFile.setInStream();
+        inRealFile.readFromStream();
+
+        return new DoubleMatrix(inRealFile.getData());
+    }
+
+    public static DoubleMatrix readDoubleData(final String fileName, final int rows, final int columns) throws FileNotFoundException {
+        return readDoubleData(fileName, rows, columns, ByteOrder.BIG_ENDIAN);
+    }
+
     public static ComplexDoubleMatrix readCplxFloatData(final String fileName, final int rows, final int columns, final ByteOrder byteOrder) throws FileNotFoundException {
 
         final FlatBinaryFloat inRealFile = new FlatBinaryFloat();
