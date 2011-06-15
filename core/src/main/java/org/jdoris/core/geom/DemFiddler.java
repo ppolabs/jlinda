@@ -54,12 +54,12 @@ public class DemFiddler {
     double phiMax;
     double lambdaMin;
     double lambdaMax;
-    private double[] x_in;
-    private double[] y_in;
-    private double[][] z_in;
-    private double[][] grd;
-    private double r_az_ratio;
-    private double NODATA = 99999;
+    //    private double[] x_in;
+//    private double[] y_in;
+//    private double[][] z_in;
+    double[][] grd;
+//    private double r_az_ratio;
+//    private double NODATA = 99999;
 
     public DemFiddler() {
     }
@@ -141,101 +141,81 @@ public class DemFiddler {
         }
     }
 
-    public void GridData() {
+    public double[][] gridData(final double[][] x_in, final double[][] y_in, final double[][] z_in,
+                               double x_min, final double x_max, double y_min, final double y_max,
+                               double x_inc, double y_inc, final double r_az_ratio, double offset,
+                               final double NODATA) {
 
-        int i;
-        int j;
-        int k;
-        int ij;
-        int p;
-        int i_min;
-        int i_max;
-        int j_min;
-        int j_max;
-        int n;
-        int nx;
-        int ny;
-        int zLoops;
-        int zLoop;
-        int zBlockSize;
+
+        int i, j, k, ij;
+        long p;
+        long i_min, i_max, j_min, j_max;
+        int n, nx, ny;
+        int zLoops, zLoop, zBlockSize, zInterpolateBlockSize;
         int indexFirstPoint;
-        int zInterpolateBlockSize;
+
         double[] vx = new double[4];
         double[] vy = new double[4];
-        double xkj;
-        double xlj;
-        double ykj;
-        double ylj;
-        double zj;
-        double zk;
-        double zl;
-        double zlj;
+        grd = new double[128][512];
+
+        double xkj, xlj;
+        double ykj, ylj;
+        double zj, zk;
+        double zl, zlj;
         double zkj;
-        double xp;
-        double yp;
+        double xp, yp;
         double f; // linear interpolation parameters
 
-        Coordinate[] In = null;
-        Coordinate[] Out = null;
+        Coordinate[] In;
 
         // Initialize variables
-        zBlockSize = x_in.length; // block size of x and y coordination
+        final int x_in_dim = x_in.length * x_in[0].length;
+        final int z_in_dim = z_in.length * z_in[0].length;
+        zBlockSize = x_in_dim; // block size of x and y coordination
         n = zBlockSize;
 
-
         // How many groups of z value should be interpolated
-        if ((z_in.length % zBlockSize) != 0) {
-            System.out.println("The input of the DEM buffer and z is not the same...");
-            return;
+        if ((z_in_dim % zBlockSize) != 0) {
+            logger.warn("The input of the DEM buffer and z is not the same...");
+            return null;
         } else {
             zLoops = z_in.length / x_in.length;
         }
 
+        // containers
         double[] a = new double[zLoops];
         double[] b = new double[zLoops];
         double[] c = new double[zLoops];
 
-//        DoubleMatrix a = new DoubleMatrix(zLoops);
-//        DoubleMatrix b = new DoubleMatrix(zLoops);
-//        DoubleMatrix c = new DoubleMatrix(zLoops);
-
-/*
-        if (a == null || b == null || c == null)
-		{
-		  ERROR << "Memory ERROR in source file: " << __FILE__ << " at line: " << __LINE__;
-		  PRINT_ERROR(ERROR.get_str());
-		  throw(memory_error);
-		}
-*/
-        // TODO: check the orientation
-        // if JBLASS used
-//        nx = grd.rows / zLoops;
-//        ny = grd.columns;
-//        zInterpolateBlockSize = grd.length / zLoops;
-
-        // if ARRAYS used
         nx = grd.length / zLoops;
         ny = grd[0].length;
 //        zInterpolateBlockSize = grd.length * ny / zLoops;
 
-//        In = new Coordinate[2 * n];
-        In = new Coordinate[n];
+//        In = new Coordinate[n];
+//        int tmpCounter = 0;
+//        // Copy x,y points to In structure array
+//        for (i = 0; i < x_in.length; i++) {
+//            for (j = 0; j < x_in[0].length; j++) {
+//                In[tmpCounter] = new Coordinate(x_in[i][j], y_in[i][j] * r_az_ratio, z_in[i][j]);
+//                tmpCounter++;
+//            }
+//        }
 
-        // Copy x,y points to In structure array
-        for (i = 0; i < n; i++) {
-            In[i] = new Coordinate(x_in[i], y_in[i] * r_az_ratio);
-        }
-
-        logger.trace("testFastDelaunayTriangulator with " + In.length + " points");
+        // TODO: integrate initialization of In object and GeometryFactory
+        // organize input data
+        logger.trace("DelaunayTriangulator with " + n + " points");
         long t0 = System.currentTimeMillis();
         List<Geometry> list = new ArrayList<Geometry>();
         GeometryFactory gf = new GeometryFactory();
-        for (Coordinate coord : In) {
-            list.add(gf.createPoint(coord));
+        for (i = 0; i < x_in.length; i++) {
+            for (j = 0; j < x_in[0].length; j++) {
+                list.add(gf.createPoint(new Coordinate(x_in[i][j], y_in[i][j] * r_az_ratio, z_in[i][j])));
+            }
         }
         long t1 = System.currentTimeMillis();
-        logger.info("Input set constructed in %10.3f sec\n" + (0.001 * (t1 - t0)));
+        logger.info("Input set constructed in " + (0.001 * (t1 - t0)) + " sec");
 
+        // triangulate input data
         long t2 = System.currentTimeMillis();
         FastDelaunayTriangulator FDT = new FastDelaunayTriangulator();
         try {
@@ -244,24 +224,21 @@ public class DemFiddler {
             te.printStackTrace();
         }
         long t3 = System.currentTimeMillis();
+        logger.info("Data set triangulated in " + (0.001 * (t3 - t2)) + " sec");
 
-        logger.info("   triangulated in %10.3f sec\n" + (0.001 * (t3 - t2)));
-
-        // here it loops through triangles!
+        long t4 = System.currentTimeMillis();
+        //// loop over triangles
         for (Triangle triangle : FDT.triangles) {
 
-            // store the index of the first Point of this triangle
-            indexFirstPoint = triangle.getIndex(triangle.getA());
-
-            // get coordinates from trianglelist
+            // store triangle coordinates in local variables
             vx[0] = vx[3] = triangle.getA().x;
-            vy[0] = vy[3] = triangle.getA().y;
+            vy[0] = vy[3] = triangle.getA().y / r_az_ratio;
 
             vx[1] = triangle.getB().x;
-            vy[1] = triangle.getB().y;
+            vy[1] = triangle.getB().y / r_az_ratio;
 
-            vx[2] = triangle.getB().x;
-            vy[2] = triangle.getB().y;
+            vx[2] = triangle.getC().x;
+            vy[2] = triangle.getC().y / r_az_ratio;
 
             // check whether something is no-data
             if (vx[0] == NODATA || vx[1] == NODATA || vx[2] == NODATA)
@@ -271,37 +248,34 @@ public class DemFiddler {
 
             /* Compute grid indices the current triangle may cover.*/
             xp = Math.min(Math.min(vx[0], vx[1]), vx[2]);
-            double x_min = 0;
-            long x_inc = 0;
-            double offset = 0;
-            i_min = (int) coordToIndex(xp, x_min, x_inc, offset);
-            //INFO << "xp: " << xp;
-            //INFO.print();
+            i_min = coordToIndex(xp, x_min, x_inc, offset);
 
             xp = Math.max(Math.max(vx[0], vx[1]), vx[2]);
-            i_max = (int) coordToIndex(xp, x_min, x_inc, offset);
-            //INFO << "xp: " << xp;
-            //INFO.print();
+            i_max = coordToIndex(xp, x_min, x_inc, offset);
 
             yp = Math.min(Math.min(vy[0], vy[1]), vy[2]);
-            double y_min = 0;
-            long y_inc = 0;
-            j_min = (int) coordToIndex(yp, y_min, y_inc, offset);
+            j_min = coordToIndex(yp, y_min, y_inc, offset);
 
             yp = Math.max(Math.max(vy[0], vy[1]), vy[2]);
-            j_max = (int) coordToIndex(yp, y_min, y_inc, offset);
+            j_max = coordToIndex(yp, y_min, y_inc, offset);
 
             /* Adjustments for triangles outside -R region. */
             /* Triangle to the left or right. */
-            if ((i_max < 0) || (i_min >= nx)) continue;
+            if ((i_max < 0) || (i_min >= nx))
+                continue;
             /* Triangle Above or below */
-            if ((j_max < 0) || (j_min >= ny)) continue;
+            if ((j_max < 0) || (j_min >= ny))
+                continue;
             /* Triangle covers boundary, left or right. */
-            if (i_min < 0) i_min = 0;
-            if (i_max >= nx) i_max = nx - 1;
+            if (i_min < 0)
+                i_min = 0;
+            if (i_max >= nx)
+                i_max = nx - 1;
             /* Triangle covers boundary, top or bottom. */
-            if (j_min < 0) j_min = 0;
-            if (j_max >= ny) j_max = ny - 1;
+            if (j_min < 0)
+                j_min = 0;
+            if (j_max >= ny)
+                j_max = ny - 1;
 
             /* Find equation for the plane as z = ax + by + c */
             xkj = vx[1] - vx[0];
@@ -312,9 +286,9 @@ public class DemFiddler {
             f = 1.0 / (xkj * ylj - ykj * xlj);
 
             for (zLoop = 0; zLoop < zLoops; zLoop++) {
-                zj = z_in[zLoop][triangle.getIndex(triangle.getA())];
-                zk = z_in[zLoop][triangle.getIndex(triangle.getB())];
-                zl = z_in[zLoop][zBlockSize + triangle.getIndex(triangle.getC())];
+                zj = triangle.getA().z;
+                zk = triangle.getB().z;
+                zl = triangle.getC().z;
                 zkj = zk - zj;
                 zlj = zl - zj;
                 a[zLoop] = -f * (ykj * zlj - zkj * ylj);
@@ -322,11 +296,11 @@ public class DemFiddler {
                 c[zLoop] = -a[zLoop] * vx[1] - b[zLoop] * vy[1] + zk;
             }
 
-            for (i = i_min; i <= i_max; i++) {
+            for (i = (int)i_min; i <= i_max; i++) {
 
                 xp = indexToCoord(i, x_min, x_inc, offset);
 
-                for (j = j_min; j <= j_max; j++) {
+                for (j = (int)j_min; j <= j_max; j++) {
 
                     yp = indexToCoord(j, y_min, y_inc, offset);
 
@@ -334,12 +308,15 @@ public class DemFiddler {
                         continue; /* Outside */
 
                     for (zLoop = 0; zLoop < zLoops; zLoop++) {
-                        grd[i][j] = a[zLoop] + xp + b[zLoop] * yp + c[zLoop];
+                        grd[i][j] = a[zLoop] * xp + b[zLoop] * yp + c[zLoop];
                     }
                 }
             }
         }
+        long t5 = System.currentTimeMillis();
+        logger.info("Data set interpolated in " + (0.001 * (t5 - t4)) + " sec");
 
+        return grd;
 
     }
 
@@ -348,26 +325,20 @@ public class DemFiddler {
         int iRet1 = ((xt[0] - xt[1]) * (y - yt[1])) > ((x - xt[1]) * (yt[0] - yt[1])) ? 1 : -1;
         int iRet2 = ((xt[1] - xt[2]) * (y - yt[2])) > ((x - xt[2]) * (yt[1] - yt[2])) ? 1 : -1;
 
-//        if ((iRet0 > 0 && iRet1 > 0 && iRet2 > 0) || (iRet0 < 0 && iRet1 < 0 && iRet2 < 0))
-//            return true;
-//        else
-//            return false;
-
         return (iRet0 > 0 && iRet1 > 0 && iRet2 > 0) || (iRet0 < 0 && iRet1 < 0 && iRet2 < 0);
-
     }
 
-    private long coordToIndex(final double coord, final double coord0, final long deltaCoord, final double offset) {
-        return (irint(((((coord) - (coord0)) / (deltaCoord)) - (offset))));
+    private long coordToIndex(final double coord, final double coord0, final double deltaCoord, final double offset) {
+        return irint((((coord - coord0) / (deltaCoord)) - offset));
     }
 
-    private double indexToCoord(final long idx, final double coord0, final long deltaCoord, final double offset) {
+    private double indexToCoord(final long idx, final double coord0, final double deltaCoord, final double offset) {
         return (coord0 + idx * deltaCoord + offset);
     }
 
 
     private long irint(final double coord) {
-        return ((long) rint(coord));
+        return ((long ) rint(coord));
     }
 
     private double rint(final double coord) {
