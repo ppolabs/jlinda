@@ -12,11 +12,6 @@ import java.io.File;
 
 import static org.jdoris.core.io.DataReader.readDoubleData;
 
-/**
- * User: pmar@ppolabs.com
- * Date: 6/14/11
- * Time: 12:47 PM
- */
 public class DemFiddlerTest {
 
     static Logger logger = Logger.getLogger(DemFiddler.class.getName());
@@ -130,6 +125,7 @@ public class DemFiddlerTest {
 
         /* grid input tile */
         DemFiddler demFiddler = new DemFiddler();
+        demFiddler.setGrd(new double[128][512]);
 
         // load test data
         String testDataDir = "/d2/etna_test/demTest/";
@@ -152,7 +148,7 @@ public class DemFiddlerTest {
 
         long t0 = System.currentTimeMillis();
         demFiddler.gridData(DEMline_buffer, DEMpixel_buffer, input_buffer,
-                firstline_buffer, lastline_buffer, first_pixel, lastpixel,
+                firstline_buffer, first_pixel,
                 mlL, mlP, r_az_ratio,
                 offset, NODATA);
         long t1 = System.currentTimeMillis();

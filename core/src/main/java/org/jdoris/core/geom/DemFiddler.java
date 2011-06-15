@@ -54,6 +54,7 @@ public class DemFiddler {
     double phiMax;
     double lambdaMin;
     double lambdaMax;
+
     //    private double[] x_in;
 //    private double[] y_in;
 //    private double[][] z_in;
@@ -63,6 +64,15 @@ public class DemFiddler {
 
     public DemFiddler() {
     }
+
+    public double[][] getGrd() {
+        return grd;
+    }
+
+    public void setGrd(double[][] grd) {
+        this.grd = grd;
+    }
+
 
     public void getDEMCorners(final SLCImage meta,
                               final Orbit orbit) throws Exception {
@@ -142,21 +152,19 @@ public class DemFiddler {
     }
 
     public double[][] gridData(final double[][] x_in, final double[][] y_in, final double[][] z_in,
-                               double x_min, final double x_max, double y_min, final double y_max,
+                               double x_min, double y_min,
                                double x_inc, double y_inc, final double r_az_ratio, double offset,
                                final double NODATA) {
 
 
-        int i, j, k, ij;
-        long p;
+        // local fields
+        int i, j;
         long i_min, i_max, j_min, j_max;
         int n, nx, ny;
-        int zLoops, zLoop, zBlockSize, zInterpolateBlockSize;
-        int indexFirstPoint;
+        int zLoops, zLoop, zBlockSize;
 
         double[] vx = new double[4];
         double[] vy = new double[4];
-        grd = new double[128][512];
 
         double xkj, xlj;
         double ykj, ylj;
@@ -164,17 +172,16 @@ public class DemFiddler {
         double zl, zlj;
         double zkj;
         double xp, yp;
-        double f; // linear interpolation parameters
+        double f;
 
-        Coordinate[] In;
-
-        // Initialize variables
+        //// Initialize variables
         final int x_in_dim = x_in.length * x_in[0].length;
         final int z_in_dim = z_in.length * z_in[0].length;
         zBlockSize = x_in_dim; // block size of x and y coordination
         n = zBlockSize;
 
-        // How many groups of z value should be interpolated
+        // TODO: work out "multiple levels" for interpolation
+        //// How many groups of z value should be interpolated
         if ((z_in_dim % zBlockSize) != 0) {
             logger.warn("The input of the DEM buffer and z is not the same...");
             return null;
@@ -182,27 +189,15 @@ public class DemFiddler {
             zLoops = z_in.length / x_in.length;
         }
 
-        // containers
+        //// containers
         double[] a = new double[zLoops];
         double[] b = new double[zLoops];
         double[] c = new double[zLoops];
 
         nx = grd.length / zLoops;
         ny = grd[0].length;
-//        zInterpolateBlockSize = grd.length * ny / zLoops;
 
-//        In = new Coordinate[n];
-//        int tmpCounter = 0;
-//        // Copy x,y points to In structure array
-//        for (i = 0; i < x_in.length; i++) {
-//            for (j = 0; j < x_in[0].length; j++) {
-//                In[tmpCounter] = new Coordinate(x_in[i][j], y_in[i][j] * r_az_ratio, z_in[i][j]);
-//                tmpCounter++;
-//            }
-//        }
-
-        // TODO: integrate initialization of In object and GeometryFactory
-        // organize input data
+        //// organize input data
         logger.trace("DelaunayTriangulator with " + n + " points");
         long t0 = System.currentTimeMillis();
         List<Geometry> list = new ArrayList<Geometry>();
@@ -215,7 +210,7 @@ public class DemFiddler {
         long t1 = System.currentTimeMillis();
         logger.info("Input set constructed in " + (0.001 * (t1 - t0)) + " sec");
 
-        // triangulate input data
+        //// triangulate input data
         long t2 = System.currentTimeMillis();
         FastDelaunayTriangulator FDT = new FastDelaunayTriangulator();
         try {
@@ -226,8 +221,8 @@ public class DemFiddler {
         long t3 = System.currentTimeMillis();
         logger.info("Data set triangulated in " + (0.001 * (t3 - t2)) + " sec");
 
+        //// interpolate: loop over triangles
         long t4 = System.currentTimeMillis();
-        //// loop over triangles
         for (Triangle triangle : FDT.triangles) {
 
             // store triangle coordinates in local variables
