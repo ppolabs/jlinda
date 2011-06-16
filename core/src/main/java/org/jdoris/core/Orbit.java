@@ -136,7 +136,7 @@ public final class Orbit {
     }
 
     // TODO: make generic so it can work with arrays of lines as well: see matlab implementation
-    public Point lph2xyz(double line, double pixel, double height, SLCImage slcimage) throws Exception {
+    public Point lph2xyz(final double line, final double pixel, final double height, SLCImage slcimage) throws Exception {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -211,7 +211,7 @@ public final class Orbit {
             }
         }
 
-        return ellipsoidPosition;
+        return new Point(ellipsoidPosition);
     }
 
     public Point lp2xyz(Point sarPixel, SLCImage slcimage) throws Exception {
@@ -279,7 +279,7 @@ public final class Orbit {
         sarPixel.x = slcimage.tr2pix(time.x);
         sarPixel.y = slcimage.ta2line(time.y);
 
-        return sarPixel;
+        return new Point(sarPixel);
     }
 
     public Point ell2lp(final double[] phi_lam_height, final SLCImage slcimage) throws Exception {
@@ -293,7 +293,7 @@ public final class Orbit {
     }
 
     public double[] lph2ell(final double line, final double pixel, final double height, final SLCImage slcimage) throws Exception {
-        Point xyz = lph2xyz(line, pixel, height, slcimage);
+        final Point xyz = lph2xyz(line, pixel, height, slcimage);
         return Ellipsoid.xyz2ell(xyz);
     }
 
@@ -380,6 +380,7 @@ public final class Orbit {
             satelliteAcceleration.y += coeff_Y[i] * powT;
             satelliteAcceleration.z += coeff_Z[i] * powT;
         }
+
         return satelliteAcceleration.divByScalar(100.0d);
 
     }

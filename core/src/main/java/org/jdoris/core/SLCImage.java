@@ -56,6 +56,10 @@ public final class SLCImage {
     private int ovsAz;                 // oversampling of SLC
     private int ovsRg;                 // oversampling of SLC
 
+    // multilooking factors
+    private int mlAz;                 // multilooking of SLC
+    private int mlRg;                 // multilooking of SLC
+
     // relative to master geometry, or
     // absolute timing error of master
     // relative to master geometry, or
@@ -327,6 +331,23 @@ public final class SLCImage {
     public void setCoarseOffsetL(int offsetL) {
         this.coarseOffsetL = offsetL;
     }
+
+    public int getMlAz() {
+        return mlAz;
+    }
+
+    public void setMlAz(int mlAz) {
+        this.mlAz = mlAz;
+    }
+
+    public int getMlRg() {
+        return mlRg;
+    }
+
+    public void setMlRg(int mlRg) {
+        this.mlRg = mlRg;
+    }
+
 
     public class Doppler {
 
