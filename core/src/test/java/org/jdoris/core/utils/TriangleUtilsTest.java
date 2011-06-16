@@ -22,11 +22,11 @@ public class TriangleUtilsTest {
 
         final int nRows = 418;
         final int nCols = 532;
-        double[][] DEMline_buffer = new double[nRows][nCols];  // dem_line_buffer.r4
-        double[][] DEMpixel_buffer = new double[nRows][nCols]; // dem_pixel_buffer.r4
-        double[][] input_buffer = new double[nRows][nCols];  // dem_buffer.r4
+        double[][] DEMline_buffer;  // dem_line_buffer.r4
+        double[][] DEMpixel_buffer; // dem_pixel_buffer.r4
+        double[][] input_buffer;    // dem_buffer.r4
 
-        double[][] grd_EXPECTED; // output_buffer.r4
+        double[][] grd_EXPECTED;    // output_buffer.r4
 
         // load test data
         String testDataDir = "/d2/etna_test/demTest/";
