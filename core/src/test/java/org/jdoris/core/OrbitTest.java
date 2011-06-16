@@ -2,7 +2,10 @@ package org.jdoris.core;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.io.File;
 
@@ -199,6 +202,52 @@ public class OrbitTest {
     public void testLp2xyz() throws Exception {
         Point xyz_ACTUAL = orbit_ACTUAL.lp2xyz(pixel_EXPECTED.y, pixel_EXPECTED.x, slcimage);
         Assert.assertArrayEquals(pixelXYZ_EXPECTED.toArray(), xyz_ACTUAL.toArray(), eps_03);
+    }
+
+    @Test
+    public void testPointByReference_lp2xyz() throws Exception{
+        Point t1 = orbit_ACTUAL.lp2xyz(1, 1, slcimage);
+        Point t2 = orbit_ACTUAL.lp2xyz(2, 2, slcimage);
+        Assert.assertFalse(t1 == t2);
+
+        Point t3 = orbit_ACTUAL.lp2xyz(new Point(1, 1), slcimage);
+        Point t4 = orbit_ACTUAL.lp2xyz(new Point(2, 2), slcimage);
+        Assert.assertFalse(t3 == t4);
+    }
+
+    @Test
+    public void testPointByReference_lph2xyz() throws Exception{
+        Point t1 = orbit_ACTUAL.lph2xyz(1, 1, 0, slcimage);
+        Point t2 = orbit_ACTUAL.lph2xyz(1, 1, 1, slcimage);
+        Assert.assertFalse(t1 == t2);
+    }
+
+    @Test
+    public void testPointByReference_getXYZ() throws Exception{
+        Point t1 = orbit_ACTUAL.getXYZ(1);
+        Point t2 = orbit_ACTUAL.getXYZ(2);
+        Assert.assertFalse(t1 == t2);
+    }
+
+    @Test
+    public void testPointByReference_getXYZDot() throws Exception{
+        Point t1 = orbit_ACTUAL.getXYZDot(1);
+        Point t2 = orbit_ACTUAL.getXYZDot(2);
+        Assert.assertFalse(t1 == t2);
+    }
+
+    @Test
+    public void testPointByReference_getXYZDotDot() throws Exception{
+        Point t1 = orbit_ACTUAL.getXYZDotDot(1);
+        Point t2 = orbit_ACTUAL.getXYZDotDot(2);
+        Assert.assertFalse(t1 == t2);
+    }
+
+    @Test
+    public void testPointByReference_xyz2t() throws Exception {
+        Point t1 = orbit_ACTUAL.xyz2t(crXYZ_EXPECTED, slcimage);
+        Point t2 = orbit_ACTUAL.xyz2t(new Point(crXYZ_EXPECTED.x - 1, crXYZ_EXPECTED.y - 1, crXYZ_EXPECTED.z), slcimage);
+        Assert.assertFalse(t1 == t2);
     }
 
 
