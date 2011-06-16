@@ -25,6 +25,8 @@ public class DemTile {
     double phiExtra;
 
     /// tile coordinates in phi,lam
+    boolean cornersComputed = false;
+
     double phiMin;
     double phiMax;
     double lambdaMin;
@@ -214,6 +216,9 @@ public class DemTile {
             TopoPhase.logger.warn("DEM does not cover entire interferogram/tile.");
             TopoPhase.logger.warn("input DEM should be extended to the East.");
         }
+
+        cornersComputed = true;
+
     }
 
 }
