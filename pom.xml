@@ -3,16 +3,40 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <packaging>pom</packaging>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <nest.version>4B-1.0</nest.version>
+        <beam.version>4.9-SNAPSHOT</beam.version>
+        <jdoris.version>0.0</jdoris.version>
+        <jblas.version>1.1.1</jblas.version>
+    </properties>
 
     <name>jDoris</name>
-    <modules>
-        <!--<module>legacy</module>-->
-        <module>jdoris-core</module>
-    </modules>
     <groupId>org.jdoris</groupId>
     <artifactId>jdoris</artifactId>
-    <version>0.0</version>
+    <version>${jdoris.version}</version>
+
+    <packaging>pom</packaging>
+
+    <organization>
+        <name>PPO.labs</name>
+        <url>http://www.ppolabs.com/jdoris</url>
+    </organization>
+    <inceptionYear>2011</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License (GPL)</name>
+            <url>http://www.gnu.org/licenses/gpl.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <modules>
+        <module>jdoris-core</module>
+        <module>jdoris-nest</module>
+    </modules>
 
     <repositories>
         <repository>
@@ -29,7 +53,7 @@
         <repository>
             <id>ppolabs-mvn-repo</id>
             <name>Public Maven Repository of PPO.labs hosted on github.com</name>
-            <url>http://10.0.0.21/mvn</url>
+            <url>http://192.168.0.1/mvn</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
@@ -48,5 +72,13 @@
             <url>http://download.osgeo.org/webdav/geotools/</url>
         </repository>
     </repositories>
+
+    <!--<dependencies>-->
+        <!--<dependency>-->
+            <!--<groupId>org.jdoris</groupId>-->
+            <!--<artifactId>jdoris-core</artifactId>-->
+            <!--<version>${jdoris.version}</version>-->
+        <!--</dependency>-->
+    <!--</dependencies>-->
 
 </project>

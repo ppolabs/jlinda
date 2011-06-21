@@ -114,7 +114,7 @@ public final class SLCImage {
         this.azTimingError = 0;                     // by default, unit lines
         this.rgTimingError = 0;                     // by default, unit pixels
 
-        this.currentWindow  = new Window(1, 25000, 1, 5000);
+        this.currentWindow = new Window(1, 25000, 1, 5000);
         this.originalWindow = new Window(1, 25000, 1, 5000);
 //        slavemasteroffsets.l00  = 0;               // window in master coordinates
 //        slavemasteroffsets.p00  = 0;
@@ -181,7 +181,7 @@ public final class SLCImage {
         this.doppler.f_DC_a2 = dopplersArray[0].coefficients[2];
         this.doppler.checkConstant();
 
-   }
+    }
 
     public void parseResFile(File resFileName) throws Exception {
 

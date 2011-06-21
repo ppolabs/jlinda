@@ -2,24 +2,25 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
-    <parent>
-        <groupId>org.jdoris</groupId>
-        <artifactId>jdoris</artifactId>
-        <version>${jdoris.version}</version>
-    </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <name>jDoris Core Libs</name>
+    <parent>
+        <artifactId>jdoris</artifactId>
+        <groupId>org.jdoris</groupId>
+        <version>${jdoris.version}</version>
+    </parent>
+
+    <name>jDoris NEST Support</name>
     <groupId>org.jdoris</groupId>
-    <artifactId>jdoris-core</artifactId>
-    <version>${jdoris.version}</version>
+    <artifactId>jdoris-nest</artifactId>
+    <version>${jd}</version>
+    <description>NEST utilities and operators</description>
 
     <dependencies>
         <dependency>
-            <groupId>org.esa.nest</groupId>
-            <artifactId>nest-core</artifactId>
-            <version>${nest.version}</version>
+            <groupId>org.jdoris</groupId>
+            <artifactId>jdoris-core</artifactId>
+            <version>0.0</version>
         </dependency>
         <dependency>
             <groupId>org.esa.beam</groupId>
@@ -32,31 +33,24 @@
             <version>${beam.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.vividsolutions</groupId>
-            <artifactId>jts</artifactId>
-            <version>1.11</version>
+            <groupId>org.esa.nest</groupId>
+            <artifactId>nest-core</artifactId>
+            <version>${nest.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.esa.beam</groupId>
+            <artifactId>beam-visat-rcp</artifactId>
+            <version>${beam.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.esa.nest</groupId>
+            <artifactId>nest-graph-builder</artifactId>
+            <version>${nest.version}</version>
         </dependency>
         <dependency>
             <groupId>org</groupId>
-            <!-- scope>system</scope -->
-            <!-- systemPath>~/.m2/repository/org/jblas/1.0.1/jblas-1.0.1.jar</systemPath -->
             <artifactId>jblas</artifactId>
             <version>${jblas.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.emory.mathcs</groupId>
-            <artifactId>jtransforms</artifactId>
-            <version>2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>hirondelle</groupId>
-	    <artifactId>date4j</artifactId>
-	    <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.16</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -65,4 +59,13 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!--<build>-->
+        <!--<plugins>-->
+            <!--<plugin>-->
+                <!--<groupId>com.bc.maven.plugins</groupId>-->
+                <!--<artifactId>maven-javahelp-plugin</artifactId>-->
+            <!--</plugin>-->
+        <!--</plugins>-->
+    <!--</build>-->
 </project>
