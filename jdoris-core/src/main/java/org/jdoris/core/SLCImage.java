@@ -135,6 +135,8 @@ public final class SLCImage {
 
     public SLCImage(MetadataElement element) {
 
+        this();
+
         // units [meters]
         this.radar_wavelength = (Constants.lightSpeed / Math.pow(10, 6)) / element.getAttributeDouble(AbstractMetadata.radar_frequency);
 
