@@ -8,7 +8,7 @@
     <name>jDoris</name>
     <modules>
         <!--<module>legacy</module>-->
-        <module>core</module>
+        <module>jdoris-core</module>
     </modules>
     <groupId>org.jdoris</groupId>
     <artifactId>jdoris</artifactId>

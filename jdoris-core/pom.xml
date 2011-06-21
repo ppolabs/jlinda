@@ -11,7 +11,7 @@
 
     <name>jDoris core libs</name>
     <groupId>org.jdoris</groupId>
-    <artifactId>core</artifactId>
+    <artifactId>jdoris-core</artifactId>
     <version>0.0</version>
 
     <dependencies>
