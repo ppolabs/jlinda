@@ -196,6 +196,46 @@ public class RangeFilterTest {
 
     }
 
+    @Test
+    public void filterClass_HAMM_OVSMP_SPLIT() throws Exception {
+
+        // master metadata & data
+        SLCImage masterMetadata = new SLCImage();
+        masterMetadata.parseResFile(new File(testDirectory + "master.res"));
+        masterCplx_ACTUAL = masterCplx.dup();
+
+        // slave metadata & data
+        SLCImage slaveMetadata = new SLCImage();
+        slaveMetadata.parseResFile(new File(testDirectory + "slave.res"));
+        slaveCplx_ACTUAL = slaveCplx.dup();
+
+        RangeFilter rangeFilter = new RangeFilter();
+
+        rangeFilter.setMetadata(masterMetadata);
+        rangeFilter.setData(masterCplx_ACTUAL);
+
+        rangeFilter.setMetadata1(slaveMetadata);
+        rangeFilter.setData1(slaveCplx_ACTUAL);
+
+        rangeFilter.setOvsFactor(2);
+        rangeFilter.defineParameters();
+
+        rangeFilter.defineFilter();
+        rangeFilter.applyFilterMaster();
+        rangeFilter.applyFilterSlave();
+
+        /// load Expected Data
+        String fileMasterDataNameFiltered = "slc_image_filtered_hamm_2_OFF.cr4.swap";
+        ComplexDoubleMatrix rngFilter_DATA_EXPECTED = loadExpectedData(fileMasterDataNameFiltered);
+
+        String fileSlaveDataNameFiltered = "slc_image1_filtered_hamm_2_OFF.cr4.swap";
+        ComplexDoubleMatrix rngFilter_DATA1_EXPECTED = loadExpectedData(fileSlaveDataNameFiltered);
+
+        Assert.assertEquals(rngFilter_DATA_EXPECTED, rangeFilter.getData());
+        Assert.assertEquals(rngFilter_DATA1_EXPECTED, rangeFilter.getData1());
+
+    }
+
 
 
     @Test
