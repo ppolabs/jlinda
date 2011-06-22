@@ -105,7 +105,7 @@ public class todo_classes {
         int finumlines;             // number of lines input
         // ______ method goldstein ______
         double alpha;                  // weighting
-        long blocksize;              // blocksize filtered blocks
+        long blocksize;              // blockSize filtered blocks
         long overlap;                // half overlap
         // ______ method goldstein, spatial conv. and spectral ______
         //        matrix<real4> kernel;                 // e.g. [1 1 1]
@@ -239,18 +239,18 @@ public class todo_classes {
         //  int16       method;                 // method selector
           char          firefdem[4*ONE27];      // input filename reference dem
           int16         iformatflag;            // input format [signed short]
-          uint          demrows;                // number of
-          uint          demcols;                // number of
-          real8         demdeltalat;            // radians
-          real8         demdeltalon;            // radians
-          real8         demlatleftupper;        // radians
-          real8         demlonleftupper;        // radians
-          real8         demnodata;              // identifier/flag
+          uint          demRows;                // number of
+          uint          demCols;                // number of
+          real8         demDeltaLat;            // radians
+          real8         demDeltaLon;            // radians
+          real8         demLatLeftUpper;        // radians
+          real8         demLonLeftUpper;        // radians
+          real8         demNodata;              // identifier/flag
         //  real8               extradense;             // extra interpolation factor (4)
           char          forefdem[4*ONE27];      // output filename reference phase
           char          foh2ph[4*ONE27];                // output perp. baseline, added by FvL
           char          forefdemhei[4*ONE27];   // output filename DEM in radarcoord.
-          bool          includerefpha;          // flag to include_flatearth correction
+          bool          includeRefPha;          // flag to include_flatearth correction
           char          fodem[4*ONE27];         // flag+name output of cropped dem
           char          fodemi[4*ONE27];                // flag+name output of interpolated dem
         */

@@ -11,12 +11,12 @@ import org.jdoris.core.SLCImage;
 */
 public class CplxContainer {
 
-    String date;
-    SLCImage metaData;
-    Orbit orbit;
+    public String name;
+    public String date;
+    public SLCImage metaData;
+    public Orbit orbit;
     public Band realBand;
     public Band imagBand;
-    int type;
 
     public CplxContainer(String date, SLCImage metaData, Orbit orbit, Band realBand, Band imagBand) {
         this.date = date;
@@ -24,7 +24,11 @@ public class CplxContainer {
         this.orbit = orbit;
         this.realBand = realBand;
         this.imagBand = imagBand;
-        this.type = realBand.getDataType();
+    }
+
+    public CplxContainer(String name, SLCImage metaData) {
+        this.name = name;
+        this.metaData = metaData;
     }
 
 }

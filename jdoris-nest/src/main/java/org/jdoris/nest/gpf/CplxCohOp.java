@@ -34,8 +34,8 @@ import java.util.Map;
 public class CplxCohOp extends Operator {
 
     // ----------------------------------------------------
-    // NOTE 1: Assumed that slave bands are in master coord system, and are smaller
-    //         or equal to master.
+    // NOTE 1: Assumed that sourceSlave bands are in sourceMaster coord system, and are smaller
+    //         or equal to sourceMaster.
     // NOTE 2: No reference phase (dem nor flat earth) is removed by default in computation
     // NOTE 3: No multilooking happening in this operator
     // ----------------------------------------------------
@@ -157,8 +157,8 @@ public class CplxCohOp extends Operator {
         int inc = 2;
         int slaveArrayCounter = 0;
 
-        // add only master and band for real coherence
-        // i need for every slave to have one coherence image or complex coherence?!
+        // add only sourceMaster and band for real coherence
+        // i need for every sourceSlave to have one coherence image or complex coherence?!
         for (int i = 0; i < numSrcBands; i += inc) {
 
             final Band srcBandI = sourceProduct.getBandAt(i);
