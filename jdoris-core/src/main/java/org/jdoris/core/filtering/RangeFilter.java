@@ -207,6 +207,25 @@ public class RangeFilter extends ProductDataFilter {
 
     }
 
+    public void applyFilterMaster() {
+        /// Average power to reduce noise : fft.ing in-place over data rows ///
+        logger.trace("Took FFT over rows of master, slave.");
+        SpectralUtils.fft_inplace(data, 2);
+        LinearAlgebraUtils.dotmult_inplace(data, new ComplexDoubleMatrix(this.filter));
+        // IFFT of spectrally filtered data, and return these
+        SpectralUtils.invfft_inplace(data, 2);
+    }
+
+    public void applyFilterSlave() {
+
+        logger.trace("Took FFT over rows of master, slave.");
+        SpectralUtils.fft_inplace(data1, 2);
+        LinearAlgebraUtils.fliplr_inplace(filter);
+        LinearAlgebraUtils.dotmult_inplace(data1, new ComplexDoubleMatrix(this.filter));
+        // IFFT of spectrally filtered data, and return these
+        SpectralUtils.invfft_inplace(data1, 2);
+    }
+
 
     //// HELPER PRIVATE METHODS ////
 
