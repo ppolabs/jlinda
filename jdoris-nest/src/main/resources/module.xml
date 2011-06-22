@@ -55,6 +55,14 @@
             <parent>insar</parent>
         </action>
 
+        <action>
+            <id>RangeFilterAction</id>
+            <class>org.jdoris.nest.dat.RangeFilterAction</class>
+            <text>Range Filtering</text>
+            <shortDescr>Filter stack of SAR images in range direction</shortDescr>
+            <parent>insar</parent>
+        </action>
+
     </extension>
 
     <extension point="beam-ui:helpSets">

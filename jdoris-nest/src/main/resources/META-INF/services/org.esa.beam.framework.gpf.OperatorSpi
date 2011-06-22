@@ -1,3 +1,4 @@
 org.jdoris.nest.gpf.ComplexIfgOp$Spi
 org.jdoris.nest.gpf.CplxIfgOp$Spi
 org.jdoris.nest.gpf.CplxCohOp$Spi
+org.jdoris.nest.gpf.RangeFilterOp$Spi
