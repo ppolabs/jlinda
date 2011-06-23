@@ -7,10 +7,6 @@ import org.esa.nest.dat.plugins.graphbuilder.GraphBuilderDialog;
 
 import java.io.File;
 
-/**
- * Warp action.
- *
- */
 public class RangeFilterAction extends AbstractVisatAction {
 
     @Override

@@ -407,13 +407,13 @@ public class RangeFilterOp extends Operator {
 
                 // commit real() to target
                 targetBand = targetProduct.getBand(ifg.masterSubProduct.targetBandName_I);
-                tileRealSlave = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushFloatMatrix(filteredMaster.real(), tileRealSlave, targetRectangle);
+                tileRealMaster = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushFloatMatrix(filteredMaster.real(), tileRealMaster, targetRectangle);
 
                 // commit imag() to target
                 targetBand = targetProduct.getBand(ifg.masterSubProduct.targetBandName_Q);
-                tileImagSlave = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushFloatMatrix(filteredMaster.imag(), tileImagSlave, targetRectangle);
+                tileImagMaster = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushFloatMatrix(filteredMaster.imag(), tileImagMaster, targetRectangle);
 
                 /// SLAVE
                 final ComplexDoubleMatrix filteredSlave = rangeFilter.getData1();
@@ -452,7 +452,7 @@ public class RangeFilterOp extends Operator {
      */
     public static class Spi extends OperatorSpi {
         public Spi() {
-            super(RangeFilterOp.class);
+            super(AzimuthFilterOp.class);
         }
     }
 }
