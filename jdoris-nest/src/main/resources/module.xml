@@ -59,7 +59,15 @@
             <id>RangeFilterAction</id>
             <class>org.jdoris.nest.dat.RangeFilterAction</class>
             <text>Range Filtering</text>
-            <shortDescr>Filter stack of SAR images in range direction</shortDescr>
+            <shortDescr>Filter stack of SAR images in RANGE direction</shortDescr>
+            <parent>insar</parent>
+        </action>
+
+        <action>
+            <id>AzimuthFilterAction</id>
+            <class>org.jdoris.nest.dat.AzimuthFilterAction</class>
+            <text>Azimuth Filtering</text>
+            <shortDescr>Filter stack of SAR images in AZIMUTH direction</shortDescr>
             <parent>insar</parent>
         </action>
 
