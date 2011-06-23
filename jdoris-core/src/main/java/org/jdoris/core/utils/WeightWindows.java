@@ -47,7 +47,7 @@ public class WeightWindows {
 
         if (br > fs) {
             System.err.println("myhamming: RBW>RSR.");
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Hamming weighting: RBW>RSR");
         }
 
         double[] hamWin = new double[fr.length];
