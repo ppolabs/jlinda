@@ -148,8 +148,8 @@ public class RangeFilterOp extends Operator {
             String masterSourceName_I = master.realBand.getName();
             String masterSourceName_Q = master.imagBand.getName();
 
-            String masterTargetName_I = "i_" + PRODUCT_TAG + masterSourceName_I;
-            String masterTargetName_Q = "q_" + PRODUCT_TAG + masterSourceName_Q;
+            String masterTargetName_I = masterSourceName_I + "_" + PRODUCT_TAG;
+            String masterTargetName_Q = masterSourceName_Q + "_" + PRODUCT_TAG;
 
             // generate name for product bands
             final String productName = keyMaster.toString();
@@ -160,9 +160,8 @@ public class RangeFilterOp extends Operator {
                 String slaveSourceName_I = slave.realBand.getName();
                 String slaveSourceName_Q = slave.imagBand.getName();
 
-                String slaveTargetName_I = "i_" + PRODUCT_TAG + slaveSourceName_I;
-                String slaveTargetName_Q = "q_" + PRODUCT_TAG + slaveSourceName_Q;
-
+                String slaveTargetName_I = slaveSourceName_I + "_" + PRODUCT_TAG;
+                String slaveTargetName_Q = slaveSourceName_Q + "_" + PRODUCT_TAG;
 
                 final ProductContainer product = new ProductContainer(productName, master, slaveMap.get(keySlave), true);
 
@@ -298,7 +297,7 @@ public class RangeFilterOp extends Operator {
     }
 
     private void checkUserInput() {
-        TILE_OVERLAP_X = rangeTileOverlap;
+//        TILE_OVERLAP_X = rangeTileOverlap;
         // check for the logic in input paramaters
     }
 
@@ -350,7 +349,7 @@ public class RangeFilterOp extends Operator {
             final Rectangle rect = new Rectangle(targetRectangle);
             rect.width += (TILE_OVERLAP_X + extraRange);
             rect.height += TILE_OVERLAP_Y;
-//            System.out.println("x0 = " + rect.x + ", y0 = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
+            System.out.println("x0 = " + rect.x + ", y0 = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
 
             boolean doFilterMaster = true;
             if (masterMap.keySet().toArray().length > 1) {
