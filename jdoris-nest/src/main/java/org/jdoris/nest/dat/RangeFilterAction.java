@@ -20,7 +20,7 @@ public class RangeFilterAction extends AbstractVisatAction {
         dialog.show();
 
         final File graphPath = GraphBuilderDialog.getInternalGraphFolder();
-        final File graphFile =  new File(graphPath, "RangeFilterOpGraph.xml");
+        final File graphFile =  new File(graphPath, "RangeFilterGraph.xml");
 
         dialog.LoadGraph(graphFile);
     }
