@@ -327,7 +327,7 @@ public class GenericInSAROp extends Operator {
      */
     public static class Spi extends OperatorSpi {
         public Spi() {
-            super(RangeFilterOp.class);
+            super(GenericInSAROp.class);
         }
     }
 }
