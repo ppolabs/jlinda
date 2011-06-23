@@ -13,7 +13,7 @@
     <name>jDoris NEST Support</name>
     <groupId>org.jdoris</groupId>
     <artifactId>jdoris-nest</artifactId>
-    <version>${jd}</version>
+    <version>${jdoris.version}</version>
     <description>NEST utilities and operators</description>
 
     <dependencies>
@@ -55,7 +55,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.8</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
