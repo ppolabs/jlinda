@@ -5,6 +5,7 @@ import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.nest.datamodel.AbstractMetadata;
 import org.jblas.DoubleMatrix;
 import org.jdoris.core.io.ResFile;
+import org.jdoris.core.utils.DateUtils;
 import org.jdoris.core.utils.LinearAlgebraUtils;
 import org.jdoris.core.utils.PolyUtils;
 
@@ -89,8 +90,7 @@ public final class Orbit {
 
         for (int i = 0; i < numStateVectors; i++) {
             // convert time to seconds of the acquisition day
-            time[i] = (orbitStateVectors[i].time_mjd -
-                    (int) orbitStateVectors[i].time_mjd) * (24 * 3600); // Modified Julian Day 2000 (MJD2000)
+            time[i] = DateUtils.dateTimeToSecOfDay(orbitStateVectors[i].time.toString());
             data_X[i] = orbitStateVectors[i].x_pos;
             data_Y[i] = orbitStateVectors[i].y_pos;
             data_Z[i] = orbitStateVectors[i].z_pos;
@@ -230,7 +230,7 @@ public final class Orbit {
     public Point xyz2orb(Point pointOnEllips, SLCImage slcimage) {
         // return satellite position
         // Point pointTime = xyz2t(pointOnEllips,slcimage);
-        return getXYZ(xyz2t(pointOnEllips,slcimage).y); // inlined
+        return getXYZ(xyz2t(pointOnEllips, slcimage).y); // inlined
     }
 
     public Point xyz2t(Point pointOnEllips, SLCImage slcimage) {
@@ -322,7 +322,7 @@ public final class Orbit {
 
         if (azTime < time[0] || azTime > time[numStateVectors - 1]) {
             logger.warn("getXYZ() interpolation at: " + azTime + " is outside interval time axis: ("
-                + time[0] + ", " + time[numStateVectors-1] + ").");
+                    + time[0] + ", " + time[numStateVectors - 1] + ").");
         }
 
         Point satelliteXYZPosition = new Point();
@@ -341,7 +341,7 @@ public final class Orbit {
 
         if (azTime < time[0] || azTime > time[numStateVectors - 1]) {
             logger.warn("getXYZDot() interpolation at: " + azTime + " is outside interval time axis: ("
-                + time[0] + ", " + time[numStateVectors-1] + ").");
+                    + time[0] + ", " + time[numStateVectors - 1] + ").");
         }
 
         Point satelliteVelocity = new Point();
@@ -412,8 +412,8 @@ public final class Orbit {
     }
 
     public double eq3_Ellipsoid(Point pointOnEllips, double semiMajorA, double semiMinorB, double height) {
-        return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(semiMajorA+height, 2)) +
-                Math.pow(pointOnEllips.z / (semiMinorB+height), 2) - 1.0;
+        return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(semiMajorA + height, 2)) +
+                Math.pow(pointOnEllips.z / (semiMinorB + height), 2) - 1.0;
     }
 
     // TODO: sanity checks
@@ -505,3 +505,4 @@ public final class Orbit {
     }
 
 }
+

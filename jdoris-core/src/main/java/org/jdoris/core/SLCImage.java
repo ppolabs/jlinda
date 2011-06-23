@@ -2,11 +2,11 @@ package org.jdoris.core;
 
 import org.esa.beam.framework.datamodel.GeoPos;
 import org.esa.beam.framework.datamodel.MetadataElement;
-import org.esa.beam.framework.datamodel.ProductData;
 import org.esa.nest.datamodel.AbstractMetadata;
 import org.esa.nest.util.Constants;
 import org.esa.nest.util.GeoUtils;
 import org.jdoris.core.io.ResFile;
+import org.jdoris.core.utils.DateUtils;
 
 import java.io.File;
 
@@ -38,6 +38,7 @@ public final class SLCImage {
     private double PRF;
     private double azimuthBandwidth;
     private double tAzi1;
+    private double tAzi_original;
     private String azimuthWeightingWindow;
 
     // range annotations
@@ -146,9 +147,10 @@ public final class SLCImage {
         // units [Hz]
         this.PRF = element.getAttributeDouble(AbstractMetadata.pulse_repetition_frequency);
 
-        // work with seconds of the day!
-        final ProductData.UTC t_azi1_UTC = element.getAttributeUTC(AbstractMetadata.first_line_time);
-        this.tAzi1 = (t_azi1_UTC.getMJD() - (int) t_azi1_UTC.getMJD()) * 24 * 3600;
+        // zero doppler time to 1st pix of subset
+        final String t_azi1_UTC = element.getAttributeUTC(AbstractMetadata.first_line_time).toString();
+//        this.tAzi1 = (t_azi1_UTC.getMJD() - (int) t_azi1_UTC.getMJD()) * 24 * 3600;
+        this.tAzi1 = DateUtils.dateTimeToSecOfDay(t_azi1_UTC);
 
         this.rangeBandwidth = element.getAttributeDouble(AbstractMetadata.range_bandwidth);
         this.azimuthBandwidth = element.getAttributeDouble(AbstractMetadata.azimuth_bandwidth);
@@ -181,8 +183,19 @@ public final class SLCImage {
         this.approxXYZCentreOriginal.y = xyz[1];
         this.approxXYZCentreOriginal.z = xyz[2];
 
-        // set dopplers
+        // data windows: stored in windows structure
+        final int pix0 = element.getAttributeInt(AbstractMetadata.subset_offset_x);
+        final int pixN = pix0 + element.getAttributeInt(AbstractMetadata.num_samples_per_line);
+        final int lin0 = element.getAttributeInt(AbstractMetadata.subset_offset_y);
+        final int linN = lin0 + element.getAttributeInt(AbstractMetadata.num_output_lines);
+        this.currentWindow = new Window(lin0, linN, pix0, pixN);
+
+        // first set dopplers and get "original" 1st pixel time
         final AbstractMetadata.DopplerCentroidCoefficientList[] dopplersArray = AbstractMetadata.getDopplerCentroidCoefficients(element);
+
+        // original zero doppler time to 1st pix of (original) SLC
+        final String t_azi_original = dopplersArray[0].time.toString();
+        this.tAzi_original = DateUtils.dateTimeToSecOfDay(t_azi_original);
 
         this.doppler.f_DC_a0 = dopplersArray[0].coefficients[0];
         this.doppler.f_DC_a1 = dopplersArray[0].coefficients[1];
@@ -441,6 +454,5 @@ public final class SLCImage {
         }
 
     }
-
 
 }
