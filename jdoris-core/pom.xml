@@ -31,11 +31,11 @@
             <artifactId>beam-gpf</artifactId>
             <version>${beam.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.vividsolutions</groupId>
-            <artifactId>jts</artifactId>
-            <version>1.11</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>com.vividsolutions</groupId>-->
+            <!--<artifactId>jts</artifactId>-->
+            <!--<version>1.11</version>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>org</groupId>
             <!-- scope>system</scope -->
@@ -61,7 +61,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.8</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

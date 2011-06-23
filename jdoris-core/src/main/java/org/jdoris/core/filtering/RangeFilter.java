@@ -3,6 +3,7 @@ package org.jdoris.core.filtering;
 import org.apache.log4j.Logger;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
+import org.jdoris.core.Constants;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.Window;
 import org.jdoris.core.todo_classes.todo_classes;
@@ -26,21 +27,20 @@ public class RangeFilter extends ProductDataFilter {
     private long nRows;
     private long nCols;
 
-    // input for filtering
-    private int nlMean;
-    private double SNRthreshold;
     private double RSR; // in MHz
     private double RBW; // in MHz
 
+    // input for filtering
+    private int nlMean = 15;
+    private double SNRthreshold = 5;
     private double alphaHamming = 0.75;
-    private boolean doHamming;
-
     private int ovsFactor = 1;
-    private boolean doOversampleFlag;
 
+    private boolean doHamming = false;
+    private boolean doOversampleFlag = false;
     private boolean doWeightCorrelFlag = false;
 
-    // input for TILE coordinates
+// input for TILE coordinates
     // private Window absTile = new Window();
 
     //// CONSTRUCTORS /////
@@ -68,6 +68,18 @@ public class RangeFilter extends ProductDataFilter {
         this.doWeightCorrelFlag = doWeightCorrelFlag;
     }
 
+    public void setFftLength(int fftLength) {
+        this.fftLength = fftLength;
+    }
+
+    public void setNlMean(int nlMean) {
+        this.nlMean = nlMean;
+    }
+
+    public void setSNRthreshold(double SNRthreshold) {
+        this.SNRthreshold = SNRthreshold;
+    }
+
 
     public void defineParameters() throws Exception {
 
@@ -79,10 +91,8 @@ public class RangeFilter extends ProductDataFilter {
 
         // define filtering params
         RSR = 0.5 * metadata.getRsr2x();
-        RBW = metadata.getRangeBandwidth() * Math.pow(10,6);
+        RBW = metadata.getRangeBandwidth() * Constants.MEGA;
 
-        nlMean = 15;
-        SNRthreshold = 5;
         doOversampleFlag = (ovsFactor != 1);
         doHamming = (alphaHamming < 0.9999);
 
@@ -90,7 +100,6 @@ public class RangeFilter extends ProductDataFilter {
         fftLength = power.columns;
 
         sanityChecks();
-
     }
 
     @Override
