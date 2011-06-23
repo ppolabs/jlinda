@@ -36,7 +36,7 @@ public class ProductContainer {
         this.subProductsFlag = subProductsFlag;
         if (subProductsFlag) {
             this.masterSubProduct = new SubProduct();
-            this.masterSubProduct = new SubProduct();
+            this.slaveSubProduct = new SubProduct();
         }
 
     }
