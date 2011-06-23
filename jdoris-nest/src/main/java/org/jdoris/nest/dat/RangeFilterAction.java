@@ -23,5 +23,6 @@ public class RangeFilterAction extends AbstractVisatAction {
         final File graphFile =  new File(graphPath, "RangeFilterGraph.xml");
 
         dialog.LoadGraph(graphFile);
+
     }
 }

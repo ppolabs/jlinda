@@ -21,6 +21,7 @@ import org.jblas.ComplexDoubleMatrix;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.filtering.RangeFilter;
+import org.jdoris.core.utils.MathUtils;
 import org.jdoris.nest.utils.BandUtilsDoris;
 import org.jdoris.nest.utils.CplxContainer;
 import org.jdoris.nest.utils.ProductContainer;
@@ -31,7 +32,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 
-@OperatorMetadata(alias = "RangeFilterOp",
+@OperatorMetadata(alias = "RangeFilter",
         category = "InSAR Products",
         description = "Range Filter", internal = false)
 public class RangeFilterOp extends Operator {
@@ -52,8 +53,7 @@ public class RangeFilterOp extends Operator {
             description = "Overlap between tiles in range direction [pixels]",
             defaultValue = "10",
             label = "Range Filter Overlap")
-    private int tileOverlap = 10;
-
+    private int rangeTileOverlap = 10;
 
     @Parameter(valueSet = {"0.5", "0.75", "0.8", "0.9", "1"},
             description = "Weight for Hamming filter (1 is rectangular window)",
@@ -70,20 +70,20 @@ public class RangeFilterOp extends Operator {
     @Parameter(valueSet = {"3", "4", "5", "6", "7"},
             description = "Threshold on SNR for peak estimation",
             defaultValue = "5",
-            label = "SNR threshold") //has to be odd!
-    private float threshold = 5;
+            label = "SNR Threshold") //has to be odd!
+    private float snrThresh = 5;
 
-    @Parameter(valueSet = {"2", "4"},
+    @Parameter(valueSet = {"1", "2", "4"},
             description = "Oversampling factor (in range only).",
-            defaultValue = "2",
+            defaultValue = "1",
             label = "Oversampling factor") //has to be odd!
-    private float oversample = 5;
+    private int ovsmpFactor = 1;
 
     @Parameter(valueSet = {"on", "off"},
             description = "Use weight values to bias higher frequencies",
             defaultValue = "2",
             label = "De-weighting flag") //has to be odd!
-    private boolean doWeightCorrel = true;
+    private boolean doWeightCorrel = false;
 
     // source
     private HashMap<Integer, CplxContainer> masterMap = new HashMap<Integer, CplxContainer>();
@@ -95,8 +95,10 @@ public class RangeFilterOp extends Operator {
     private static final int ORBIT_DEGREE = 3; // hardcoded
     private static final boolean CREATE_VIRTUAL_BAND = true;
 
-    private static final int TILE_OVERLAP_X = 0;
-    private static final int TILE_OVERLAP_Y = 0;
+    private static int TILE_OVERLAP_X;
+    private static int TILE_OVERLAP_Y;
+    private static int TILE_EXTENT_X;
+    private static int TILE_EXTENT_Y;
 
     private static final String PRODUCT_NAME = "range_filter";
     private static final String PRODUCT_TAG = "rngfilt";
@@ -154,13 +156,13 @@ public class RangeFilterOp extends Operator {
 
             for (Integer keySlave : slaveMap.keySet()) {
 
-                final CplxContainer slave = slaveMap.get(keyMaster);
+                final CplxContainer slave = slaveMap.get(keySlave);
                 String slaveSourceName_I = slave.realBand.getName();
                 String slaveSourceName_Q = slave.imagBand.getName();
 
-
                 String slaveTargetName_I = "i_" + PRODUCT_TAG + slaveSourceName_I;
                 String slaveTargetName_Q = "q_" + PRODUCT_TAG + slaveSourceName_Q;
+
 
                 final ProductContainer product = new ProductContainer(productName, master, slaveMap.get(keySlave), true);
 
@@ -251,33 +253,52 @@ public class RangeFilterOp extends Operator {
                 sourceProduct.getSceneRasterHeight());
 
         /// set prefered tile size : should be used only for testing and dev
-        // targetProduct.setPreferredTileSize(512, 512);
+//        targetProduct.setPreferredTileSize(1024, 128);
 
         // copy product nodes
         OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
 
         for (String key : targetMap.keySet()) {
 
-            // generate REAL band
             final ProductContainer ifg = targetMap.get(key);
-            final Band targetBandI = targetProduct.addBand(ifg.targetBandName_I, OUT_PRODUCT_DATA_TYPE);
+
+            Band targetBandI;
+            Band targetBandQ;
+
+            // generate REAL band of master-sub-product
+            targetBandI = targetProduct.addBand(ifg.masterSubProduct.targetBandName_I, OUT_PRODUCT_DATA_TYPE);
             ProductUtils.copyRasterDataNodeProperties(ifg.sourceMaster.realBand, targetBandI);
 
-            // generate IMAGINARY band
-            final Band targetBandQ = targetProduct.addBand(ifg.targetBandName_Q, OUT_PRODUCT_DATA_TYPE);
+            // generate IMAGINARY band of master-sub-product
+            targetBandQ = targetProduct.addBand(ifg.masterSubProduct.targetBandName_Q, OUT_PRODUCT_DATA_TYPE);
             ProductUtils.copyRasterDataNodeProperties(ifg.sourceMaster.imagBand, targetBandQ);
 
             // generate virtual bands
             if (CREATE_VIRTUAL_BAND) {
-                ReaderUtils.createVirtualIntensityBand(targetProduct, targetBandI, targetBandQ, ("_" + key));
-                ReaderUtils.createVirtualPhaseBand(targetProduct, targetBandI, targetBandQ, ("_" + key));
+                final String tag = ifg.sourceMaster.date;
+                ReaderUtils.createVirtualIntensityBand(targetProduct, targetBandI, targetBandQ, ("_" + tag));
+                ReaderUtils.createVirtualPhaseBand(targetProduct, targetBandI, targetBandQ, ("_" + tag));
             }
 
-        }
+            // generate REAL band of master-sub-product
+            targetBandI = targetProduct.addBand(ifg.slaveSubProduct.targetBandName_I, OUT_PRODUCT_DATA_TYPE);
+            ProductUtils.copyRasterDataNodeProperties(ifg.sourceMaster.realBand, targetBandI);
 
+            // generate IMAGINARY band
+            targetBandQ = targetProduct.addBand(ifg.slaveSubProduct.targetBandName_Q, OUT_PRODUCT_DATA_TYPE);
+            ProductUtils.copyRasterDataNodeProperties(ifg.sourceMaster.imagBand, targetBandQ);
+
+            // generate virtual bands
+            if (CREATE_VIRTUAL_BAND) {
+                final String tag = ifg.sourceSlave.date;
+                ReaderUtils.createVirtualIntensityBand(targetProduct, targetBandI, targetBandQ, ("_" + tag));
+                ReaderUtils.createVirtualPhaseBand(targetProduct, targetBandI, targetBandQ, ("_" + tag));
+            }
+        }
     }
 
     private void checkUserInput() {
+        TILE_OVERLAP_X = rangeTileOverlap;
         // check for the logic in input paramaters
     }
 
@@ -305,24 +326,31 @@ public class RangeFilterOp extends Operator {
             throws OperatorException {
         try {
 
+            int w = targetRectangle.width;
 //            int x0 = targetRectangle.x;
 //            int y0 = targetRectangle.y;
-//            int w = targetRectangle.width;
 //            int h = targetRectangle.height;
 //            System.out.println("x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
+
+            int extraRange = 0;
+
+            if (!MathUtils.isPower2(w)) {
+
+                double nextPow2 = Math.ceil(Math.log(w) / Math.log(2));
+                int value = (int) Math.pow(2, nextPow2);
+                extraRange = value - w;
+//                targetRectangle.width = value;
+            }
 
             // target
             Band targetBand;
 
-            // source
-            Tile tileReal;
-            Tile tileImag;
-
             final BorderExtender border = BorderExtender.createInstance(BorderExtender.BORDER_ZERO);
 
             final Rectangle rect = new Rectangle(targetRectangle);
-            rect.width += TILE_OVERLAP_X;
+            rect.width += (TILE_OVERLAP_X + extraRange);
             rect.height += TILE_OVERLAP_Y;
+//            System.out.println("x0 = " + rect.x + ", y0 = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
 
             boolean doFilterMaster = true;
             if (masterMap.keySet().toArray().length > 1) {
@@ -334,21 +362,27 @@ public class RangeFilterOp extends Operator {
 
                 final RangeFilter rangeFilter = new RangeFilter();
 
+                rangeFilter.setAlphaHamming(alphaHamming);
+                rangeFilter.setDoWeightCorrelFlag(doFilterMaster);
+                rangeFilter.setOvsFactor(ovsmpFactor);
+                rangeFilter.setFftLength(fftLength);
+                rangeFilter.setNlMean(nlMean);
+
                 // get ifgContainer from pool
                 final ProductContainer ifg = targetMap.get(ifgTag);
 
                 // check out from source
-                tileReal = getSourceTile(ifg.sourceMaster.realBand, rect, border);
-                tileImag = getSourceTile(ifg.sourceMaster.imagBand, rect, border);
-                final ComplexDoubleMatrix masterMatrix = TileUtilsDoris.pullComplexDoubleMatrix(tileReal, tileImag);
+                Tile tileRealMaster = getSourceTile(ifg.sourceMaster.realBand, rect, border);
+                Tile tileImagMaster = getSourceTile(ifg.sourceMaster.imagBand, rect, border);
+                final ComplexDoubleMatrix masterMatrix = TileUtilsDoris.pullComplexDoubleMatrix(tileRealMaster, tileImagMaster);
+
+                // check out from source
+                Tile tileRealSlave = getSourceTile(ifg.sourceSlave.realBand, rect, border);
+                Tile tileImagSlave = getSourceTile(ifg.sourceSlave.imagBand, rect, border);
+                final ComplexDoubleMatrix slaveMatrix = TileUtilsDoris.pullComplexDoubleMatrix(tileRealSlave, tileImagSlave);
 
                 rangeFilter.setMetadata(ifg.sourceMaster.metaData);
                 rangeFilter.setData(masterMatrix);
-
-                // check out from source
-                tileReal = getSourceTile(ifg.sourceSlave.realBand, rect, border);
-                tileImag = getSourceTile(ifg.sourceSlave.imagBand, rect, border);
-                final ComplexDoubleMatrix slaveMatrix = TileUtilsDoris.pullComplexDoubleMatrix(tileReal, tileImag);
 
                 rangeFilter.setMetadata1(ifg.sourceSlave.metaData);
                 rangeFilter.setData1(slaveMatrix);
@@ -373,26 +407,26 @@ public class RangeFilterOp extends Operator {
                 }
 
                 // commit real() to target
-                targetBand = targetProduct.getBand(ifg.targetBandName_I);
-                tileReal = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushFloatMatrix(filteredMaster.real(), tileReal, targetRectangle);
+                targetBand = targetProduct.getBand(ifg.masterSubProduct.targetBandName_I);
+                tileRealSlave = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushFloatMatrix(filteredMaster.real(), tileRealSlave, targetRectangle);
 
                 // commit imag() to target
-                targetBand = targetProduct.getBand(ifg.targetBandName_Q);
-                tileImag = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushFloatMatrix(filteredMaster.imag(), tileImag, targetRectangle);
+                targetBand = targetProduct.getBand(ifg.masterSubProduct.targetBandName_Q);
+                tileImagSlave = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushFloatMatrix(filteredMaster.imag(), tileImagSlave, targetRectangle);
 
                 /// SLAVE
                 final ComplexDoubleMatrix filteredSlave = rangeFilter.getData1();
                 // commit real() to target
-                targetBand = targetProduct.getBand(ifg.targetBandName_I);
-                tileReal = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushFloatMatrix(filteredSlave.real(), tileReal, targetRectangle);
+                targetBand = targetProduct.getBand(ifg.slaveSubProduct.targetBandName_I);
+                tileRealSlave = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushFloatMatrix(filteredSlave.real(), tileRealSlave, targetRectangle);
 
                 // commit imag() to target
-                targetBand = targetProduct.getBand(ifg.targetBandName_Q);
-                tileImag = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushFloatMatrix(filteredSlave.imag(), tileImag, targetRectangle);
+                targetBand = targetProduct.getBand(ifg.slaveSubProduct.targetBandName_Q);
+                tileImagSlave = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushFloatMatrix(filteredSlave.imag(), tileImagSlave, targetRectangle);
 
 //                // save imag band of computation : this is somehow too slow?
 //                targetBand = targetProduct.getBand(ifg.targetBandName_Q);

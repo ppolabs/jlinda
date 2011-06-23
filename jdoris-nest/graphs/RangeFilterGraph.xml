@@ -22,11 +22,11 @@
     </sources>
     <parameters>
       <formatName>BEAM-DIMAP</formatName>
-      <file>cplx_ifg.dim</file>
+      <file>range_filtered_stack.dim</file>
     </parameters>
   </node>
   <applicationData id="Presentation">
-    <Description>Interferogram formation</Description>
+    <Description>Range Filtering</Description>
     <node id="1-Read">
       <displayPosition y="104.0" x="96.0"/>
     </node>
