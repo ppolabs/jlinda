@@ -16,4 +16,7 @@ public class Constants {
     public static final double DTOR = Math.PI / 180.0;
     public static final double RTOD = 180.0 / Math.PI;
 
+    public static final long MEGA = 1000000; // Math.pow(10,6)
+
+
 }
