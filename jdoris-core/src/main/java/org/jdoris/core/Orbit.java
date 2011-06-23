@@ -82,6 +82,11 @@ public final class Orbit {
 
         numStateVectors = orbitStateVectors.length;
 
+        time = new double[numStateVectors];
+        data_X = new double[numStateVectors];
+        data_Y = new double[numStateVectors];
+        data_Z = new double[numStateVectors];
+
         for (int i = 0; i < numStateVectors; i++) {
             // convert time to seconds of the acquisition day
             time[i] = (orbitStateVectors[i].time_mjd -
