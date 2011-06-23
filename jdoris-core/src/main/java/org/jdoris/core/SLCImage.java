@@ -10,6 +10,9 @@ import org.jdoris.core.io.ResFile;
 
 import java.io.File;
 
+import static org.jdoris.core.Constants.EPS;
+import static org.jdoris.core.Constants.MEGA;
+
 public final class SLCImage {
 
     // TODO: refactor to BuilderPattern
@@ -138,7 +141,7 @@ public final class SLCImage {
         this();
 
         // units [meters]
-        this.radar_wavelength = (Constants.lightSpeed / Math.pow(10, 6)) / element.getAttributeDouble(AbstractMetadata.radar_frequency);
+        this.radar_wavelength = (Constants.lightSpeed / MEGA) / element.getAttributeDouble(AbstractMetadata.radar_frequency);
 
         // units [Hz]
         this.PRF = element.getAttributeDouble(AbstractMetadata.pulse_repetition_frequency);
@@ -147,8 +150,11 @@ public final class SLCImage {
         final ProductData.UTC t_azi1_UTC = element.getAttributeUTC(AbstractMetadata.first_line_time);
         this.tAzi1 = (t_azi1_UTC.getMJD() - (int) t_azi1_UTC.getMJD()) * 24 * 3600;
 
+        this.rangeBandwidth = element.getAttributeDouble(AbstractMetadata.range_bandwidth);
+        this.azimuthBandwidth = element.getAttributeDouble(AbstractMetadata.azimuth_bandwidth);
+
         // 2 times range sampling rate [HZ]
-        this.rsr2x = (element.getAttributeDouble(AbstractMetadata.range_sampling_rate) * Math.pow(10, 6) * 2);
+        this.rsr2x = (element.getAttributeDouble(AbstractMetadata.range_sampling_rate) * MEGA * 2);
 
         // one way (!!!) time to first range pixels [sec]
         this.tRange1 = element.getAttributeDouble(AbstractMetadata.slant_range_to_first_pixel) / Constants.lightSpeed;
@@ -189,7 +195,7 @@ public final class SLCImage {
 
         final ResFile resFile = new ResFile(resFileName);
 
-        resFile.setSubBuffer("_Start_readfiles","End_readfiles");
+        resFile.setSubBuffer("_Start_readfiles", "End_readfiles");
 
         this.sensor = resFile.parseStringValue("Sensor platform mission identifer");
         this.sarProcessor = resFile.parseStringValue("SAR_PROCESSOR");
@@ -211,9 +217,9 @@ public final class SLCImage {
         this.azimuthWeightingWindow = resFile.parseStringValue("Weighting_azimuth");
 
         // range annotations
-        this.rsr2x = resFile.parseDoubleValue("Range_sampling_rate \\(computed, MHz\\)")*2*Math.pow(10,6);
-        this.rangeBandwidth = resFile.parseDoubleValue("Total_range_band_width \\(MHz\\)");
-        this.tRange1 = resFile.parseDoubleValue("Range_time_to_first_pixel \\(2way\\) \\(ms\\)")/2/1000;
+        this.rsr2x = resFile.parseDoubleValue("Range_sampling_rate \\(computed, MHz\\)") * 2 * MEGA;
+        this.rangeBandwidth = resFile.parseDoubleValue("Total_range_band_width \\(MHz\\)"); // put it already in Hz!
+        this.tRange1 = resFile.parseDoubleValue("Range_time_to_first_pixel \\(2way\\) \\(ms\\)") / 2 / 1000;
         this.rangeWeightingWindow = resFile.parseStringValue("Weighting_range");
 
         // data windows
@@ -222,7 +228,7 @@ public final class SLCImage {
         this.originalWindow = new Window(1, numberOfLinesTEMP, 1, numberOfPixelsTEMP);
 
         resFile.resetSubBuffer();
-        resFile.setSubBuffer("_Start_crop","End_crop");
+        resFile.setSubBuffer("_Start_crop", "End_crop");
 
         // current window
         this.currentWindow.linelo = resFile.parseIntegerValue("First_line \\(w.r.t. original_image\\)");
@@ -231,7 +237,7 @@ public final class SLCImage {
         this.currentWindow.pixhi = resFile.parseIntegerValue("Last_pixel \\(w.r.t. original_image\\)");
 
         resFile.resetSubBuffer();
-        resFile.setSubBuffer("_Start_readfiles","End_readfiles");
+        resFile.setSubBuffer("_Start_readfiles", "End_readfiles");
         // doppler
         this.doppler.f_DC_a0 = resFile.parseDoubleValue("Xtrack_f_DC_constant \\(Hz, early edge\\)");
         this.doppler.f_DC_a1 = resFile.parseDoubleValue("Xtrack_f_DC_linear \\(Hz/s, early edge\\)");
@@ -403,9 +409,9 @@ public final class SLCImage {
 
         // actual doppler change
         private double actualDopplerChange() {
-            final double slcFdc_p0   = pix2fdc(currentWindow.pixlo);
+            final double slcFdc_p0 = pix2fdc(currentWindow.pixlo);
             final double slcFdc_p05 = computFdc_const();
-            final double slcFdc_pN   = pix2fdc(currentWindow.pixhi);
+            final double slcFdc_pN = pix2fdc(currentWindow.pixhi);
 
             return Math.max(Math.abs(slcFdc_p0 - slcFdc_p05), Math.abs(slcFdc_p0 - slcFdc_pN));
         }
@@ -418,7 +424,7 @@ public final class SLCImage {
 
             if (doppler.actualDopplerChange() < doppler.maximumDopplerChange()) {
                 this.f_DC_const_bool = true;
-            } else if (this.f_DC_a1 < org.jdoris.core.Constants.EPS && this.f_DC_a2 < org.jdoris.core.Constants.EPS) {
+            } else if (this.f_DC_a1 < EPS && this.f_DC_a2 < EPS) {
                 this.f_DC_const_bool = true;
             }
 
