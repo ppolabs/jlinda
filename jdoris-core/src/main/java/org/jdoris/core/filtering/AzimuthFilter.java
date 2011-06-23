@@ -70,6 +70,7 @@ public class AzimuthFilter extends SlcDataFilter {
         this.setMetadata(master);
         this.setMetadata1(slave);
         this.setData(data);
+        this.setTile(tileWindow);
         defineParameters();
 
     }
