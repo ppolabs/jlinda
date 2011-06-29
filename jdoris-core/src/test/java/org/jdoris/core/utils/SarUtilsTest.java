@@ -23,6 +23,7 @@ public class SarUtilsTest {
     private static final double DELTA_04 = 1e-04;
 
     private static final String testDataLocation = "test/";
+    private static final String testDataLocationCoh = "/d2/etna_test/cohTest/";
 
     @Before
     public void setUpMultilookTestData() {
@@ -69,7 +70,6 @@ public class SarUtilsTest {
             int facAz = ovsmpFactorAz[i];
             int facRg = ovsmpFactorRg[i];
 
-
             // oversample
             ComplexDoubleMatrix cplxData_ovsmp_ACTUAL = SarUtils.oversample(cplxData, facAz, facRg);
 
@@ -88,39 +88,73 @@ public class SarUtilsTest {
     @Test
     public void testCoherence() throws Exception {
 
+        // get test data
+        String fileTestDataName_1 = testDataLocationCoh + "CINT_input" + ".cr4.swap";
+        String fileTestDataName_2 = testDataLocationCoh + "NORMS_input" + ".cr4.swap";
+
+        final int nRows = 128;
+        final int nCols = 512;
+        final ComplexDoubleMatrix masterCplx = readCplxFloatData(fileTestDataName_1, nRows, nCols);
+        final ComplexDoubleMatrix slaveCplx = readCplxFloatData(fileTestDataName_2, nRows, nCols);
+
         // loop through tests
-        int[] cohWinAz = new int[]{2, 10, 10, 20};
-        int[] cohWinRg = new int[]{2, 2, 10, 4};
+        final int[] cohWinAz = new int[]{2, 10, 10, 20};
+        final int[] cohWinRg = new int[]{2, 2, 10, 4};
 
         for (int i = 0; i < cohWinAz.length; i++) {
 
             int winAz = cohWinAz[i];
             int winRg = cohWinRg[i];
 
-            // get test data
-            String fileTestDataName_1 = testDataLocation + "testdata_cplxinput_1_coh_" + winAz + "_" + winRg + "_"
-                    + 126 + "_" + 512 + ".cr4.swap";
-            String fileTestDataName_2 = testDataLocation + "testdata_cplxinput_2_coh_" + winAz + "_" + winRg + "_"
-                    + 126 + "_" + 512 + ".cr4.swap";
-
-            ComplexDoubleMatrix masterCplx = readCplxFloatData(fileTestDataName_1, 126, 512);
-            ComplexDoubleMatrix slaveCplx = readCplxFloatData(fileTestDataName_2, 126, 512);
-
             // estimate coherence
             DoubleMatrix coh_ACTUAL = SarUtils.coherence(masterCplx, slaveCplx, winAz, winRg);
 
-            int fileSizeRows = coh_ACTUAL.rows;
-            int fileSizeCols = coh_ACTUAL.columns;
+            int cohRows = coh_ACTUAL.rows;
+            int cohCols = coh_ACTUAL.columns;
 
             // read EXPECTED data
-            String fileName = testDataLocation + "testdata_coh_" + winAz + "_" + winRg + "_"
-                    + fileSizeRows + "_" + fileSizeCols + ".cr4.swap";
-
-            FloatMatrix coh_EXPECTED = readFloatData(fileName, fileSizeRows, fileSizeCols);
+            String fileName = testDataLocationCoh + "coherence_output_" + winAz + "_" + winRg + "_OLD.r4.swap";
+            FloatMatrix coh_EXPECTED = readFloatData(fileName, cohRows, cohCols);
 
             // assertEqual
             Assert.assertArrayEquals(coh_EXPECTED.toArray(), coh_ACTUAL.toFloat().toArray(), (float) DELTA_04);
 
+        }
+    }
+
+    @Test
+    public void testCoherence2() throws Exception {
+
+        // get test data
+        String fileTestDataName_1 = testDataLocationCoh + "CINT_input" + ".cr4.swap";
+        String fileTestDataName_2 = testDataLocationCoh + "NORMS_input" + ".cr4.swap";
+
+        final int nRows = 128;
+        final int nCols = 512;
+        final ComplexDoubleMatrix masterCplx = readCplxFloatData(fileTestDataName_1, nRows, nCols);
+        final ComplexDoubleMatrix slaveCplx = readCplxFloatData(fileTestDataName_2, nRows, nCols);
+
+        // loop through tests
+        final int[] cohWinAz = new int[]{2, 10, 10, 20};
+        final int[] cohWinRg = new int[]{2, 2, 10, 4};
+
+        for (int i = 0; i < cohWinAz.length; i++) {
+
+            int winAz = cohWinAz[i];
+            int winRg = cohWinRg[i];
+
+            // estimate coherence
+            DoubleMatrix coh_ACTUAL = SarUtils.coherence2(masterCplx, slaveCplx, winAz, winRg);
+
+            int cohRows = coh_ACTUAL.rows;
+            int cohCols = coh_ACTUAL.columns;
+
+            // read EXPECTED data
+            String fileName = testDataLocationCoh + "coherence_output_" + winAz + "_" + winRg + ".r4.swap";
+            FloatMatrix coh_EXPECTED = readFloatData(fileName, cohRows, cohCols);
+
+            // assertEqual
+            Assert.assertArrayEquals(coh_EXPECTED.toArray(), coh_ACTUAL.toFloat().toArray(), (float) DELTA_04);
         }
     }
 
