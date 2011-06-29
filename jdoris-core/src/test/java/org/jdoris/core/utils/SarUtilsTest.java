@@ -143,8 +143,11 @@ public class SarUtilsTest {
             int winAz = cohWinAz[i];
             int winRg = cohWinRg[i];
 
+//            long time0 = System.currentTimeMillis();
             // estimate coherence
             DoubleMatrix coh_ACTUAL = SarUtils.coherence2(masterCplx, slaveCplx, winAz, winRg);
+//            long time1 = System.currentTimeMillis();
+//            System.out.printf("Coherence estimated in %10.3f sec\n", (0.001 * (time1 - time0)));
 
             int cohRows = coh_ACTUAL.rows;
             int cohCols = coh_ACTUAL.columns;
