@@ -14,17 +14,20 @@ import org.esa.beam.framework.gpf.annotations.Parameter;
 import org.esa.beam.framework.gpf.annotations.SourceProduct;
 import org.esa.beam.framework.gpf.annotations.TargetProduct;
 import org.esa.nest.datamodel.AbstractMetadata;
-import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
+import org.jblas.ComplexDouble;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
-import org.jdoris.core.Baseline;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.utils.SarUtils;
+import org.jdoris.nest.utils.BandUtilsDoris;
+import org.jdoris.nest.utils.CplxContainer;
+import org.jdoris.nest.utils.ProductContainer;
+import org.jdoris.nest.utils.TileUtilsDoris;
 
+import javax.media.jai.BorderExtender;
 import java.awt.*;
-import java.awt.image.RenderedImage;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,54 +36,36 @@ import java.util.Map;
         description = "Estimate coherence from stack of coregistered images", internal = false)
 public class CplxCohOp extends Operator {
 
-    // ----------------------------------------------------
-    // NOTE 1: Assumed that sourceSlave bands are in sourceMaster coord system, and are smaller
-    //         or equal to sourceMaster.
-    // NOTE 2: No reference phase (dem nor flat earth) is removed by default in computation
-    // NOTE 3: No multilooking happening in this operator
-    // ----------------------------------------------------
-
     @SourceProduct
     private Product sourceProduct;
 
     @TargetProduct
     private Product targetProduct;
 
-    @Parameter(interval = "(1, 20]",
+    @Parameter(interval = "(1, 40]",
             description = "Size of coherence estimation window in Azimuth direction",
             defaultValue = "10",
             label = "Coherence Window Size in Azimuth")
-    private int coherenceWindowSizeAzimuth = 10;
+    private int winAz = 10;
 
-    @Parameter(interval = "(1, 20]",
+    @Parameter(interval = "(1, 40]",
             description = "Size of coherence estimation window in Range direction",
             defaultValue = "2",
             label = "Coherence Window Size in Range")
-    private int coherenceWindowSizeRange = 2;
+    private int winRg = 10;
 
-    private Band masterBand0 = null;
-    private Band masterBand1 = null;
+    // source
+    private HashMap<Integer, CplxContainer> masterMap = new HashMap<Integer, CplxContainer>();
+    private HashMap<Integer, CplxContainer> slaveMap = new HashMap<Integer, CplxContainer>();
 
-    private String[] masterBandNames;
-    private String[] slaveBandNames;
+    // target
+    private HashMap<String, ProductContainer> targetMap = new HashMap<String, ProductContainer>();
 
-    private MetadataElement masterRoot;
-    private MetadataElement slaveRoot;
-    private SLCImage masterMetadata;
-    private SLCImage slaveMetadata;
-    private Orbit masterOrbit;
-    private Orbit slaveOrbit;
-    private Baseline baseline = new Baseline();
+    private static final int ORBIT_DEGREE = 3; // hardcoded
+    private static final boolean CREATE_VIRTUAL_BAND = false;
 
-    private final Map<Band, Band> complexSrcMapI = new HashMap<Band, Band>(10);
-    private final Map<Band, Band> complexSrcMapQ = new HashMap<Band, Band>(10);
-
-    /**
-     * Default constructor. The graph processing framework
-     * requires that an operator has a default constructor.
-     */
-    public CplxCohOp() {
-    }
+    private static final String PRODUCT_NAME = "coherence";
+    private static final String PRODUCT_TAG = "coh";
 
     /**
      * Initializes this operator and sets the one and only target product.
@@ -99,178 +84,189 @@ public class CplxCohOp extends Operator {
     public void initialize() throws OperatorException {
         try {
 
-            masterBand0 = sourceProduct.getBandAt(0);
-            masterBand1 = sourceProduct.getBandAt(1);
+            checkUserInput();
+            constructSourceMetadata();
+            constructTargetMetadata();
 
             createTargetProduct();
-            defineMetadata();
-            defineOrbits();
-            estimateBaseline();
-
-            System.out.println("Perpendicular baseline at pixel [100,100]: " + baseline.getBperp(100,100));
-            System.out.println("Parallel baseline at pixel [200,200]: " + baseline.getBpar(100,100));
 
         } catch (Exception e) {
             throw new OperatorException(e);
         }
     }
 
-    private void defineMetadata() {
-
-        masterRoot = AbstractMetadata.getAbstractedMetadata(sourceProduct);
-        masterMetadata = new SLCImage(masterRoot);
-
-        slaveRoot = sourceProduct.getMetadataRoot().getElement(AbstractMetadata.SLAVE_METADATA_ROOT).getElementAt(0);
-        slaveMetadata = new SLCImage(slaveRoot);
+    private void checkUserInput() {
+        // TODO: use jdoris input.coherence class to check user input
     }
 
-    private void defineOrbits() throws Exception {
-        final int degree = 3;
-        masterOrbit = new Orbit(masterRoot, degree);
-        slaveOrbit = new Orbit(slaveRoot, degree);
+    private void constructSourceMetadata() throws Exception {
+
+        // define sourceMaster/sourceSlave name tags
+        final String masterTag = "mst";
+        final String slaveTag = "slv";
+
+        // get sourceMaster & sourceSlave MetadataElement
+        final MetadataElement masterMeta = AbstractMetadata.getAbstractedMetadata(sourceProduct);
+        final String slaveMetadataRoot = AbstractMetadata.SLAVE_METADATA_ROOT;
+
+        /* organize metadata */
+        // put sourceMaster metadata into the masterMap
+        metaMapPut(masterTag, masterMeta, sourceProduct, masterMap);
+
+        // pug sourceSlave metadata into slaveMap
+        MetadataElement[] slaveRoot = sourceProduct.getMetadataRoot().getElement(slaveMetadataRoot).getElements();
+        for (MetadataElement meta : slaveRoot) {
+            metaMapPut(slaveTag, meta, sourceProduct, slaveMap);
+        }
+
     }
 
-    private void estimateBaseline() throws Exception {
-        baseline.model(masterMetadata, slaveMetadata, masterOrbit, slaveOrbit);
+    private void metaMapPut(final String tag,
+                            final MetadataElement root,
+                            final Product product,
+                            final HashMap<Integer, CplxContainer> map) throws Exception {
+
+        // TODO: include polarization flags/checks!
+        // pull out band names for this product
+        final String[] bandNames = product.getBandNames();
+        final int numOfBands = bandNames.length;
+
+        // map key: ORBIT NUMBER
+        int mapKey = root.getAttributeInt(AbstractMetadata.ABS_ORBIT);
+
+        // metadata: construct classes and define bands
+        final String date = OperatorUtils.getAcquisitionDate(root);
+        final SLCImage meta = new SLCImage(root);
+        final Orbit orbit = new Orbit(root, ORBIT_DEGREE);
+        Band bandReal = null;
+        Band bandImag = null;
+
+        // TODO: boy this is one ugly construction!?
+        // loop through all band names(!) : and pull out only one that matches criteria
+        for (int i = 0; i < numOfBands; i++) {
+            String bandName = bandNames[i];
+            if (bandName.contains(tag) && bandName.contains(date)) {
+                final Band band = product.getBandAt(i);
+                if (BandUtilsDoris.isBandReal(band)) {
+                    bandReal = band;
+                } else if (BandUtilsDoris.isBandImag(band)) {
+                    bandImag = band;
+                }
+            }
+        }
+
+        try {
+            map.put(mapKey, new CplxContainer(date, meta, orbit, bandReal, bandImag));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
+    private void constructTargetMetadata() {
 
-    /**
-     * Create target product.
-     */
-    private void createTargetProduct() {
+        // this means there is only one slave! but still do it in the loop
+        // loop through masters
+        for (Integer keyMaster : masterMap.keySet()) {
 
-        targetProduct = new Product(sourceProduct.getName(),
-                sourceProduct.getProductType(),
-                sourceProduct.getSceneRasterWidth(),
-                sourceProduct.getSceneRasterHeight());
+            CplxContainer master = masterMap.get(keyMaster);
 
-        final int numSrcBands = sourceProduct.getNumBands();
+            for (Integer keySlave : slaveMap.keySet()) {
 
-        masterBandNames = new String[numSrcBands];
-        slaveBandNames = new String[numSrcBands];
-        String iBandName;
-        String qBandName;
+                // generate name for product bands
+                String productName = keyMaster.toString() + "_" + keySlave.toString();
 
-        // counters
-        int cnt = 1;
-        int inc = 2;
-        int slaveArrayCounter = 0;
+                final CplxContainer slave = slaveMap.get(keySlave);
+                final ProductContainer product = new ProductContainer(productName, master, slave, false);
 
-        // add only sourceMaster and band for real coherence
-        // i need for every sourceSlave to have one coherence image or complex coherence?!
-        for (int i = 0; i < numSrcBands; i += inc) {
+                product.targetBandName_I = PRODUCT_TAG + "_" + master.date + "_" + slave.date;
+//                product.targetBandName_Q = null;
 
-            final Band srcBandI = sourceProduct.getBandAt(i);
-            final Band srcBandQ = sourceProduct.getBandAt(i + 1);
-
-            if (srcBandI.getUnit().equals(Unit.REAL) && srcBandQ.getUnit().equals(Unit.IMAGINARY)) {
-
-                if (srcBandI == masterBand0) {
-                    iBandName = srcBandI.getName();
-                    masterBandNames[0] = iBandName;
-                } else {
-                    slaveBandNames[slaveArrayCounter++] = srcBandI.getName();
-                }
-
-                if (srcBandQ == masterBand1) {
-                    qBandName = srcBandQ.getName();
-                    masterBandNames[1] = qBandName;
-                } else {
-                    slaveBandNames[slaveArrayCounter++] = srcBandQ.getName();
-                }
-
-                complexSrcMapQ.put(srcBandI, srcBandQ);
-                complexSrcMapI.put(srcBandQ, srcBandI);
-
-                if (srcBandI != masterBand0 && srcBandQ != masterBand1 && srcBandQ.getUnit().equals(Unit.IMAGINARY)) {
-                    String coherenceBandName = "Coherence_" + (cnt - 1);
-                    addTargetBand(coherenceBandName, ProductData.TYPE_FLOAT32, "coherence");
-                }
-
-                cnt++;
+                // put ifg-product bands into map
+                targetMap.put(productName, product);
 
             }
 
         }
-        OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
-//        targetProduct.setPreferredTileSize(sourceProduct.getSceneRasterWidth(), 50);
     }
 
-    private void addTargetBand(String bandName, int dataType, String bandUnit) {
-        if (targetProduct.getBand(bandName) == null) {
-            final Band targetBand = new Band(bandName,
-                    ProductData.TYPE_FLOAT32, //dataType,
-                    sourceProduct.getSceneRasterWidth(),
-                    sourceProduct.getSceneRasterHeight());
-            targetBand.setUnit(bandUnit);
-            targetProduct.addBand(targetBand);
+    private void createTargetProduct() {
+
+        targetProduct = new Product(PRODUCT_NAME,
+                sourceProduct.getProductType(),
+                sourceProduct.getSceneRasterWidth(),
+                sourceProduct.getSceneRasterHeight());
+
+        OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
+
+        for (final Band band : targetProduct.getBands()) {
+            targetProduct.removeBand(band);
         }
+
+        for (String key : targetMap.keySet()) {
+            targetProduct.addBand(targetMap.get(key).targetBandName_I, ProductData.TYPE_FLOAT64);
+        }
+
     }
 
     /**
      * Called by the framework in order to compute a tile for the given target band.
      * <p>The default implementation throws a runtime exception with the message "not implemented".</p>
      *
-     * @param targetBand The target band.
-     * @param targetTile The current tile associated with the target band to be computed.
-     * @param pm         A progress monitor which should be used to determine computation cancelation requests.
+     * @param targetTileMap   The target tiles associated with all target bands to be computed.
+     * @param targetRectangle The rectangle of target tile.
+     * @param pm              A progress monitor which should be used to determine computation cancelation requests.
      * @throws org.esa.beam.framework.gpf.OperatorException
      *          If an error occurs during computation of the target raster.
      */
     @Override
-    public void computeTile(Band targetBand, Tile targetTile, ProgressMonitor pm) throws OperatorException {
-
+    public void computeTileStack(Map<Band, Tile> targetTileMap, Rectangle targetRectangle, ProgressMonitor pm) throws OperatorException {
         try {
 
-            final Rectangle targetTileRectangle = targetTile.getRectangle();
+            final Rectangle rect = new Rectangle(targetRectangle);
+//            System.out.println("Original: x0 = " + rect.x + ", y = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
+            final int x0 = rect.x - (winRg - 1) / 2;
+            final int y0 = rect.y - (winAz - 1) / 2;
+            final int w = rect.width + winRg - 1;
+            final int h = rect.height + winAz - 1;
+            rect.x = x0;
+            rect.y = y0;
+            rect.width = w;
+            rect.height = h;
 
-            final int x0 = targetTileRectangle.x;
-            final int y0 = targetTileRectangle.y;
-            final int w = targetTileRectangle.width;
-            final int h = targetTileRectangle.height;
-            System.out.println("x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
+//            System.out.println("Shifted: x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
+            final BorderExtender border = BorderExtender.createInstance(BorderExtender.BORDER_ZERO);
+            Band targetBand;
 
-            // loop through pairs of slaveBandNames
-            if (targetBand.getUnit().contains("coherence")) {
+            for (String cohKey : targetMap.keySet()) {
 
-                int inc = 2;
-                for (int slaveBandNameIndex = 0; slaveBandNameIndex < slaveBandNames.length; slaveBandNameIndex += inc) {
+                final ProductContainer product = targetMap.get(cohKey);
+                // check out from source
+                Tile tileRealMaster = getSourceTile(product.sourceMaster.realBand, rect, border);
+                Tile tileImagMaster = getSourceTile(product.sourceMaster.imagBand, rect, border);
+                final ComplexDoubleMatrix dataMaster = TileUtilsDoris.pullComplexDoubleMatrix(tileRealMaster, tileImagMaster);// check out from source
 
-                    if (slaveBandNames[slaveBandNameIndex] != null && slaveBandNames[slaveBandNameIndex + 1] != null) {
+                Tile tileRealSlave = getSourceTile(product.sourceSlave.realBand, rect, border);
+                Tile tileImagSlave = getSourceTile(product.sourceSlave.imagBand, rect, border);
+                final ComplexDoubleMatrix dataSlave = TileUtilsDoris.pullComplexDoubleMatrix(tileRealSlave, tileImagSlave);
 
-                        Band slaveBand0 = sourceProduct.getBand(slaveBandNames[slaveBandNameIndex]);
-                        Band slaveBand1 = sourceProduct.getBand(slaveBandNames[slaveBandNameIndex + 1]);
-
-                        DoubleMatrix slaveDataI = getDoubleMatrix(targetTileRectangle, slaveBand0);
-                        DoubleMatrix slaveDataQ = getDoubleMatrix(targetTileRectangle, slaveBand1);
-
-                        DoubleMatrix masterDataI = getDoubleMatrix(targetTileRectangle, masterBand0);
-                        DoubleMatrix masterDataQ = getDoubleMatrix(targetTileRectangle, masterBand1);
-
-//                        DoubleMatrix coherence = SarUtils.coherence(new ComplexDoubleMatrix(masterDataI, masterDataQ),
-//                                new ComplexDoubleMatrix(slaveDataI, slaveDataQ), coherenceWindowSizeAzimuth, coherenceWindowSizeRange);
-                        DoubleMatrix coherence = SarUtils.coherence(new ComplexDoubleMatrix(masterDataI, masterDataQ),
-                                new ComplexDoubleMatrix(slaveDataI, slaveDataQ), coherenceWindowSizeAzimuth, coherenceWindowSizeRange);
-
-                        targetTile.setRawSamples(ProductData.createInstance(coherence.toArray()));
-
-                    }
+                // TODO: optimize this loop
+                for (int i = 0; i < dataMaster.length; i++) {
+                    double tmp = dataMaster.get(i).abs();
+                    dataMaster.put(i, dataMaster.get(i).mul(dataSlave.get(i).conj()));
+                    dataSlave.put(i, new ComplexDouble(dataSlave.get(i).abs(), tmp));
                 }
+
+                DoubleMatrix cohMatrix = SarUtils.coherence2(dataMaster, dataSlave, winAz, winRg);
+
+                targetBand = targetProduct.getBand(product.targetBandName_I);
+                Tile tileCoherence = targetTileMap.get(targetBand);
+                TileUtilsDoris.pushDoubleMatrix(cohMatrix, tileCoherence, targetRectangle);
+
             }
+
         } catch (Exception e) {
             throw new OperatorException(e);
         }
-    }
-
-    private DoubleMatrix getDoubleMatrix(Rectangle rectangle, Band band) {
-
-        final RenderedImage sourceImage = getSourceTile(band, rectangle).getRasterDataNode().getSourceImage();
-        double[] data = sourceImage.getData(rectangle).
-                getSamples(rectangle.x, rectangle.y, rectangle.width, rectangle.height, 0, (double[]) null);
-
-        return new DoubleMatrix(rectangle.height, rectangle.width, data);
-
     }
 
     /**
