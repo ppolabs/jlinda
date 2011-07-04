@@ -74,6 +74,19 @@ public class TileUtilsDoris {
         tile.setRawSamples(samples); // commit
     }
 
+    public static void pushDoubleArray2D(double[][] data, Tile tile, Rectangle rect) {
+
+        final ProductData samples = tile.getRawSamples(); // checkout
+        final int width = (int) rect.getWidth();
+
+        for (int y = 0, rowIdx = 0; y < rect.getHeight(); y++, rowIdx++) {
+            for (int x = 0, columnIdx = 0; x < rect.getWidth(); x++, columnIdx++) {
+                samples.setElemDoubleAt(y * width + x, data[rowIdx][columnIdx]);
+            }
+        }
+        tile.setRawSamples(samples); // commit
+    }
+
     public static void pushDoubleMatrix(FloatMatrix data, Tile tile, Rectangle rect) {
 
         final ProductData samples = tile.getRawSamples(); // checkout
