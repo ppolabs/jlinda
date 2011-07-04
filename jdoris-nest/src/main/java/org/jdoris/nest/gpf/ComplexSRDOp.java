@@ -20,8 +20,10 @@ import org.esa.nest.datamodel.AbstractMetadata;
 import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
 import org.jblas.ComplexDoubleMatrix;
-import org.jdoris.core.Orbit;
-import org.jdoris.core.SLCImage;
+import org.jdoris.core.*;
+import org.jdoris.core.Window;
+import org.jdoris.core.geom.DemTile;
+import org.jdoris.core.geom.TopoPhase;
 import org.jdoris.nest.utils.BandUtilsDoris;
 import org.jdoris.nest.utils.CplxContainer;
 import org.jdoris.nest.utils.ProductContainer;
@@ -55,23 +57,24 @@ public final class ComplexSRDOp extends Operator {
             description = "The digital elevation model.", defaultValue = "SRTM 3Sec", label = "Digital Elevation Model")
     private String demName = "SRTM 3Sec";
 
-    @Parameter(description = "The elevation band name.", defaultValue = "elevation", label = "Elevation Band Name")
-    private String elevationBandName = "elevation";
+    @Parameter(description = "The topographic phase band name.", defaultValue = "topo_phase", label = "Topo Phase Band Name")
+    private String topoPhaseBandName = "topo_phase";
 
     @Parameter(description = "The external DEM file.", defaultValue = " ", label = "External DEM")
     private String externalDEM = " ";
 
-    @Parameter(valueSet = { NEAREST_NEIGHBOUR, BILINEAR, CUBIC }, defaultValue = BILINEAR,
-                label="Resampling Method")
+    //    @Parameter(valueSet = { NEAREST_NEIGHBOUR, BILINEAR, CUBIC }, defaultValue = BILINEAR,
+//                label="Resampling Method")
+//    private String resamplingMethod = NEAREST_NEIGHBOUR;
     private String resamplingMethod = BILINEAR;
 
-    static final String NEAREST_NEIGHBOUR = "Nearest Neighbour";
+    //    static final String NEAREST_NEIGHBOUR = "Nearest Neighbour";
     static final String BILINEAR = "Bilinear Interpolation";
-    static final String CUBIC = "Cubic Convolution";
+//    static final String CUBIC = "Cubic Convolution";
 
     private FileElevationModel fileElevationModel = null;
     private ElevationModel dem = null;
-    private Band elevationBand = null;
+    private Band topoPhaseBand = null;
     private float noDataValue = 0;
 
     // source
@@ -84,7 +87,8 @@ public final class ComplexSRDOp extends Operator {
     private static final boolean CREATE_VIRTUAL_BAND = true;
 
     private static final String PRODUCT_NAME = "srd_ifgs";
-    public static final String PRODUCT_TAG = "srd";
+    public static final String PRODUCT_TAG = "_srd";
+    private double demSampling;
 
     /**
      * Initializes this operator and sets the one and only target product.
@@ -116,7 +120,7 @@ public final class ComplexSRDOp extends Operator {
         }
     }
 
-    private void defineDEM() throws IOException {
+    private synchronized void defineDEM() throws IOException {
         // dem part
         final ElevationModelRegistry elevationModelRegistry = ElevationModelRegistry.getInstance();
         final ElevationModelDescriptor demDescriptor = elevationModelRegistry.getDescriptor(demName);
@@ -125,7 +129,8 @@ public final class ComplexSRDOp extends Operator {
         if (demDescriptor.isInstallingDem())
             throw new OperatorException("The DEM '" + demName + "' is currently being installed.");
 
-        Resampling resampling = Resampling.NEAREST_NEIGHBOUR;
+//        Resampling resampling = Resampling.NEAREST_NEIGHBOUR;
+        Resampling resampling = Resampling.BILINEAR_INTERPOLATION;
         if (externalDEM != null && !externalDEM.trim().isEmpty()) {
             fileElevationModel = new FileElevationModel(new File(externalDEM), resampling);
             noDataValue = fileElevationModel.getNoDataValue();
@@ -134,13 +139,16 @@ public final class ComplexSRDOp extends Operator {
             if (dem == null)
                 throw new OperatorException("The DEM '" + demName + "' has not been installed.");
             noDataValue = dem.getDescriptor().getNoDataValue();
+
+            demSampling = dem.getDescriptor().getDegreeRes() * (1.0f / dem.getDescriptor().getPixelRes());
         }
 
-        elevationBand = targetProduct.addBand(elevationBandName, ProductData.TYPE_FLOAT32);
-        elevationBand.setSynthetic(true);
-        elevationBand.setNoDataValue(noDataValue);
-        elevationBand.setUnit(Unit.METERS);
-        elevationBand.setDescription(demDescriptor.getName());
+
+        topoPhaseBand = targetProduct.addBand(topoPhaseBandName, ProductData.TYPE_FLOAT32);
+        topoPhaseBand.setSynthetic(true);
+        topoPhaseBand.setNoDataValue(noDataValue);
+        topoPhaseBand.setUnit(Unit.METERS);
+        topoPhaseBand.setDescription(demDescriptor.getName());
     }
 
     private void checkUserInput() {
@@ -185,6 +193,9 @@ public final class ComplexSRDOp extends Operator {
         // metadata: construct classes and define bands
         final String date = OperatorUtils.getAcquisitionDate(root);
         final SLCImage meta = new SLCImage(root);
+        // TODO: resolve multilook factors
+        meta.setMlAz(1);
+        meta.setMlRg(1);
         final Orbit orbit = new Orbit(root, ORBIT_DEGREE);
         Band bandReal = null;
         Band bandImag = null;
@@ -263,9 +274,7 @@ public final class ComplexSRDOp extends Operator {
                 ReaderUtils.createVirtualIntensityBand(targetProduct, targetProduct.getBand(targetBandName_I), targetProduct.getBand(targetBandName_Q), countStr);
                 ReaderUtils.createVirtualPhaseBand(targetProduct, targetProduct.getBand(targetBandName_I), targetProduct.getBand(targetBandName_Q), countStr);
             }
-
         }
-
     }
 
     /**
@@ -282,60 +291,72 @@ public final class ComplexSRDOp extends Operator {
     public void computeTileStack(Map<Band, Tile> targetTileMap, Rectangle targetRectangle, ProgressMonitor pm) throws OperatorException {
         try {
 
-            final GeoCoding geoCoding = targetProduct.getGeoCoding();
             final Rectangle rect = new Rectangle(targetRectangle);
-            System.out.println("Original: x0 = " + rect.x + ", y = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
-            int winRg = 1;
-            int winAz = 1;
-            final int x0 = rect.x - (winRg - 1) / 2;
-            final int y0 = rect.y - (winAz - 1) / 2;
-            final int w = rect.width + winRg - 1;
-            final int h = rect.height + winAz - 1;
-            rect.x = x0;
-            rect.y = y0;
-            rect.width = w;
-            rect.height = h;
+//            System.out.println("Original: x0 = " + rect.x + ", y = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
+            final int x0 = rect.x;
+            final int y0 = rect.y;
+            final int w = rect.width;
+            final int h = rect.height;
+            final Window tileWindow = new Window(y0, y0 + h - 1, x0, x0 + w - 1);
 
 //            System.out.println("Shifted: x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
             final BorderExtender border = BorderExtender.createInstance(BorderExtender.BORDER_ZERO);
             Band targetBand_I;
             Band targetBand_Q;
-
-            // anyhow do here for elevation
-            Tile elevationTile = targetTileMap.get("elevation");
-            final ProductData trgData = elevationTile.getDataBuffer();
-            pm.beginTask("Computing elevations from " + demName + "...", h);
-            try {
-                final GeoPos geoPos = new GeoPos();
-                final PixelPos pixelPos = new PixelPos();
-                float elevation;
-
-                for (int y = y0; y < y0 + h; ++y) {
-                    for (int x = x0; x < x0 + w; ++x) {
-
-                        pixelPos.setLocation(x + 0.5f, y + 0.5f);
-                        geoCoding.getGeoPos(pixelPos, geoPos);
-                        try {
-                            if (fileElevationModel != null) {
-                                elevation = fileElevationModel.getElevation(geoPos);
-                            } else {
-                                elevation = dem.getElevation(geoPos);
-                            }
-                        } catch (Exception e) {
-                            elevation = noDataValue;
-                        }
-
-                        trgData.setElemDoubleAt(elevationTile.getDataBufferIndex(x, y), (short) Math.round(elevation));
-                    }
-                    pm.worked(1);
-                }
-            } finally {
-                pm.done();
-            }
+            DemTile demPhase;
 
             for (String ifgKey : targetMap.keySet()) {
 
                 final ProductContainer product = targetMap.get(ifgKey);
+                final DemTile demHelper = new DemTile();
+
+                demHelper.computeGeoCorners(product.sourceMaster.metaData, product.sourceMaster.orbit, tileWindow);
+                GeoPos upperLeftGeo = new GeoPos((float) (demHelper.phiMax * Constants.RTOD), (float) (demHelper.lambdaMax * Constants.RTOD));
+
+                final GeoPos lowerRightGeo = new GeoPos((float) (demHelper.phiMin * Constants.RTOD), (float) (demHelper.lambdaMin * Constants.RTOD));
+                float maxLat = Math.max(upperLeftGeo.lat, lowerRightGeo.lat);
+                float minLat = Math.min(upperLeftGeo.lat, lowerRightGeo.lat);
+                float maxLon = Math.max(upperLeftGeo.lon, lowerRightGeo.lon);
+                float minLon = Math.min(upperLeftGeo.lon, lowerRightGeo.lon);
+
+                PixelPos upperLeftIdx = dem.getIndex(new GeoPos(maxLat, minLon));
+                PixelPos lowerRightIdx = dem.getIndex(new GeoPos(minLat, maxLon));
+
+                upperLeftIdx = new PixelPos((float) Math.ceil(upperLeftIdx.x), (float) Math.floor(upperLeftIdx.y));
+                upperLeftGeo = dem.getGeoPos(upperLeftIdx);
+
+                lowerRightIdx = new PixelPos((float) Math.floor(lowerRightIdx.x), (float) Math.ceil(lowerRightIdx.y));
+
+                final int nLatPixels = (int) Math.abs(upperLeftIdx.y - lowerRightIdx.y);
+                final int nLonPixels = (int) Math.abs(upperLeftIdx.x - lowerRightIdx.x);
+
+                final int startX = (int) upperLeftIdx.x;
+                final int endX = startX + nLonPixels - 1;
+                final int startY = (int) upperLeftIdx.y;
+                final int endY = startY + nLatPixels - 1;
+
+                demPhase = new DemTile(upperLeftGeo.lat * Constants.DTOR, upperLeftGeo.lon * Constants.DTOR,
+                        nLatPixels, nLonPixels, demSampling, demSampling, (long) noDataValue);
+
+                double[][] elevation = new double[nLatPixels][nLonPixels];
+                for (int y = startY, i = 0; y < endY; y++, i++) {
+                    for (int x = startX, j = 0; x < endX; x++, j++) {
+                        if (fileElevationModel != null) {
+                            elevation[i][j] = fileElevationModel.getSample(x, y);
+                        } else {
+                            elevation[i][j] = dem.getSample(x, y);
+                        }
+                    }
+                }
+
+                demPhase.setData(elevation);
+//                    demPhase.stats();
+
+                final TopoPhase topoPhase = new TopoPhase(product.sourceMaster.metaData, product.sourceMaster.orbit, product.sourceSlave.metaData, product.sourceSlave.orbit, tileWindow, demPhase);
+
+                topoPhase.radarCode();
+                topoPhase.gridData();
+
                 // check out from source
                 Tile tileReal = getSourceTile(product.sourceMaster.realBand, rect, border);
                 Tile tileImag = getSourceTile(product.sourceMaster.imagBand, rect, border);
@@ -349,6 +370,9 @@ public final class ComplexSRDOp extends Operator {
                 targetBand_Q = targetProduct.getBand(product.targetBandName_Q);
                 Tile tileOutImag = targetTileMap.get(targetBand_Q);
                 TileUtilsDoris.pushDoubleMatrix(dataMaster.imag(), tileOutImag, rect);
+
+                Tile topoPhaseTile = targetTileMap.get(topoPhaseBand);
+                TileUtilsDoris.pushDoubleArray2D(topoPhase.demPhase, topoPhaseTile, rect);
 
             }
 

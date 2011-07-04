@@ -40,13 +40,14 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         }
     }
 
-    private final JComboBox demName = new JComboBox(demValueSet);
+    private final JTextField ORBIT_DEGREE = new JTextField("");
 
+    private final JComboBox demName = new JComboBox(demValueSet);
     private final JTextField elevationBandName = new JTextField("");
     private final JTextField externalDEM = new JTextField("");
 
-    private final JComboBox resamplingMethod = new JComboBox(
-            new String[] { ComplexSRDOp.NEAREST_NEIGHBOUR, ComplexSRDOp.BILINEAR, ComplexSRDOp.CUBIC } );
+//    private final JComboBox resamplingMethod = new JComboBox(
+//            new String[] { ComplexSRDOp.NEAREST_NEIGHBOUR, ComplexSRDOp.BILINEAR, ComplexSRDOp.CUBIC } );
 
     @Override
     public JComponent CreateOpTab(String operatorName, Map<String, Object> parameterMap, AppContext appContext) {
@@ -61,10 +62,11 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
     @Override
     public void initParameters() {
 
+        elevationBandName.setText(String.valueOf(paramMap.get("ORBIT_DEGREE")));
         demName.setSelectedItem(paramMap.get("demName"));
         elevationBandName.setText(String.valueOf(paramMap.get("elevationBandName")));
         externalDEM.setText(String.valueOf(paramMap.get("externalDEM")));
-        resamplingMethod.setSelectedItem(paramMap.get("resamplingMethod"));
+//        resamplingMethod.setSelectedItem(paramMap.get("resamplingMethod"));
     }
 
     @Override
@@ -79,7 +81,7 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         paramMap.put("demName", demName.getSelectedItem());
         paramMap.put("elevationBandName", elevationBandName.getText());
         paramMap.put("externalDEM", externalDEM.getText());
-        paramMap.put("resamplingMethod", resamplingMethod.getSelectedItem());
+//        paramMap.put("resamplingMethod", resamplingMethod.getSelectedItem());
     }
 
     private JComponent createPanel() {
@@ -89,14 +91,16 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         final GridBagConstraints gbc = DialogUtils.createGridBagConstraints();
 
         gbc.gridy++;
+        DialogUtils.addComponent(contentPane, gbc, "Orbit Interpolation Degree:", ORBIT_DEGREE);
+        gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "Digital Elevation Model:", demName);
         gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "External DEM:", externalDEM);
         gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "Elevation Band Name:", elevationBandName);
         gbc.gridy++;
-        DialogUtils.addComponent(contentPane, gbc, "Resampling Method:", resamplingMethod);
-        gbc.gridy++;
+//        DialogUtils.addComponent(contentPane, gbc, "Resampling Method:", resamplingMethod);
+//        gbc.gridy++;
 
         DialogUtils.fillPanel(contentPane, gbc);
 
