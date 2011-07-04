@@ -40,7 +40,7 @@ public class TopoPhase {
         this.dem = dem;
 
         if (!dem.statsComputed) {
-            this.dem.computeDemCorners(masterMeta, masterOrbit, tileWindow);
+            this.dem.computeGeoCorners(masterMeta, masterOrbit, tileWindow);
         }
         nRows = dem.data.length;
         nCols = dem.data[0].length;
@@ -87,7 +87,7 @@ public class TopoPhase {
         this.rngAzRatio = rngAzRatio;
     }
 
-    public void radarCode() throws Exception {
+    public synchronized void radarCode() throws Exception {
 
         logger.trace("Converting DEM to radar system for this tile.");
 
@@ -95,7 +95,7 @@ public class TopoPhase {
         demRadarCode_y = new double[nRows][nCols];
         demRadarCode_phase = new double[nRows][nCols];
 
-        final int nPoints = nRows*nCols;
+        final int nPoints = nRows * nCols;
         final boolean onlyTopoRefPhase = true;
 
         logger.info("Number of points in DEM: " + nPoints);
@@ -128,22 +128,25 @@ public class TopoPhase {
             for (int j = 0; j < nCols; j++) {
 
                 height = dem.data[i][j];
-                double[] phi_lam_height = {phi, lambda, height};
-                Point sarPoint = masterOrbit.ell2lp(phi_lam_height, masterMeta);
 
-                line = sarPoint.y;
-                pix = sarPoint.x;
+                if (height != dem.noDataValue) {
 
-                demRadarCode_y[i][j] = line;
-                demRadarCode_x[i][j] = pix;
+                    double[] phi_lam_height = {phi, lambda, height};
+                    Point sarPoint = masterOrbit.ell2lp(phi_lam_height, masterMeta);
 
-                pointOnDem = Ellipsoid.ell2xyz(phi_lam_height);
+                    line = sarPoint.y;
+                    pix = sarPoint.x;
+
+                    demRadarCode_y[i][j] = line;
+                    demRadarCode_x[i][j] = pix;
+
+                    pointOnDem = Ellipsoid.ell2xyz(phi_lam_height);
 //                masterTime = masterOrbit.xyz2t(pointOnDem, masterMeta);
-                slaveTime = slaveOrbit.xyz2t(pointOnDem, slaveMeta);
+                    slaveTime = slaveOrbit.xyz2t(pointOnDem, slaveMeta);
+
 
 /*
                 if (outH2PH == true) {
-
 
                     // compute h2ph factor
                     Point masterSatPos = masterOrbit.getXYZ(masterTime.y);
@@ -162,25 +165,37 @@ public class TopoPhase {
                     h2phArray[i][j] = Bperp / (masterTime.x * Constants.SOL * Math.sin(thetaMaster));
                 }
 */
+                    // do not include flat earth phase
+                    if (onlyTopoRefPhase) {
 
-                // do not include flat earth phase
-                if (onlyTopoRefPhase) {
+                        Point masterXYZPos = masterOrbit.lp2xyz(line, pix, masterMeta);
+                        Point flatEarthTime = slaveOrbit.xyz2t(masterXYZPos, slaveMeta);
+                        ref_phase = masterMin4piCDivLam * flatEarthTime.x - (slaveMin4piCDivLam * slaveTime.x);
 
-                    Point masterXYZPos = masterOrbit.lp2xyz(line, pix, masterMeta);
-                    Point flatEarthTime = slaveOrbit.xyz2t(masterXYZPos, slaveMeta);
-                    ref_phase = masterMin4piCDivLam * flatEarthTime.x - (slaveMin4piCDivLam * slaveTime.x);
+                    } else {
+
+                        // include flatearth, ref.pha = phi_topo+phi_flatearth
+                        ref_phase = masterMin4piCDivLam * masterMeta.pix2tr(pix)
+                                - slaveMin4piCDivLam * slaveTime.x;
+
+                    }
+
+                    demRadarCode_phase[i][j] = ref_phase;
+                    lambda += dem.longitudeDelta;
 
                 } else {
 
-                    // include flatearth, ref.pha = phi_topo+phi_flatearth
-                    ref_phase = masterMin4piCDivLam * masterMeta.pix2tr(pix)
-                            - slaveMin4piCDivLam * slaveTime.x;
+                    double[] phi_lam_height = {phi, lambda, 0};
+                    Point sarPoint = masterOrbit.ell2lp(phi_lam_height, masterMeta);
 
+                    line = sarPoint.y;
+                    pix = sarPoint.x;
+
+                    demRadarCode_y[i][j] = line;
+                    demRadarCode_x[i][j] = pix;
+                    demRadarCode_phase[i][j] = 0;
                 }
 
-                demRadarCode_phase[i][j] = ref_phase;
-
-                lambda += dem.longitudeDelta;
             }
             phi -= dem.latitudeDelta;
         }
@@ -244,7 +259,7 @@ public class TopoPhase {
 
     }
 
-    public void gridData() throws Exception {
+    public synchronized void gridData() throws Exception {
         if (rngAzRatio == 0) {
             calculateScalingRatio();
         }
@@ -252,7 +267,7 @@ public class TopoPhase {
         int mlRg = masterMeta.getMlRg();
         int offset = 0;
         demPhase = TriangleUtils.gridDataLinear(demRadarCode_y, demRadarCode_x, demRadarCode_phase,
-                tileWindow, rngAzRatio, mlAz, mlRg, dem.nodata, offset);
+                tileWindow, rngAzRatio, mlAz, mlRg, dem.noDataValue, offset);
     }
 
 }

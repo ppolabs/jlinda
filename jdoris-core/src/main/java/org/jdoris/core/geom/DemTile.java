@@ -7,15 +7,22 @@ public class DemTile {
     //// logger
     static org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(DemTile.class.getName());
 
-     //// topoPhase global params
+    //// topoPhase global params
     double lat0;
     double lon0;
     long nLatPixels;
     long nLonPixels;
+
+    double lat0_ABS;
+    double lon0_ABS;
+    long nLatPixels_ABS;
+    long nLonPixels_ABS;
+
     double latitudeDelta;
     double longitudeDelta;
+
     // no data value
-    double nodata;
+    double noDataValue;
 
     //// actual demTileData
     double[][] data;
@@ -27,10 +34,10 @@ public class DemTile {
     /// tile coordinates in phi,lam
     boolean cornersComputed = false;
 
-    double phiMin;
-    double phiMax;
-    double lambdaMin;
-    double lambdaMax;
+    public double phiMin;
+    public double phiMax;
+    public double lambdaMin;
+    public double lambdaMax;
 
     /// tile index
     int indexPhi0DEM;
@@ -41,7 +48,7 @@ public class DemTile {
     //// tile stats
     boolean statsComputed = false;
     long totalNumPoints;
-    long numNodata = 0;
+    long numNoData;
     long numValid;
     double meanValue;
     double minValue;
@@ -52,14 +59,38 @@ public class DemTile {
     }
 
     public DemTile(double lat0, double lon0, long nLatPixels, long nLonPixels,
-                   double latitudeDelta, double longitudeDelta, long nodata) {
+                   double latitudeDelta, double longitudeDelta, long noDataValue) {
         this.lat0 = lat0;
         this.lon0 = lon0;
         this.nLatPixels = nLatPixels;
         this.nLonPixels = nLonPixels;
         this.latitudeDelta = latitudeDelta;
         this.longitudeDelta = longitudeDelta;
-        this.nodata = nodata;
+        this.noDataValue = noDataValue;
+    }
+
+    public DemTile(double lat0_ABS, double lon0_ABS, long nLatPixels_ABS, long nLonPixels_ABS,
+                   double delta, long noDataValue) {
+
+        this.lat0_ABS = lat0_ABS;
+        this.lon0_ABS = lon0_ABS;
+        this.nLatPixels_ABS = nLatPixels_ABS;
+        this.nLonPixels_ABS = nLonPixels_ABS;
+        this.latitudeDelta = delta;
+        this.longitudeDelta = delta;
+        this.noDataValue = noDataValue;
+    }
+
+    public void setLatitudeDelta(double latitudeDelta) {
+        this.latitudeDelta = latitudeDelta;
+    }
+
+    public void setLongitudeDelta(double longitudeDelta) {
+        this.longitudeDelta = longitudeDelta;
+    }
+
+    public void setNoDataValue(double noDataValue) {
+        this.noDataValue = noDataValue;
     }
 
     public double[][] getData() {
@@ -72,33 +103,38 @@ public class DemTile {
 
     // get corners of tile (approx) to select DEM
     //	in radians (if height were zero)
-    private void setExtraPhiLam() {
-        lambdaExtra = (1.5 * latitudeDelta + (4.0 / 25.0) * Constants.DTOR);
-        phiExtra = (1.5 * longitudeDelta + (4.0 / 25.0) * Constants.DTOR);
+    private void defineExtraPhiLam() {
+        // TODO: introduce methods for dynamic scaling of extra lambda/phi depending on average tile Height!
+//        lambdaExtra = (1.5 * latitudeDelta + (4.0 / 25.0) * Constants.DTOR); // for himalayas!
+//        phiExtra = (1.5 * longitudeDelta + (4.0 / 25.0) * Constants.DTOR);
+        lambdaExtra = (1.5 * latitudeDelta + (0.75 / 25.0) * Constants.DTOR); // for Etna
+        phiExtra = (1.5 * longitudeDelta + (0.05 / 25.0) * Constants.DTOR);
     }
 
     // TODO: stub for computing statistics of DEM tile
     // ----- Loop over DEM for stats ------------------------
-    public void stats() throws Exception{
+    public void stats() throws Exception {
 
         // inital values
-        double min_dem_buffer = 100000.0;
-        double max_dem_buffer = -100000.0;
+//        double min_dem_buffer = 100000.0;
+//        double max_dem_buffer = -100000.0;
+        double min_dem_buffer = data[0][0];
+        double max_dem_buffer = data[0][0];
 
         try {
             totalNumPoints = data.length * data[0].length;
             for (double[] aData : data) {
                 for (int j = 0; j < data[0].length; j++) {
-                    if (aData[j] != nodata) {
+                    if (aData[j] != noDataValue) {
                         numValid++;
                         meanValue += aData[j];           // divide by numValid later
                         if (aData[j] < min_dem_buffer)
-                            min_dem_buffer = aData[j];  //buffer
+                            min_dem_buffer = aData[j];
                         if (aData[j] > max_dem_buffer)
-                            max_dem_buffer = aData[j];  // stats
+                            max_dem_buffer = aData[j];
                     } else {
-                        numNodata++;
-                        System.out.println("dataValue = " + aData[j]);
+                        numNoData++;
+//                        System.out.println("dataValue = " + aData[j]);
                     }
                 }
             }
@@ -109,8 +145,8 @@ public class DemTile {
         }
 
         //global stats
-        minValue = Math.min(minValue, min_dem_buffer);
-        maxValue = Math.max(maxValue, max_dem_buffer);
+        minValue = min_dem_buffer;
+        maxValue = max_dem_buffer;
         meanValue /= numValid;
 
         statsComputed = true;
@@ -121,23 +157,25 @@ public class DemTile {
     private void showStats() {
 
         if (statsComputed) {
-            logger.info("DEM Tile Stats");
-            logger.info("------------------------------------------------");
-            logger.info("Total number of points: " + totalNumPoints);
-            logger.info("Number of valid points: " + numValid);
-            logger.info("Number of NODATA points: " + numNodata);
-            logger.info("Max height in meters at valid points: " + maxValue);
-            logger.info("Min height in meters at valid points: " + minValue);
-            logger.info("Mean height in meters at valid points: " + meanValue);
+            System.out.println("DEM Tile Stats");
+            System.out.println("------------------------------------------------");
+            System.out.println("Total number of points: " + totalNumPoints);
+            System.out.println("Number of valid points: " + numValid);
+            System.out.println("Number of NODATA points: " + numNoData);
+            System.out.println("Max height in meters at valid points: " + maxValue);
+            System.out.println("Min height in meters at valid points: " + minValue);
+            System.out.println("Mean height in meters at valid points: " + meanValue);
         } else {
-            logger.warn("DEM Tile Stats");
-            logger.warn("------------------------------------------------");
-            logger.warn("DemTile.stats() method not invoked!");
+            System.out.println("DEM Tile Stats");
+            System.out.println("------------------------------------------------");
+            System.out.println("DemTile.stats() method not invoked!");
         }
 
     }
 
-    public void computeDemCorners(SLCImage meta, Orbit orbit, Window tile) throws Exception {
+
+    // TODO: refactor to DemUtils as static method
+    public void computeGeoCorners(final SLCImage meta, final Orbit orbit, final Window tile) throws Exception {
 
         double[] phiAndLambda;
 
@@ -174,7 +212,7 @@ public class DemTile {
         // a little bit extra at edges to be sure
 
         // redefine it: no checks whether there are previous declarations
-        setExtraPhiLam();
+        defineExtraPhiLam();
 
         // phi
         phiMin -= phiExtra;
@@ -183,6 +221,19 @@ public class DemTile {
         lambdaMax += lambdaExtra;
         lambdaMin -= lambdaExtra;
 
+//        computeIndexCornersNest();
+//        computeDemTileSize();
+
+        cornersComputed = true;
+    }
+
+    private void computeDemTileSize() {
+        nLatPixels = indexLambdaNDEM - indexLambda0DEM;
+        nLonPixels = indexPhiNDEM - indexPhi0DEM;
+    }
+
+    private void computeIndexCorners() {
+
         indexPhi0DEM = (int) (Math.floor((lat0 - phiMax) / latitudeDelta));
         indexPhiNDEM = (int) (Math.ceil((lat0 - phiMin) / latitudeDelta));
         indexLambda0DEM = (int) (Math.floor((lambdaMin - lon0) / longitudeDelta));
@@ -190,35 +241,40 @@ public class DemTile {
 
         //// sanity checks ////
         if (indexPhi0DEM < 0) {
-            TopoPhase.logger.warn("indexPhi0DEM: " + indexPhi0DEM);
+            logger.warn("indexPhi0DEM: " + indexPhi0DEM);
             indexPhi0DEM = 0;   // reset to default start at first
-            TopoPhase.logger.warn("DEM does not cover entire interferogram/tile.");
-            TopoPhase.logger.warn("input DEM should be extended to the North.");
+            logger.warn("DEM does not cover entire interferogram/tile.");
+            logger.warn("input DEM should be extended to the North.");
         }
 
         if (indexPhiNDEM > nLatPixels - 1) {
-            TopoPhase.logger.warn("indexPhiNDEM: " + indexPhi0DEM);
+            logger.warn("indexPhiNDEM: " + indexPhi0DEM);
             indexPhiNDEM = (int) (nLatPixels - 1);
-            TopoPhase.logger.warn("DEM does not cover entire interferogram/tile.");
-            TopoPhase.logger.warn("input DEM should be extended to the South.");
+            logger.warn("DEM does not cover entire interferogram/tile.");
+            logger.warn("input DEM should be extended to the South.");
         }
 
         if (indexLambda0DEM < 0) {
-            TopoPhase.logger.warn("indexLambda0DEM: " + indexLambda0DEM);
+            logger.warn("indexLambda0DEM: " + indexLambda0DEM);
             indexLambda0DEM = 0;    // default start at first
-            TopoPhase.logger.warn("DEM does not cover entire interferogram/tile.");
-            TopoPhase.logger.warn("input DEM should be extended to the West.");
+            logger.warn("DEM does not cover entire interferogram/tile.");
+            logger.warn("input DEM should be extended to the West.");
         }
 
         if (indexLambdaNDEM > nLonPixels - 1) {
-            TopoPhase.logger.warn("indexLambdaNDEM: " + indexLambdaNDEM);
+            logger.warn("indexLambdaNDEM: " + indexLambdaNDEM);
             indexLambdaNDEM = (int) (nLonPixels - 1);
-            TopoPhase.logger.warn("DEM does not cover entire interferogram/tile.");
-            TopoPhase.logger.warn("input DEM should be extended to the East.");
+            logger.warn("DEM does not cover entire interferogram/tile.");
+            logger.warn("input DEM should be extended to the East.");
         }
 
-        cornersComputed = true;
+    }
 
+    private void computeIndexCornersNest() {
+        indexPhi0DEM = (int) (Math.floor(nLatPixels_ABS - (lat0_ABS + phiMax) / latitudeDelta));
+        indexPhiNDEM = (int) (Math.ceil(nLatPixels_ABS - (lat0_ABS + phiMin) / latitudeDelta));
+        indexLambda0DEM = (int) (Math.floor((lambdaMin + lon0_ABS) / longitudeDelta));
+        indexLambdaNDEM = (int) (Math.ceil((lambdaMax - lon0_ABS) / longitudeDelta));
     }
 
 }
