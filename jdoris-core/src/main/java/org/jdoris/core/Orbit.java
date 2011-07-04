@@ -32,7 +32,7 @@ public final class Orbit {
     private double[] coeff_Z;
     private int poly_degree;
 
-    private int MAXITER = 10;
+    private static final int MAXITER = 10;
     private final static double CRITERPOS = Math.pow(10, -6);
     private final static double CRITERTIM = Math.pow(10, -10);
     private final static int refHeight = 0;
@@ -141,7 +141,7 @@ public final class Orbit {
     }
 
     // TODO: make generic so it can work with arrays of lines as well: see matlab implementation
-    public Point lph2xyz(final double line, final double pixel, final double height, SLCImage slcimage) throws Exception {
+    public Point lph2xyz(final double line, final double pixel, final double height, final SLCImage slcimage) throws Exception {
 
         Point satellitePosition;
         Point satelliteVelocity;
@@ -203,12 +203,12 @@ public final class Orbit {
                 break;
 
             } else if (iter >= MAXITER) {
-                MAXITER = MAXITER + 1;
+//                MAXITER = MAXITER + 1;
                 logger.warn("line, pix -> x,y,z: maximum iterations (" + MAXITER + ") reached. ");
                 logger.warn("Criterium (m): " + CRITERPOS + " dx,dy,dz = "
                         + ellipsoidPositionSolution[0] + ", " + ellipsoidPositionSolution[1] + ", " + ellipsoidPositionSolution[2]);
 
-                if (MAXITER > 11) {
+                if (MAXITER > 10) {
                     logger.error("lp2xyz : MAXITER limit reached! lp2xyz() estimation is diverging?!");
                     throw new Exception("Orbit.lp2xyz : MAXITER limit reached! lp2xyz() estimation is diverging?!");
                 }
