@@ -56,7 +56,7 @@ public class TopoPhaseTest {
         long nodata = -32768;
 
         // initialize
-        dem = new DemTile(lat0,lon0,nLatPixels,nLonPixels,latitudeDelta,longitudeDelta,nodata);
+        dem = new DemTile(lat0, lon0, nLatPixels, nLonPixels, latitudeDelta, longitudeDelta, nodata);
 
         // load test data
         String bufferFileName;
