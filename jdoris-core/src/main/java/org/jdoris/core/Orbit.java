@@ -219,21 +219,21 @@ public final class Orbit {
         return new Point(ellipsoidPosition);
     }
 
-    public Point lp2xyz(Point sarPixel, SLCImage slcimage) throws Exception {
+    public synchronized Point lp2xyz(final Point sarPixel, final SLCImage slcimage) throws Exception {
         return lph2xyz(sarPixel.y, sarPixel.x, 0, slcimage);
     }
 
-    public Point lp2xyz(double line, double pixel, SLCImage slcimage) throws Exception {
+    public synchronized Point lp2xyz(final double line, final double pixel, final SLCImage slcimage) throws Exception {
         return lph2xyz(line, pixel, 0, slcimage);
     }
 
-    public Point xyz2orb(Point pointOnEllips, SLCImage slcimage) {
+    public synchronized Point xyz2orb(final Point pointOnEllips, final SLCImage slcimage) {
         // return satellite position
         // Point pointTime = xyz2t(pointOnEllips,slcimage);
         return getXYZ(xyz2t(pointOnEllips, slcimage).y); // inlined
     }
 
-    public Point xyz2t(Point pointOnEllips, SLCImage slcimage) {
+    public synchronized Point xyz2t(final Point pointOnEllips, final SLCImage slcimage) {
 
         Point delta;
 
@@ -273,7 +273,7 @@ public final class Orbit {
     }
 
 
-    public Point xyz2lp(Point pointOnEllips, SLCImage slcimage) {
+    public synchronized Point xyz2lp(final Point pointOnEllips, final SLCImage slcimage) {
 
         Point sarPixel = new Point();
 
@@ -287,27 +287,27 @@ public final class Orbit {
         return new Point(sarPixel);
     }
 
-    public Point ell2lp(final double[] phi_lam_height, final SLCImage slcimage) throws Exception {
+    public synchronized Point ell2lp(final double[] phi_lam_height, final SLCImage slcimage) throws Exception {
         final Point pointOnEllips = Ellipsoid.ell2xyz(phi_lam_height);
         return xyz2lp(pointOnEllips, slcimage);
     }
 
-    public double[] lp2ell(Point sarPixel, SLCImage slcimage) throws Exception {
+    public synchronized double[] lp2ell(final Point sarPixel, final SLCImage slcimage) throws Exception {
         final Point xyz = lp2xyz(sarPixel, slcimage);
         return Ellipsoid.xyz2ell(xyz);
     }
 
-    public double[] lph2ell(final double line, final double pixel, final double height, final SLCImage slcimage) throws Exception {
+    public synchronized double[] lph2ell(final double line, final double pixel, final double height, final SLCImage slcimage) throws Exception {
         final Point xyz = lph2xyz(line, pixel, height, slcimage);
         return Ellipsoid.xyz2ell(xyz);
     }
 
-    public double[] lph2ell(final Point sarPixel, final SLCImage slcimage) throws Exception {
+    public synchronized double[] lph2ell(final Point sarPixel, final SLCImage slcimage) throws Exception {
         final Point xyz = lph2xyz(sarPixel.x, sarPixel.y, sarPixel.z, slcimage);
         return Ellipsoid.xyz2ell(xyz);
     }
 
-    public double[] lph2ell(final Point sarPixel, final double height, final SLCImage slcimage) throws Exception {
+    public synchronized double[] lph2ell(final Point sarPixel, final double height, final SLCImage slcimage) throws Exception {
         final Point xyz = lph2xyz(sarPixel.x, sarPixel.y, height, slcimage);
         return Ellipsoid.xyz2ell(xyz);
     }
@@ -318,7 +318,7 @@ public final class Orbit {
 
     }
 
-    public Point getXYZ(double azTime) {
+    public Point getXYZ(final double azTime) {
 
         if (azTime < time[0] || azTime > time[numStateVectors - 1]) {
             logger.warn("getXYZ() interpolation at: " + azTime + " is outside interval time axis: ("
@@ -328,11 +328,11 @@ public final class Orbit {
         Point satelliteXYZPosition = new Point();
 
         // normalize time
-        azTime = (azTime - time[time.length / 2]) / 10;
+        double azTimeNormal = (azTime - time[time.length / 2]) / 10;
 
-        satelliteXYZPosition.x = PolyUtils.polyVal1D(azTime, coeff_X);
-        satelliteXYZPosition.y = PolyUtils.polyVal1D(azTime, coeff_Y);
-        satelliteXYZPosition.z = PolyUtils.polyVal1D(azTime, coeff_Z);
+        satelliteXYZPosition.x = PolyUtils.polyVal1D(azTimeNormal, coeff_X);
+        satelliteXYZPosition.y = PolyUtils.polyVal1D(azTimeNormal, coeff_Y);
+        satelliteXYZPosition.z = PolyUtils.polyVal1D(azTimeNormal, coeff_Z);
 
         return satelliteXYZPosition;  //To change body of created methods use File | Settings | File Templates.
     }
@@ -368,19 +368,19 @@ public final class Orbit {
 
     }
 
-    public Point getXYZDotDot(double azTime) {
+    public Point getXYZDotDot(final double azTime) {
 
         //TODO: sanity check
         Point satelliteAcceleration = new Point();
 
         // normalize time
-        azTime = (azTime - time[time.length / 2]) / 10.0d;
+        double azTimeNormal = (azTime - time[time.length / 2]) / 10.0d;
 
         // NOTE: orbit interpolator is simple polynomial
         // 2a_2 + 2*3a_3*t^1 + 3*4a_4*t^2...
 
         for (int i = 2; i <= poly_degree; ++i) {
-            double powT = (double) ((i - 1) * i) * Math.pow(azTime, (double) (i - 2));
+            double powT = (double) ((i - 1) * i) * Math.pow(azTimeNormal, (double) (i - 2));
             satelliteAcceleration.x += coeff_X[i] * powT;
             satelliteAcceleration.y += coeff_Y[i] * powT;
             satelliteAcceleration.z += coeff_Z[i] * powT;
@@ -390,28 +390,28 @@ public final class Orbit {
 
     }
 
-    public double eq1_Doppler(Point satVelocity, Point pointOnEllips) {
+    public double eq1_Doppler(final Point satVelocity, final Point pointOnEllips) {
         return satVelocity.in(pointOnEllips);
     }
 
-    private double eq1_Doppler_dt(Point pointEllipsSat, Point satVelocity, Point satAcceleration) {
+    private double eq1_Doppler_dt(final Point pointEllipsSat, final Point satVelocity, final Point satAcceleration) {
         return satAcceleration.in(pointEllipsSat) - Math.pow(satVelocity.x, 2) - Math.pow(satVelocity.y, 2) - Math.pow(satVelocity.z, 2);
     }
 
-    public double eq2_Range(Point pointEllipsSat, double rgTime) {
+    public double eq2_Range(final Point pointEllipsSat, final double rgTime) {
         return pointEllipsSat.in(pointEllipsSat) - Math.pow(SOL * rgTime, 2);
     }
 
-    public double eq3_Ellipsoid(Point pointOnEllips, double height) {
+    public double eq3_Ellipsoid(final Point pointOnEllips, final double height) {
         return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(ell_a + height, 2)) +
                 Math.pow(pointOnEllips.z / (ell_b + height), 2) - 1.0;
     }
 
-    public double eq3_Ellipsoid(Point pointOnEllips) {
+    public double eq3_Ellipsoid(final Point pointOnEllips) {
         return eq3_Ellipsoid(pointOnEllips, 0);
     }
 
-    public double eq3_Ellipsoid(Point pointOnEllips, double semiMajorA, double semiMinorB, double height) {
+    public double eq3_Ellipsoid(final Point pointOnEllips, final double semiMajorA, final double semiMinorB, final double height) {
         return ((Math.pow(pointOnEllips.x, 2) + Math.pow(pointOnEllips.y, 2)) / Math.pow(semiMajorA + height, 2)) +
                 Math.pow(pointOnEllips.z / (semiMinorB + height), 2) - 1.0;
     }
