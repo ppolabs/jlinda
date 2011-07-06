@@ -96,7 +96,7 @@ public class GeoUtils {
         return corners;
     }
 
-    public static synchronized GeoPos defineExtraPhiLam(double latDelta, double lonDelta) {
+    public static GeoPos defineExtraPhiLam(double latDelta, double lonDelta) {
         // TODO: introduce methods for dynamic scaling of extra lambda/phi depending on average tile Height!
 //        lambdaExtra = (1.5 * latDelta + (4.0 / 25.0) * Constants.DTOR); // for himalayas!
 //        phiExtra = (1.5 * lonDelta + (4.0 / 25.0) * Constants.DTOR);
@@ -118,5 +118,4 @@ public class GeoUtils {
         coordinates[1].lat -= (extra.lat * Constants.RTOD);
         coordinates[1].lon += (extra.lon * Constants.RTOD);
     }
-
 }
