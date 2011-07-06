@@ -11,6 +11,8 @@ import java.io.File;
 
 public class OrbitTest {
 
+    // TODO: check between lp2ell and lph2ell if height == 0
+
     //    private static final File resFile = new File("/d2/delft_cr_asar.res");
     private static final File resFile = new File("test/test_cr.res");
 
