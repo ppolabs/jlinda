@@ -96,6 +96,14 @@ public class GeoUtils {
         return corners;
     }
 
+    public static GeoPos defineExtraPhiLam_smart() {
+
+        // for maximum height of the tile estimate the overlapping are
+
+        return new GeoPos();
+    }
+
+
     public static GeoPos defineExtraPhiLam(double latDelta, double lonDelta) {
         // TODO: introduce methods for dynamic scaling of extra lambda/phi depending on average tile Height!
 //        lambdaExtra = (1.5 * latDelta + (4.0 / 25.0) * Constants.DTOR); // for himalayas!
@@ -117,5 +125,17 @@ public class GeoUtils {
 
         coordinates[1].lat -= (extra.lat * Constants.RTOD);
         coordinates[1].lon += (extra.lon * Constants.RTOD);
+    }
+
+    public static GeoPos defineExtraPhiLam(final double height, final Window window, final SLCImage meta, final Orbit orbit) throws Exception {
+
+        // compute Phi, Lambda for Tile corners
+        double[] latLon_ONELLIPS = orbit.lp2ell(new Point(window.pixlo, window.pixhi), meta);
+        double[] latLon_HEIGHT = orbit.lph2ell(new Point(window.pixlo, window.pixhi, height), meta);
+
+        float latExtra = (float) Math.abs(latLon_HEIGHT[0] - latLon_ONELLIPS[0]);
+        float lonExtra = (float) Math.abs(latLon_HEIGHT[1] - latLon_ONELLIPS[1]);
+
+        return new GeoPos(latExtra, lonExtra);
     }
 }

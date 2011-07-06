@@ -35,8 +35,7 @@ import org.jdoris.nest.utils.TileUtilsDoris;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @OperatorMetadata(alias = "ComplexSRD",
         category = "InSAR Products",
@@ -281,7 +280,6 @@ public final class ComplexSRDOp extends Operator {
             }
 
         }
-
     }
 
     /**
@@ -312,9 +310,15 @@ public final class ComplexSRDOp extends Operator {
 
                 ProductContainer product = targetMap.get(ifgKey);
 
-                GeoPos[] corners = GeoUtils.computeCorners(product.sourceMaster.metaData, product.sourceMaster.orbit,
+                final GeoPos[] corners = GeoUtils.computeCorners(product.sourceMaster.metaData, product.sourceMaster.orbit,
                         tileWindow);
-                final GeoPos extent = GeoUtils.defineExtraPhiLam(demSampling, demSampling);
+
+                // compute maximum tileHeight -- needed for computing tile extension for triangulation
+                final double tileMaxHeight = computeMaxHeight(corners, targetRectangle);
+//                final GeoPos extent_TEST = GeoUtils.defineExtraPhiLam(demSampling, demSampling);
+                final GeoPos extent = GeoUtils.defineExtraPhiLam(tileMaxHeight, tileWindow,
+                        product.sourceMaster.metaData, product.sourceMaster.orbit);
+
                 GeoUtils.extendCorners(extent, corners);
 
                 PixelPos upperLeftIdx = dem.getIndex(corners[0]);
@@ -381,6 +385,47 @@ public final class ComplexSRDOp extends Operator {
         } catch (Exception e) {
             throw new OperatorException(e);
         }
+    }
+
+    private double computeMaxHeight(GeoPos[] corners, Rectangle rect) throws Exception {
+
+        // double square root : scales with the size of tile
+        final int NUMBER_OF_RANDOM_HEIGHTS = (int) Math.sqrt(Math.sqrt(rect.width * rect.height));
+
+        final ArrayList<Float> heights = new ArrayList();
+
+        // range
+        final PixelPos idx0 = dem.getIndex(corners[0]);
+        final PixelPos idxN = dem.getIndex(corners[1]);
+
+        final int minX = (int) Math.min(idx0.x, idxN.x);
+        final int maxX = (int) Math.max(idx0.x, idxN.x);
+        final int minY = (int) Math.min(idx0.y, idxN.y);
+        final int maxY = (int) Math.max(idx0.y, idxN.y);
+
+        heights.add(dem.getSample(minX, minY));
+        heights.add(dem.getSample(maxX, maxY));
+        heights.add(dem.getSample(minX, maxY));
+        heights.add(dem.getSample(maxX, minY));
+
+        Random rand = new Random();
+        // then for number of extra points
+        for (int i = 0; i < NUMBER_OF_RANDOM_HEIGHTS; i++) {
+            // TODO: extract this max/min in range into utility class
+            int randX = rand.nextInt(maxX - minX + 1) + minX;
+            int randY = rand.nextInt(maxY - minY + 1) + minY;
+            heights.add(dem.getSample(randX, randY));
+        }
+
+        // check for noDataValues
+        if (heights.contains(noDataValue)) {
+            for (int i = 0; i < heights.size(); i++) {
+                if (heights.get(i) == noDataValue) {
+                    heights.set(i, 0f);
+                }
+            }
+        }
+        return Collections.max(heights);
     }
 
     /**
