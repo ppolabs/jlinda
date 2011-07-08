@@ -65,7 +65,7 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         elevationBandName.setText(String.valueOf(paramMap.get("ORBIT_DEGREE")));
         demName.setSelectedItem(paramMap.get("demName"));
         elevationBandName.setText(String.valueOf(paramMap.get("elevationBandName")));
-        externalDEM.setText(String.valueOf(paramMap.get("externalDEM")));
+//        externalDEM.setText(String.valueOf(paramMap.get("externalDEM")));
 //        resamplingMethod.setSelectedItem(paramMap.get("resamplingMethod"));
     }
 
@@ -80,7 +80,7 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
 
         paramMap.put("demName", demName.getSelectedItem());
         paramMap.put("elevationBandName", elevationBandName.getText());
-        paramMap.put("externalDEM", externalDEM.getText());
+//        paramMap.put("externalDEM", externalDEM.getText());
 //        paramMap.put("resamplingMethod", resamplingMethod.getSelectedItem());
     }
 
@@ -95,8 +95,8 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "Digital Elevation Model:", demName);
         gbc.gridy++;
-        DialogUtils.addComponent(contentPane, gbc, "External DEM:", externalDEM);
-        gbc.gridy++;
+//        DialogUtils.addComponent(contentPane, gbc, "External DEM:", externalDEM);
+//        gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "Elevation Band Name:", elevationBandName);
         gbc.gridy++;
 //        DialogUtils.addComponent(contentPane, gbc, "Resampling Method:", resamplingMethod);

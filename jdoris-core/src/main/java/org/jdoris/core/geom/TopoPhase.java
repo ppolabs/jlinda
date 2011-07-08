@@ -16,7 +16,7 @@ public class TopoPhase {
 
     private Window tileWindow;    // buffer/tile coordinates
 
-    public DemTile dem;           // demTileData
+    private DemTile dem;           // demTileData
     public double[][] demPhase;
 
     private double[][] demRadarCode_x;
@@ -28,20 +28,21 @@ public class TopoPhase {
 
     private double rngAzRatio = 0;
 
-    public TopoPhase() {
+    public TopoPhase(DemTile dem, DemTile demTile, DemTile tile, Window tileWindow) {
+        this.dem = dem;
+        this.tileWindow = tileWindow;
+        dem = tile;
+        dem = demTile;
     }
 
-    public TopoPhase(SLCImage masterMeta, Orbit masterOrbit, SLCImage slaveMeta, Orbit slaveOrbit, Window tileWindow, DemTile dem) throws Exception {
+    public TopoPhase(SLCImage masterMeta, Orbit masterOrbit, SLCImage slaveMeta, Orbit slaveOrbit, Window window, DemTile demTile) throws Exception {
         this.masterOrbit = masterOrbit;
         this.masterMeta = masterMeta;
         this.slaveOrbit = slaveOrbit;
         this.slaveMeta = slaveMeta;
-        this.tileWindow = tileWindow;
-        this.dem = dem;
+        this.tileWindow = window;
+        this.dem = demTile;
 
-        if (!dem.statsComputed) {
-            this.dem.computeGeoCorners(masterMeta, masterOrbit, tileWindow);
-        }
         nRows = dem.data.length;
         nCols = dem.data[0].length;
     }
@@ -63,8 +64,8 @@ public class TopoPhase {
     }
 
 
-    public void setTileWindow(Window tileWindow) {
-        this.tileWindow = tileWindow;
+    public void setWindow(Window window) {
+        this.tileWindow = window;
     }
 
     public double[][] getDemRadarCode_phase() {
@@ -143,7 +144,6 @@ public class TopoPhase {
                     pointOnDem = Ellipsoid.ell2xyz(phi_lam_height);
 //                masterTime = masterOrbit.xyz2t(pointOnDem, masterMeta);
                     slaveTime = slaveOrbit.xyz2t(pointOnDem, slaveMeta);
-
 
 /*
                 if (outH2PH == true) {
@@ -259,7 +259,7 @@ public class TopoPhase {
 
     }
 
-    public synchronized void gridData() throws Exception {
+    public void gridData() throws Exception {
         if (rngAzRatio == 0) {
             calculateScalingRatio();
         }

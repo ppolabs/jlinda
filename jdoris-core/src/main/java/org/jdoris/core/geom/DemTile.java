@@ -101,17 +101,6 @@ public class DemTile {
         this.data = data;
     }
 
-    // get corners of tile (approx) to select DEM
-    //	in radians (if height were zero)
-    private void defineExtraPhiLam() {
-        // TODO: introduce methods for dynamic scaling of extra lambda/phi depending on average tile Height!
-//        lambdaExtra = (1.5 * latitudeDelta + (4.0 / 25.0) * Constants.DTOR); // for himalayas!
-//        phiExtra = (1.5 * longitudeDelta + (4.0 / 25.0) * Constants.DTOR);
-        lambdaExtra = (1.5 * latitudeDelta + (0.75 / 25.0) * Constants.DTOR); // for Etna
-        phiExtra = (1.5 * longitudeDelta + (0.05 / 25.0) * Constants.DTOR);
-    }
-
-    // TODO: stub for computing statistics of DEM tile
     // ----- Loop over DEM for stats ------------------------
     public void stats() throws Exception {
 
@@ -174,7 +163,7 @@ public class DemTile {
     }
 
 
-    // TODO: refactor to DemUtils as static method
+    @Deprecated
     public void computeGeoCorners(final SLCImage meta, final Orbit orbit, final Window tile) throws Exception {
 
         double[] phiAndLambda;
@@ -227,11 +216,13 @@ public class DemTile {
         cornersComputed = true;
     }
 
+    @Deprecated
     private void computeDemTileSize() {
         nLatPixels = indexLambdaNDEM - indexLambda0DEM;
         nLonPixels = indexPhiNDEM - indexPhi0DEM;
     }
 
+    @Deprecated
     private void computeIndexCorners() {
 
         indexPhi0DEM = (int) (Math.floor((lat0 - phiMax) / latitudeDelta));
@@ -270,11 +261,26 @@ public class DemTile {
 
     }
 
+    @Deprecated
     private void computeIndexCornersNest() {
         indexPhi0DEM = (int) (Math.floor(nLatPixels_ABS - (lat0_ABS + phiMax) / latitudeDelta));
         indexPhiNDEM = (int) (Math.ceil(nLatPixels_ABS - (lat0_ABS + phiMin) / latitudeDelta));
         indexLambda0DEM = (int) (Math.floor((lambdaMin + lon0_ABS) / longitudeDelta));
         indexLambdaNDEM = (int) (Math.ceil((lambdaMax - lon0_ABS) / longitudeDelta));
     }
+
+    // get corners of tile (approx) to select DEM
+    //	in radians (if height were zero)
+    @Deprecated
+    private void defineExtraPhiLam() {
+        // TODO: introduce methods for dynamic scaling of extra lambda/phi depending on average tile Height!
+//        lambdaExtra = (1.5 * latitudeDelta + (4.0 / 25.0) * Constants.DTOR); // for himalayas!
+//        phiExtra = (1.5 * longitudeDelta + (4.0 / 25.0) * Constants.DTOR);
+//        lambdaExtra = (1.5 * latitudeDelta + (0.75 / 25.0) * Constants.DTOR); // for Etna
+//        phiExtra = (1.5 * longitudeDelta + (0.05 / 25.0) * Constants.DTOR);
+        lambdaExtra = (1.5 * latitudeDelta + (0.75 / 25.0) * Constants.DTOR); // for Etna
+        phiExtra = (1.5 * longitudeDelta + (0.1 / 25.0) * Constants.DTOR);
+    }
+
 
 }

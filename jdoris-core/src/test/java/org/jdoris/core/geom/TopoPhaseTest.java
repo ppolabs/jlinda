@@ -98,7 +98,7 @@ public class TopoPhaseTest {
         // initialize
         topoPhase = new TopoPhase(masterMeta, masterOrbit, slaveMeta, slaveOrbit, tileWindow, dem);
 
-        topoPhase.dem.stats();
+//        topoPhase.dem.stats();
 
     }
 
