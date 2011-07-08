@@ -293,6 +293,10 @@ public class SarUtils {
         return LinearAlgebraUtils.dotmult(masterData, slaveData.conj());
     }
 
+    public static void computeIfg_inplace(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData) throws Exception {
+        LinearAlgebraUtils.dotmult_inplace(masterData, slaveData);
+    }
+
     public static ComplexDoubleMatrix computeIfg(final ComplexDoubleMatrix masterData, final ComplexDoubleMatrix slaveData,
                                                  final int ovsFactorAz, final int ovsFactorRg) throws Exception {
         if (ovsFactorAz == 1 && ovsFactorRg == 1) {
