@@ -249,12 +249,17 @@ public class CplxCohOp extends Operator {
                 Tile tileImagSlave = getSourceTile(product.sourceSlave.imagBand, rect, border);
                 final ComplexDoubleMatrix dataSlave = TileUtilsDoris.pullComplexDoubleMatrix(tileRealSlave, tileImagSlave);
 
-                // TODO: optimize this loop
+                // TODO: optimize this loop -- prototype with matrix operations below, still these are also loops in jblas!
+                // DoubleMatrix normMaster = pow(dataMaster.real(), 2).add(pow(dataMaster.imag(), 2));
+                // DoubleMatrix normSlave = pow(dataSlave.real(), 2).add(pow(dataSlave.imag(), 2));
+                // dataMaster.muli(dataSlave.conj());
+                // ComplexDoubleMatrix dataSlaveTemp = new ComplexDoubleMatrix(normSlave, normMaster);
                 for (int i = 0; i < dataMaster.length; i++) {
-                    double tmp = dataMaster.get(i).abs();
+                    double tmp = norm(dataMaster.get(i));
                     dataMaster.put(i, dataMaster.get(i).mul(dataSlave.get(i).conj()));
-                    dataSlave.put(i, new ComplexDouble(dataSlave.get(i).abs(), tmp));
+                    dataSlave.put(i, new ComplexDouble(norm(dataSlave.get(i)), tmp));
                 }
+
 
                 DoubleMatrix cohMatrix = SarUtils.coherence2(dataMaster, dataSlave, winAz, winRg);
 
@@ -267,6 +272,10 @@ public class CplxCohOp extends Operator {
         } catch (Exception e) {
             throw new OperatorException(e);
         }
+    }
+
+    private double norm(ComplexDouble number) {
+        return Math.pow(number.real(), 2) + Math.pow(number.imag(), 2);
     }
 
     /**
