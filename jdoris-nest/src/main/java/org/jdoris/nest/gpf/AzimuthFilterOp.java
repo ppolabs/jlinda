@@ -287,9 +287,15 @@ public class AzimuthFilterOp extends Operator {
         }
     }
 
-    private void checkUserInput() {
+    private void checkUserInput() throws OperatorException {
 //        TILE_OVERLAP_X = aziFilterOverlap;
         // check for the logic in input paramaters
+
+        final MetadataElement masterMeta = AbstractMetadata.getAbstractedMetadata(sourceProduct);
+        final int isCoregStack = masterMeta.getAttributeInt(AbstractMetadata.coregistered_stack);
+        if(isCoregStack != 1) {
+            throw new OperatorException("Input should be a coregistered SLC stack");
+        }
     }
 
     private void updateTargetProductMetadata() {
