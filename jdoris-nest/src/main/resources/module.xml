@@ -16,6 +16,9 @@
         <module>beam-visat</module>
         <optional>true</optional>
     </dependency>
+	<dependency>
+        <module>beam-core</module>
+    </dependency>
     <dependency>
         <module>beam-gpf</module>
     </dependency>
@@ -25,25 +28,31 @@
     <dependency>
         <module>nest-dat</module>
     </dependency>
+	<dependency>
+        <module>nest-reader-dem</module>
+    </dependency>
     <dependency>
         <module>nest-graph-builder</module>
+    </dependency>
+	<dependency>
+        <module>jdoris-core</module>
     </dependency>
 
     <extension point="beam-ui:actions">
 
-        <action>
+        <!-- action>
             <id>coregistration</id>
             <class>org.esa.nest.dat.actions.ComingSoonAction</class>
             <text>Coregistration (coming soon)</text>
             <placeBefore>products</placeBefore>
             <parent>insar</parent>
-        </action>
+        </action -->
 
         <action>
             <id>products</id>
             <class>org.esa.beam.visat.actions.ActionGroup</class>
             <text>Products</text>
-            <placeAfter>coregistration</placeAfter>
+            <!-- placeAfter>coregistration</placeAfter -->
             <parent>insar</parent>
         </action>
 
