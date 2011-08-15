@@ -31,11 +31,11 @@
             <artifactId>beam-gpf</artifactId>
             <version>${beam.version}</version>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>com.vividsolutions</groupId>-->
-            <!--<artifactId>jts</artifactId>-->
-            <!--<version>1.11</version>-->
-        <!--</dependency>-->
+        <!--dependency>
+            <groupId>com.vividsolutions</groupId>
+            <artifactId>jts</artifactId>
+            <version>1.11</version>
+        </dependency-->
         <dependency>
             <groupId>org</groupId>
             <!-- scope>system</scope -->
@@ -46,7 +46,7 @@
         <dependency>
             <groupId>edu.emory.mathcs</groupId>
             <artifactId>jtransforms</artifactId>
-            <version>2.0</version>
+            <version>2.3</version>
         </dependency>
         <dependency>
             <groupId>hirondelle</groupId>
