@@ -347,7 +347,7 @@ public class AzimuthFilterOp extends Operator {
             rect.height += TILE_OVERLAP_Y;
 //            System.out.println("x0 = " + rect.x + ", y0 = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
 
-            // loop over ifg(product)Container
+            // loop over ifg(product)Container : both master and slave defined in container
             for (String ifgTag : targetMap.keySet()) {
 
                 // get ifgContainer from pool
@@ -355,17 +355,20 @@ public class AzimuthFilterOp extends Operator {
 
                 final AzimuthFilter azimuthMaster = new AzimuthFilter();
 
+                // check out from source
+                Tile tileRealMaster = getSourceTile(product.sourceMaster.realBand, rect, border);
+                Tile tileImagMaster = getSourceTile(product.sourceMaster.imagBand, rect, border);
+
+                final ComplexDoubleMatrix dataMaster = TileUtilsDoris.pullComplexDoubleMatrix(tileRealMaster, tileImagMaster);
+
                 azimuthMaster.setHammingAlpha(alphaHamming);
                 azimuthMaster.setMetadata(product.sourceMaster.metaData);
                 azimuthMaster.setMetadata1(product.sourceSlave.metaData);
 
-                // check out from source
-                Tile tileRealMaster = getSourceTile(product.sourceMaster.realBand, rect, border);
-                Tile tileImagMaster = getSourceTile(product.sourceMaster.imagBand, rect, border);
-                final ComplexDoubleMatrix data = TileUtilsDoris.pullComplexDoubleMatrix(tileRealMaster, tileImagMaster);
-
-                azimuthMaster.setData(data);
+                azimuthMaster.setData(dataMaster);
                 azimuthMaster.setTile(new org.jdoris.core.Window(rect));
+                // TODO: variable constant hard-coded, further testing needed
+                azimuthMaster.setVariableFilter(false); // hardcoded to const filtering!
                 azimuthMaster.defineParameters();
                 azimuthMaster.defineFilter();
                 azimuthMaster.applyFilter();
