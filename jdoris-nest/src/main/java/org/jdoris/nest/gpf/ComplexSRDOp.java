@@ -356,7 +356,10 @@ public final class ComplexSRDOp extends Operator {
                 for (int y = startY, i = 0; y < endY; y++, i++) {
                     for (int x = startX, j = 0; x < endX; x++, j++) {
                         try {
-                            elevation[i][j] = dem.getSample(x, y);
+                            float elev = dem.getSample(x, y);
+                            if(Float.isNaN(elev))
+                                elev = demNoDataValue;
+                            elevation[i][j] = elev;
                         } catch (Exception e) {
                             elevation[i][j] = demNoDataValue;
                         }
@@ -426,7 +429,7 @@ public final class ComplexSRDOp extends Operator {
         // then for number of extra points
         for (int[] point : points) {
             float height = dem.getSample(point[1], point[0]);
-            if (height != demNoDataValue) {
+            if (!Float.isNaN(height) && height != demNoDataValue) {
                 heights.add(height);
             }
         }
