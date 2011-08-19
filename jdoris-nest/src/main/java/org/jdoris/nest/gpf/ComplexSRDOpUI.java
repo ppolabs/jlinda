@@ -1,18 +1,3 @@
-/*
- * Copyright (C) 2011 by Array Systems Computing Inc. http://www.array.ca
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 3 of the License, or (at your option)
- * any later version.
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, see http://www.gnu.org/licenses/
- */
 package org.jdoris.nest.gpf;
 
 import org.esa.beam.framework.dataop.dem.ElevationModelDescriptor;
@@ -40,14 +25,9 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         }
     }
 
-    private final JTextField ORBIT_DEGREE = new JTextField("");
-
+    private final JTextField orbitDegree = new JTextField("");
     private final JComboBox demName = new JComboBox(demValueSet);
-    private final JTextField elevationBandName = new JTextField("");
-    private final JTextField externalDEM = new JTextField("");
-
-//    private final JComboBox resamplingMethod = new JComboBox(
-//            new String[] { ComplexSRDOp.NEAREST_NEIGHBOUR, ComplexSRDOp.BILINEAR, ComplexSRDOp.CUBIC } );
+    private final JTextField topoPhaseBandName = new JTextField("");
 
     @Override
     public JComponent CreateOpTab(String operatorName, Map<String, Object> parameterMap, AppContext appContext) {
@@ -61,27 +41,21 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
 
     @Override
     public void initParameters() {
-
-        elevationBandName.setText(String.valueOf(paramMap.get("ORBIT_DEGREE")));
+        orbitDegree.setText(String.valueOf(paramMap.get("orbitDegree")));
         demName.setSelectedItem(paramMap.get("demName"));
-        elevationBandName.setText(String.valueOf(paramMap.get("elevationBandName")));
-//        externalDEM.setText(String.valueOf(paramMap.get("externalDEM")));
-//        resamplingMethod.setSelectedItem(paramMap.get("resamplingMethod"));
+        topoPhaseBandName.setText(String.valueOf(paramMap.get("topoPhaseBandName")));
     }
 
     @Override
     public UIValidation validateParameters() {
-
         return new UIValidation(UIValidation.State.OK, "");
     }
 
     @Override
     public void updateParameters() {
-
+        paramMap.put("orbitDegree", orbitDegree.getText());
         paramMap.put("demName", demName.getSelectedItem());
-        paramMap.put("elevationBandName", elevationBandName.getText());
-//        paramMap.put("externalDEM", externalDEM.getText());
-//        paramMap.put("resamplingMethod", resamplingMethod.getSelectedItem());
+        paramMap.put("topoPhaseBandName", topoPhaseBandName.getText());
     }
 
     private JComponent createPanel() {
@@ -91,16 +65,12 @@ public class ComplexSRDOpUI extends BaseOperatorUI {
         final GridBagConstraints gbc = DialogUtils.createGridBagConstraints();
 
         gbc.gridy++;
-        DialogUtils.addComponent(contentPane, gbc, "Orbit Interpolation Degree:", ORBIT_DEGREE);
+        DialogUtils.addComponent(contentPane, gbc, "Orbit Interpolation Degree:", orbitDegree);
         gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "Digital Elevation Model:", demName);
         gbc.gridy++;
-//        DialogUtils.addComponent(contentPane, gbc, "External DEM:", externalDEM);
-//        gbc.gridy++;
-        DialogUtils.addComponent(contentPane, gbc, "Elevation Band Name:", elevationBandName);
+        DialogUtils.addComponent(contentPane, gbc, "Topo Phase Band Name:", topoPhaseBandName);
         gbc.gridy++;
-//        DialogUtils.addComponent(contentPane, gbc, "Resampling Method:", resamplingMethod);
-//        gbc.gridy++;
 
         DialogUtils.fillPanel(contentPane, gbc);
 
