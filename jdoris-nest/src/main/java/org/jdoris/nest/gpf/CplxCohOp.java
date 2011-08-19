@@ -31,7 +31,7 @@ import java.awt.*;
 import java.util.HashMap;
 
 @OperatorMetadata(alias = "CplxCoh",
-        category = "InSAR Products",
+        category = "InSAR\\Products",
         description = "Estimate coherence from stack of coregistered images", internal = false)
 public class CplxCohOp extends Operator {
 
