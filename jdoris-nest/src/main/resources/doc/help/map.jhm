@@ -8,6 +8,9 @@
     <!--InSAR-->
 	<mapID target="InSAR" url="operators/InSAR.html"/>
     <mapID target="ComplexIfgOp" url="operators/ComplexIfgOp.html"/>
+    <mapID target="ComplexSRDOp" url="operators/ComplexSRDOp.html"/>
     <mapID target="CplxCohOp" url="operators/CplxCohOp.html"/>
+    <mapID target="AzimuthFilterOp" url="operators/AzimuthFilterOp.html"/>
+    <mapID target="RangeFilterOp" url="operators/RangeFilterOp.html"/>
 
 </map>
