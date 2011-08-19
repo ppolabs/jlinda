@@ -7,16 +7,16 @@ import org.esa.nest.dat.plugins.graphbuilder.GraphBuilderDialog;
 
 import java.io.File;
 
-public class ComplexIfgAction extends AbstractVisatAction {
+public class CoherenceAction extends AbstractVisatAction {
 
     @Override
     public void actionPerformed(CommandEvent event) {
 
-        final GraphBuilderDialog dialog = new GraphBuilderDialog(new DatContext(""), "Computation of Complex Interferogram", "ComplexIfgOp", false);
+        final GraphBuilderDialog dialog = new GraphBuilderDialog(new DatContext(""), "Coherence Estimation", "CoherenceOp", false);
         dialog.show();
 
         final File graphPath = GraphBuilderDialog.getInternalGraphFolder();
-        final File graphFile =  new File(graphPath, "ComplexIfgGraph.xml");
+        final File graphFile =  new File(graphPath, "CoherenceGraph.xml");
 
         dialog.LoadGraph(graphFile);
     }

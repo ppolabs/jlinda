@@ -30,10 +30,10 @@ import javax.media.jai.BorderExtender;
 import java.awt.*;
 import java.util.HashMap;
 
-@OperatorMetadata(alias = "CplxCoh",
+@OperatorMetadata(alias = "Coherence",
         category = "InSAR\\Products",
         description = "Estimate coherence from stack of coregistered images", internal = false)
-public class CplxCohOp extends Operator {
+public class CoherenceOp extends Operator {
 
     @SourceProduct
     private Product sourceProduct;
@@ -300,7 +300,7 @@ public class CplxCohOp extends Operator {
      */
     public static class Spi extends OperatorSpi {
         public Spi() {
-            super(CplxCohOp.class);
+            super(CoherenceOp.class);
         }
     }
 }

@@ -102,25 +102,25 @@
 
         <action>
             <id>ComplexgIfgOp</id>
-            <class>org.jdoris.nest.dat.ComplexIfgAction</class>
+            <class>org.jdoris.nest.dat.InterferogramAction</class>
             <text>Interferogram Formation...</text>
             <shortDescr>Interferograms from stack with optional subtraction of 'flat earth' phase</shortDescr>
-            <placeBefore>ComplexSRDOp</placeBefore>
+            <placeBefore>SubtRefDemOp</placeBefore>
             <parent>products</parent>
         </action>
 
         <action>
             <id>ComplexgSRDOp</id>
-            <class>org.jdoris.nest.dat.ComplexSRDAction</class>
+            <class>org.jdoris.nest.dat.SubtRefDemAction</class>
             <text>Topo Phase Removal...</text>
             <shortDescr>Compute and subtract topographic phase</shortDescr>
-            <placeBefore>CplxCohOp</placeBefore>
+            <placeBefore>CoherenceOp</placeBefore>
             <parent>products</parent>
         </action>
 
         <action>
-            <id>CplxCohOp</id>
-            <class>org.jdoris.nest.dat.CplxCohAction</class>
+            <id>CoherenceOp</id>
+            <class>org.jdoris.nest.dat.CoherenceAction</class>
             <text>Coherence Estimation...</text>
             <shortDescr>Estimate coherence of stack of images</shortDescr>
             <parent>products</parent>

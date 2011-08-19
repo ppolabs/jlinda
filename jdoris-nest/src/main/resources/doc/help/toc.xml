@@ -7,9 +7,9 @@
     <tocitem text="Graph Processing">
         <tocitem text="InSAR">
 			<tocitem text="InSAR Functionality" target="InSAR"/>
-			<tocitem text="Interferogram Formation" target="ComplexIfgOp"/>
-            <tocitem text="Estimation and Subtraction of Topographic Phase" target="ComplexSRDOp"/>
-            <tocitem text="Coherence Estimation" target="CplxCohOp"/>
+			<tocitem text="Interferogram Formation" target="InterferogramOp"/>
+            <tocitem text="Estimation and Subtraction of Topographic Phase" target="SubtRefDemOp"/>
+            <tocitem text="Coherence Estimation" target="CoherenceOp"/>
             <tocitem text="Azimuth Filtering" target="AzimuthFilterOp"/>
             <tocitem text="Range Filtering" target="RangeFilterOp"/>
 		</tocitem>

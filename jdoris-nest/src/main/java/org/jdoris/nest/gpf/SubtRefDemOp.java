@@ -42,10 +42,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-@OperatorMetadata(alias = "ComplexSRD",
+@OperatorMetadata(alias = "SubtRefDem",
         category = "InSAR\\Products",
         description = "Compute and subtract TOPO phase", internal = false)
-public final class ComplexSRDOp extends Operator {
+public final class SubtRefDemOp extends Operator {
 
     @SourceProduct
     private Product sourceProduct;
@@ -459,8 +459,8 @@ public final class ComplexSRDOp extends Operator {
      */
     public static class Spi extends OperatorSpi {
         public Spi() {
-            super(ComplexSRDOp.class);
-            setOperatorUI(ComplexSRDOpUI.class);
+            super(SubtRefDemOp.class);
+            setOperatorUI(SubtRefDemOpUI.class);
         }
     }
 }

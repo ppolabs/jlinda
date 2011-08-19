@@ -12,9 +12,9 @@ import java.awt.*;
 import java.util.Map;
 
 /**
- * User interface for ComplexSRDOp
+ * User interface for SubtRefDemOp
  */
-public class ComplexSRDOpUI extends BaseOperatorUI {
+public class SubtRefDemOpUI extends BaseOperatorUI {
 
     private static final ElevationModelDescriptor[] descriptors = ElevationModelRegistry.getInstance().getAllDescriptors();
     private static final String[] demValueSet = new String[descriptors.length];

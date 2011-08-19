@@ -27,10 +27,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-@OperatorMetadata(alias = "ComplexIfg",
+@OperatorMetadata(alias = "Interferogram",
         category = "InSAR\\Products",
         description = "Compute interferograms from stack of coregistered images : JBLAS implementation", internal = false)
-public class ComplexIfgOp extends Operator {
+public class InterferogramOp extends Operator {
     @SourceProduct
     private Product sourceProduct;
 
@@ -1340,7 +1340,7 @@ public class ComplexIfgOp extends Operator {
     public static class Spi extends OperatorSpi {
 
         public Spi() {
-            super(ComplexIfgOp.class);
+            super(InterferogramOp.class);
         }
     }
 
