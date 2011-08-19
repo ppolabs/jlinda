@@ -7,16 +7,16 @@ import org.esa.nest.dat.plugins.graphbuilder.GraphBuilderDialog;
 
 import java.io.File;
 
-public class CplxCohAction extends AbstractVisatAction {
+public class InterferogramAction extends AbstractVisatAction {
 
     @Override
     public void actionPerformed(CommandEvent event) {
 
-        final GraphBuilderDialog dialog = new GraphBuilderDialog(new DatContext(""), "Coherence Estimation", "CplxCohOp", false);
+        final GraphBuilderDialog dialog = new GraphBuilderDialog(new DatContext(""), "Computation of Complex Interferogram", "InterferogramOp", false);
         dialog.show();
 
         final File graphPath = GraphBuilderDialog.getInternalGraphFolder();
-        final File graphFile =  new File(graphPath, "CplxCohGraph.xml");
+        final File graphFile =  new File(graphPath, "InterferogramGraph.xml");
 
         dialog.LoadGraph(graphFile);
     }

@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @OperatorMetadata(alias = "RangeFilter",
-        category = "InSAR Products",
+        category = "InSAR\\Filtering",
         description = "Range Filter", internal = false)
 public class RangeFilterOp extends Operator {
 
@@ -296,9 +296,15 @@ public class RangeFilterOp extends Operator {
         }
     }
 
-    private void checkUserInput() {
+    private void checkUserInput() throws OperatorException {
 //        TILE_OVERLAP_X = rangeTileOverlap;
         // check for the logic in input paramaters
+
+        final MetadataElement masterMeta = AbstractMetadata.getAbstractedMetadata(sourceProduct);
+        final int isCoregStack = masterMeta.getAttributeInt(AbstractMetadata.coregistered_stack);
+        if(isCoregStack != 1) {
+            throw new OperatorException("Input should be a coregistered SLC stack");
+        }
     }
 
     private void updateTargetProductMetadata() {

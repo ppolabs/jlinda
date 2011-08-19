@@ -42,10 +42,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-@OperatorMetadata(alias = "ComplexSRD",
-        category = "InSAR Products",
+@OperatorMetadata(alias = "SubtRefDem",
+        category = "InSAR\\Products",
         description = "Compute and subtract TOPO phase", internal = false)
-public final class ComplexSRDOp extends Operator {
+public final class SubtRefDemOp extends Operator {
 
     @SourceProduct
     private Product sourceProduct;
@@ -56,14 +56,18 @@ public final class ComplexSRDOp extends Operator {
     @Parameter(interval = "(1, 10]",
             description = "Degree of orbit interpolation polynomial",
             defaultValue = "3",
-            label = "Orbit poly degree")
-    private int ORBIT_DEGREE = 3;
+            label = "Orbit Interpolation Degree")
+    private int orbitDegree = 3;
 
     @Parameter(valueSet = {"ACE", "GETASSE30", "SRTM 3Sec", "ASTER 1sec GDEM"},
-            description = "The digital elevation model.", defaultValue = "SRTM 3Sec", label = "Digital Elevation Model")
+            description = "The digital elevation model.",
+            defaultValue = "SRTM 3Sec",
+            label = "Digital Elevation Model")
     private String demName = "SRTM 3Sec";
 
-    @Parameter(description = "The topographic phase band name.", defaultValue = "topo_phase", label = "Topo Phase Band Name")
+    @Parameter(description = "The topographic phase band name.",
+            defaultValue = "topo_phase",
+            label = "Topo Phase Band Name")
     private String topoPhaseBandName = "topo_phase";
 
     // TODO: support for external DEMs
@@ -186,7 +190,7 @@ public final class ComplexSRDOp extends Operator {
         // metadata: construct classes and define bands
         final String date = OperatorUtils.getAcquisitionDate(root);
         final SLCImage meta = new SLCImage(root);
-        final Orbit orbit = new Orbit(root, ORBIT_DEGREE);
+        final Orbit orbit = new Orbit(root, orbitDegree);
 
         // TODO: resolve multilook factors
         meta.setMlAz(1);
@@ -230,8 +234,8 @@ public final class ComplexSRDOp extends Operator {
                 product.targetBandName_I = "i_" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
                 product.targetBandName_Q = "q_" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
 
-                product.masterSubProduct.name = "topo_phase";
-                product.masterSubProduct.targetBandName_I = "topo_phase" + "_" + master.date + "_" + slave.date;
+                product.masterSubProduct.name = topoPhaseBandName;
+                product.masterSubProduct.targetBandName_I = topoPhaseBandName + "_" + master.date + "_" + slave.date;
 
                 // put ifg-product bands into map
                 targetMap.put(productName, product);
@@ -298,7 +302,6 @@ public final class ComplexSRDOp extends Operator {
     public void computeTileStack(Map<Band, Tile> targetTileMap, Rectangle targetRectangle, ProgressMonitor pm) throws OperatorException {
         try {
 
-//            final BorderExtender border = BorderExtender.createInstance(BorderExtender.BORDER_ZERO);
             int y0 = targetRectangle.y;
             int yN = y0 + targetRectangle.height - 1;
             int x0 = targetRectangle.x;
@@ -331,11 +334,10 @@ public final class ComplexSRDOp extends Operator {
                 GeoPos geoExtent = GeoUtils.defineExtraPhiLam(tileHeights[0],tileHeights[1],
                         tileWindow, product.sourceMaster.metaData, product.sourceMaster.orbit);
 
-
                 // extend corners
                 geoCorners = GeoUtils.extendCorners(geoExtent, geoCorners);
 
-//                update corners
+                // update corners
                 pixelCorners[0] = dem.getIndex(geoCorners[0]);
                 pixelCorners[1] = dem.getIndex(geoCorners[1]);
 
@@ -356,7 +358,10 @@ public final class ComplexSRDOp extends Operator {
                 for (int y = startY, i = 0; y < endY; y++, i++) {
                     for (int x = startX, j = 0; x < endX; x++, j++) {
                         try {
-                            elevation[i][j] = dem.getSample(x, y);
+                            float elev = dem.getSample(x, y);
+                            if(Float.isNaN(elev))
+                                elev = demNoDataValue;
+                            elevation[i][j] = elev;
                         } catch (Exception e) {
                             elevation[i][j] = demNoDataValue;
                         }
@@ -426,7 +431,7 @@ public final class ComplexSRDOp extends Operator {
         // then for number of extra points
         for (int[] point : points) {
             float height = dem.getSample(point[1], point[0]);
-            if (height != demNoDataValue) {
+            if (!Float.isNaN(height) && height != demNoDataValue) {
                 heights.add(height);
             }
         }
@@ -454,8 +459,8 @@ public final class ComplexSRDOp extends Operator {
      */
     public static class Spi extends OperatorSpi {
         public Spi() {
-            super(ComplexSRDOp.class);
-            setOperatorUI(ComplexSRDOpUI.class);
+            super(SubtRefDemOp.class);
+            setOperatorUI(SubtRefDemOpUI.class);
         }
     }
 }

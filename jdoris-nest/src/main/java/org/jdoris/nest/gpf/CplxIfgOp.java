@@ -4,6 +4,7 @@ import com.bc.ceres.core.ProgressMonitor;
 import org.esa.beam.framework.datamodel.Band;
 import org.esa.beam.framework.datamodel.Product;
 import org.esa.beam.framework.datamodel.ProductData;
+import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.beam.framework.gpf.Operator;
 import org.esa.beam.framework.gpf.OperatorException;
 import org.esa.beam.framework.gpf.OperatorSpi;
@@ -14,6 +15,7 @@ import org.esa.beam.framework.gpf.annotations.TargetProduct;
 import org.esa.beam.util.ProductUtils;
 import org.esa.nest.dataio.ReaderUtils;
 import org.esa.nest.datamodel.Unit;
+import org.esa.nest.datamodel.AbstractMetadata;
 import org.esa.nest.gpf.OperatorUtils;
 
 import java.awt.*;
@@ -22,7 +24,7 @@ import java.util.Map;
 
 
 @OperatorMetadata(alias = "CplxIfg",
-        category = "InSAR Products",
+        category = "InSAR\\Products",
         description = "Compute interferograms from stack of coregistered images", internal = true)
 public class CplxIfgOp extends Operator {
 
@@ -76,7 +78,8 @@ public class CplxIfgOp extends Operator {
     public void initialize() throws OperatorException {
         try {
 
-            // TODO: throw in exception here!
+            checkUserInput();
+
             masterBand0 = sourceProduct.getBandAt(0);
             masterBand1 = sourceProduct.getBandAt(1);
 
@@ -84,6 +87,14 @@ public class CplxIfgOp extends Operator {
 
         } catch (Exception e) {
             throw new OperatorException(e);
+        }
+    }
+
+    private void checkUserInput() throws OperatorException {
+        final MetadataElement masterMeta = AbstractMetadata.getAbstractedMetadata(sourceProduct);
+        final int isCoregStack = masterMeta.getAttributeInt(AbstractMetadata.coregistered_stack);
+        if(isCoregStack != 1) {
+            throw new OperatorException("Input should be a coregistered SLC stack");
         }
     }
 

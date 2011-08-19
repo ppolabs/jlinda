@@ -27,10 +27,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-@OperatorMetadata(alias = "ComplexIfg",
-        category = "InSAR Products",
+@OperatorMetadata(alias = "Interferogram",
+        category = "InSAR\\Products",
         description = "Compute interferograms from stack of coregistered images : JBLAS implementation", internal = false)
-public class ComplexIfgOp extends Operator {
+public class InterferogramOp extends Operator {
     @SourceProduct
     private Product sourceProduct;
 
@@ -116,12 +116,13 @@ public class ComplexIfgOp extends Operator {
     public void initialize() throws OperatorException {
         try {
 
+            checkUserInput();
+            
             masterBand1 = sourceProduct.getBandAt(0);
             if (masterBand1.getUnit() != null && masterBand1.getUnit().equals(Unit.REAL) && sourceProduct.getNumBands() > 1) {
                 masterBand2 = sourceProduct.getBandAt(1);
             }
 
-            checkUserInput();
             getMetadata();
             getSourceImageDimension();
 
@@ -171,8 +172,13 @@ public class ComplexIfgOp extends Operator {
         slaveOrbit.setOrbit(slaveRoot);
     }
 
-    private void checkUserInput() {
+    private void checkUserInput() throws OperatorException {
         // check for the logic in input paramaters
+        final MetadataElement masterMeta = AbstractMetadata.getAbstractedMetadata(sourceProduct);
+        final int isCoregStack = masterMeta.getAttributeInt(AbstractMetadata.coregistered_stack);
+        if(isCoregStack != 1) {
+            throw new OperatorException("Input should be a coregistered SLC stack");
+        }
     }
 
     private void estimateFlatEarthPolynomial() {
@@ -1334,7 +1340,7 @@ public class ComplexIfgOp extends Operator {
     public static class Spi extends OperatorSpi {
 
         public Spi() {
-            super(ComplexIfgOp.class);
+            super(InterferogramOp.class);
         }
     }
 

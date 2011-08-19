@@ -29,12 +29,11 @@ import org.jdoris.nest.utils.TileUtilsDoris;
 import javax.media.jai.BorderExtender;
 import java.awt.*;
 import java.util.HashMap;
-import java.util.Map;
 
-@OperatorMetadata(alias = "CplxCoh",
-        category = "InSAR Products",
+@OperatorMetadata(alias = "Coherence",
+        category = "InSAR\\Products",
         description = "Estimate coherence from stack of coregistered images", internal = false)
-public class CplxCohOp extends Operator {
+public class CoherenceOp extends Operator {
 
     @SourceProduct
     private Product sourceProduct;
@@ -208,21 +207,34 @@ public class CplxCohOp extends Operator {
 
     }
 
+//    /**
+//     * Called by the framework in order to compute a tile for the given target band.
+//     * <p>The default implementation throws a runtime exception with the message "not implemented".</p>
+//     *
+//     * @param targetTileMap   The target tiles associated with all target bands to be computed.
+//     * @param targetRectangle The rectangle of target tile.
+//     * @param pm              A progress monitor which should be used to determine computation cancelation requests.
+//     * @throws org.esa.beam.framework.gpf.OperatorException
+//     *          If an error occurs during computation of the target raster.
+//     */
+//    @Override
+//    public void computeTileStack(Map<Band, Tile> targetTileMap, Rectangle targetRectangle, ProgressMonitor pm) throws OperatorException {
+
     /**
      * Called by the framework in order to compute a tile for the given target band.
      * <p>The default implementation throws a runtime exception with the message "not implemented".</p>
      *
-     * @param targetTileMap   The target tiles associated with all target bands to be computed.
-     * @param targetRectangle The rectangle of target tile.
-     * @param pm              A progress monitor which should be used to determine computation cancelation requests.
+     * @param targetBand The target band.
+     * @param targetTile The current tile associated with the target band to be computed.
+     * @param pm         A progress monitor which should be used to determine computation cancelation requests.
      * @throws org.esa.beam.framework.gpf.OperatorException
      *          If an error occurs during computation of the target raster.
      */
     @Override
-    public void computeTileStack(Map<Band, Tile> targetTileMap, Rectangle targetRectangle, ProgressMonitor pm) throws OperatorException {
+    public void computeTile(Band targetBand, Tile targetTile, ProgressMonitor pm) throws OperatorException {
         try {
 
-            final Rectangle rect = new Rectangle(targetRectangle);
+            final Rectangle rect = targetTile.getRectangle();
 //            System.out.println("Original: x0 = " + rect.x + ", y = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
             final int x0 = rect.x - (winRg - 1) / 2;
             final int y0 = rect.y - (winAz - 1) / 2;
@@ -233,40 +245,48 @@ public class CplxCohOp extends Operator {
             rect.width = w;
             rect.height = h;
 
-//            System.out.println("Shifted: x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
             final BorderExtender border = BorderExtender.createInstance(BorderExtender.BORDER_ZERO);
-            Band targetBand;
+//            Band targetBand;
 
             for (String cohKey : targetMap.keySet()) {
 
                 final ProductContainer product = targetMap.get(cohKey);
-                // check out from source
-                Tile tileRealMaster = getSourceTile(product.sourceMaster.realBand, rect, border);
-                Tile tileImagMaster = getSourceTile(product.sourceMaster.imagBand, rect, border);
-                final ComplexDoubleMatrix dataMaster = TileUtilsDoris.pullComplexDoubleMatrix(tileRealMaster, tileImagMaster);// check out from source
 
-                Tile tileRealSlave = getSourceTile(product.sourceSlave.realBand, rect, border);
-                Tile tileImagSlave = getSourceTile(product.sourceSlave.imagBand, rect, border);
-                final ComplexDoubleMatrix dataSlave = TileUtilsDoris.pullComplexDoubleMatrix(tileRealSlave, tileImagSlave);
+                if (targetBand.getName().equals(product.targetBandName_I)) {
 
-                // TODO: optimize this loop
-                for (int i = 0; i < dataMaster.length; i++) {
-                    double tmp = dataMaster.get(i).abs();
-                    dataMaster.put(i, dataMaster.get(i).mul(dataSlave.get(i).conj()));
-                    dataSlave.put(i, new ComplexDouble(dataSlave.get(i).abs(), tmp));
+                    // check out from source
+                    Tile tileRealMaster = getSourceTile(product.sourceMaster.realBand, rect, border);
+                    Tile tileImagMaster = getSourceTile(product.sourceMaster.imagBand, rect, border);
+                    final ComplexDoubleMatrix dataMaster = TileUtilsDoris.pullComplexDoubleMatrix(tileRealMaster, tileImagMaster);// check out from source
+
+                    Tile tileRealSlave = getSourceTile(product.sourceSlave.realBand, rect, border);
+                    Tile tileImagSlave = getSourceTile(product.sourceSlave.imagBand, rect, border);
+                    final ComplexDoubleMatrix dataSlave = TileUtilsDoris.pullComplexDoubleMatrix(tileRealSlave, tileImagSlave);
+
+                    for (int i = 0; i < dataMaster.length; i++) {
+                        double tmp = norm(dataMaster.get(i));
+                        dataMaster.put(i, dataMaster.get(i).mul(dataSlave.get(i).conj()));
+                        dataSlave.put(i, new ComplexDouble(norm(dataSlave.get(i)), tmp));
+                    }
+
+                    DoubleMatrix cohMatrix = SarUtils.coherence2(dataMaster, dataSlave, winAz, winRg);
+
+//                targetBand = targetProduct.getBand(product.targetBandName_I);
+//                Tile tileCoherence = targetTileMap.get(targetBand);
+//                TileUtilsDoris.pushDoubleMatrix(cohMatrix, tileCoherence, targetRectangle);
+                    TileUtilsDoris.pushDoubleMatrix(cohMatrix, targetTile, targetTile.getRectangle());
+
                 }
-
-                DoubleMatrix cohMatrix = SarUtils.coherence2(dataMaster, dataSlave, winAz, winRg);
-
-                targetBand = targetProduct.getBand(product.targetBandName_I);
-                Tile tileCoherence = targetTileMap.get(targetBand);
-                TileUtilsDoris.pushDoubleMatrix(cohMatrix, tileCoherence, targetRectangle);
 
             }
 
         } catch (Exception e) {
             throw new OperatorException(e);
         }
+    }
+
+    private double norm(ComplexDouble number) {
+        return Math.pow(number.real(), 2) + Math.pow(number.imag(), 2);
     }
 
     /**
@@ -280,7 +300,7 @@ public class CplxCohOp extends Operator {
      */
     public static class Spi extends OperatorSpi {
         public Spi() {
-            super(CplxCohOp.class);
+            super(CoherenceOp.class);
         }
     }
 }
