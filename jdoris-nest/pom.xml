@@ -85,7 +85,8 @@
                         </goals>
                         <configuration>
                             <overwrite>true</overwrite>
-                            <outputDirectory>${outputdir}/graphs/internal</outputDirectory>
+                            <!-- <outputDirectory>${outputdir}/graphs/internal</outputDirectory> -->
+                            <outputDirectory>../../nest-src/main/bin/common/graphs/internal</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/graphs</directory>
