@@ -11,6 +11,7 @@
         <beam.version>4.10-SNAPSHOT</beam.version>
         <jblas.version>1.2.0</jblas.version>
         <junit.version>4.8.2</junit.version>
+        <jdoris.version>0.2</jdoris.version>
         <outputdir>../../output</outputdir>
     </properties>
 
