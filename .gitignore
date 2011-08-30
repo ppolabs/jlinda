@@ -1,3 +1,10 @@
+*.iml
+*.ipr
+*.iws
+.idea/
+modules/
+target/
+/compile.log
 jdoris-core/target
 jdoris-core/test
 jdoris-nest/target
