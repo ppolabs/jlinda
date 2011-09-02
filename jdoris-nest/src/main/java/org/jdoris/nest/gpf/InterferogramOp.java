@@ -118,15 +118,14 @@ public class InterferogramOp extends Operator {
 
             checkUserInput();
 
-
             final String[] masterBandNames = sourceProduct.getBandNames();
             for (int i = 0; i < masterBandNames.length; i++) {
                 if (masterBandNames[i].contains("mst")) {
                     masterBand1 = sourceProduct.getBand(masterBandNames[i]);
                     if (masterBand1.getUnit() != null && masterBand1.getUnit().equals(Unit.REAL)) {
                         masterBand2 = sourceProduct.getBand(masterBandNames[i+1]);
+                        break;
                     }
-                    break;
                 }
             }
 
@@ -827,12 +826,11 @@ public class InterferogramOp extends Operator {
         OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
 
 //        targetProduct.setPreferredTileSize(sourceProduct.getSceneRasterWidth(), 100);
-        targetProduct.setPreferredTileSize(500, 500); // polyval optimized for the equal size tiles!!!
-
-
-        final Dimension tileSize = targetProduct.getPreferredTileSize();
-        final int rasterHeight = targetProduct.getSceneRasterHeight();
-        final int rasterWidth = targetProduct.getSceneRasterWidth();
+//        targetProduct.setPreferredTileSize(500, 500); // polyval optimized for the equal size tiles!!!
+//
+//        final Dimension tileSize = targetProduct.getPreferredTileSize();
+//        final int rasterHeight = targetProduct.getSceneRasterHeight();
+//        final int rasterWidth = targetProduct.getSceneRasterWidth();
 
 //        int tileCountX = MathUtils.ceilInt(rasterWidth / (double) tileSize.width);
 //        int tileCountY = MathUtils.ceilInt(rasterHeight / (double) tileSize.height);
@@ -854,13 +852,21 @@ public class InterferogramOp extends Operator {
         // assume that sourceMaster bands are first 2 bands in the stack!
         for (int i = 0; i < totalNumOfBands; i += inc) {
 
-            // TODO: coordinate this naming with metadata information
-            final Band srcBandI = sourceProduct.getBandAt(i);
-            final Band srcBandQ = sourceProduct.getBandAt(i + 1);
-            if (srcBandI != masterBand1 && srcBandQ != masterBand2) {
+            final Band srcBandI;
+            final Band srcBandQ;
 
-                // TODO: beautify names of ifg bands
-                if (srcBandI.getUnit().equals(Unit.REAL) && srcBandQ.getUnit().equals(Unit.IMAGINARY)) {
+            try {
+                // TODO: coordinate this naming with metadata information
+                srcBandI = sourceProduct.getBandAt(i);
+                srcBandQ = sourceProduct.getBandAt(i + 1);
+            } catch (Exception e) {
+                break;
+            }
+
+            // TODO: beautify names of ifg bands
+            if ((srcBandI.getUnit().equals(Unit.REAL) && srcBandQ.getUnit().equals(Unit.IMAGINARY))) {
+
+                if (srcBandI != masterBand1 && srcBandQ != masterBand2) {
 
                     iBandName = "i_ifg" + cnt + "_" +
                             masterBand1.getName() + "_" +
@@ -889,7 +895,11 @@ public class InterferogramOp extends Operator {
                     ReaderUtils.createVirtualIntensityBand(targetProduct, targetBandI, targetBandQ, suffix);
                     ReaderUtils.createVirtualPhaseBand(targetProduct, targetBandI, targetBandQ, suffix);
 
+                } else {
+                    continue;
+
                 }
+
             }
         }
     }
