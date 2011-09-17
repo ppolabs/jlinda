@@ -72,12 +72,12 @@
             <parent>insar_tools</parent>
         </action>
 
-        <action>
-            <id>graphs</id>
-            <class>org.esa.nest.dat.actions.ComingSoonAction</class>
-            <text>Processing Graphs</text>
-            <parent>insar</parent>
-        </action>
+        <!--<action>-->
+            <!--<id>graphs</id>-->
+            <!--<class>org.esa.nest.dat.actions.ComingSoonAction</class>-->
+            <!--<text>Processing Graphs</text>-->
+            <!--<parent>insar</parent>-->
+        <!--</action>-->
 
 
         <!--/// PRODUCTS ///-->

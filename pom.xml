@@ -6,8 +6,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdoris.version>0.0</jdoris.version>
-        <nest.version>4B-1.0</nest.version>
+        <jdoris.version>0.2</jdoris.version>
+        <nest.version>4B-1.1</nest.version>
         <beam.version>4.10-SNAPSHOT</beam.version>
         <jblas.version>1.2.0</jblas.version>
         <junit.version>4.8.2</junit.version>
@@ -54,7 +54,7 @@
         </repository>
         <repository>
             <id>ppolabs-mvn-repo</id>
-            <name>Public Maven Repository of PPO.labs hosted on github.com</name>
+            <name>Public Maven Repository of PPO.labs</name>
             <url>http://94.209.52.167/mvn</url>
             <releases>
                 <enabled>true</enabled>
