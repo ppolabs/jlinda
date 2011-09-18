@@ -61,8 +61,8 @@ public final class SLCImage {
     private int ovsRg;                 // oversampling of SLC
 
     // multilooking factors
-    private int mlAz;                 // multilooking of SLC
-    private int mlRg;                 // multilooking of SLC
+    private double mlAz;                 // multilooking of SLC
+    private double mlRg;                 // multilooking of SLC
 
     // relative to master geometry, or
     // absolute timing error of master
@@ -201,6 +201,9 @@ public final class SLCImage {
         this.doppler.f_DC_a1 = dopplersArray[0].coefficients[1];
         this.doppler.f_DC_a2 = dopplersArray[0].coefficients[2];
         this.doppler.checkConstant();
+
+        this.mlAz = element.getAttributeDouble(AbstractMetadata.azimuth_looks);
+        this.mlRg = element.getAttributeDouble(AbstractMetadata.range_looks);
 
     }
 
@@ -353,7 +356,7 @@ public final class SLCImage {
         this.coarseOffsetL = offsetL;
     }
 
-    public int getMlAz() {
+    public double getMlAz() {
         return mlAz;
     }
 
@@ -361,7 +364,7 @@ public final class SLCImage {
         this.mlAz = mlAz;
     }
 
-    public int getMlRg() {
+    public double getMlRg() {
         return mlRg;
     }
 
