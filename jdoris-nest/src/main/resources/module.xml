@@ -79,6 +79,14 @@
             <!--<parent>insar</parent>-->
         <!--</action>-->
 
+        <action>
+            <id>fringe_training</id>
+            <class>org.esa.beam.visat.actions.ActionGroup</class>
+            <text>Fringe Training</text>
+            <placeAfter>insar_tools</placeAfter>
+            <parent>insar</parent>
+        </action>
+
 
         <!--/// PRODUCTS ///-->
 
@@ -133,6 +141,14 @@
             <text>Phase Filtering (coming soon)</text>
             <shortDescr>Phase filtering of stack of interferograms</shortDescr>
             <parent>insar_tools</parent>
+        </action>
+
+        <action>
+            <id>DInSAROp</id>
+            <class>org.jdoris.nest.dat.DInSARAction</class>
+            <text>Differential InSAR [DEMO]</text>
+            <shortDescr>Three Pass DInSAR DEMO</shortDescr>
+            <parent>fringe_training</parent>
         </action>
 
     </extension>

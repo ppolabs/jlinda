@@ -276,6 +276,16 @@ public class todo_classes {
         */
     }
 
+    public class input_dinsar {
+        /*
+       	    //int16       method;                 // method selector
+    	    char fodinsar[4 * ONE27]; // output filename complex interferogram
+	        char foscaleduint[4 * ONE27]; // output filename scaled uint
+	        char topomasterresfile[4 * ONE27];// input filename
+	        char toposlaveresfile[4 * ONE27];// input filename
+	        char topointresfile[4 * ONE27]; // input filename
+        */
+    }
 
 
 }
