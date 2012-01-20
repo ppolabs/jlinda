@@ -14,7 +14,7 @@ import org.esa.beam.framework.gpf.annotations.Parameter;
 import org.esa.beam.framework.gpf.annotations.SourceProduct;
 import org.esa.beam.framework.gpf.annotations.TargetProduct;
 import org.esa.beam.util.ProductUtils;
-import org.esa.nest.dataio.ReaderUtils;
+import org.esa.nest.gpf.ReaderUtils;
 import org.esa.nest.datamodel.AbstractMetadata;
 import org.esa.nest.gpf.OperatorUtils;
 import org.jblas.ComplexDoubleMatrix;
@@ -346,7 +346,7 @@ public class RangeFilterOp extends Operator {
             final Rectangle rect = new Rectangle(targetRectangle);
             rect.width += (TILE_OVERLAP_X + extraRange);
             rect.height += TILE_OVERLAP_Y;
-            System.out.println("x0 = " + rect.x + ", y0 = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
+            //System.out.println("x0 = " + rect.x + ", y0 = " + rect.y + ", w = " + rect.width + ", h = " + rect.height);
 
             boolean doFilterMaster = true;
             if (masterMap.keySet().toArray().length > 1) {
