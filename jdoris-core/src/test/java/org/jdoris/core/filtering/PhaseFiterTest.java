@@ -164,7 +164,7 @@ public class PhaseFiterTest {
 
         int overlap = 2;
 
-        ComplexDoubleMatrix cplxDataFilt_ACTUAL = PhaseFiter.convbuffer(cplxData, kernel2d_ACTUAL, 2);
+        ComplexDoubleMatrix cplxDataFilt_ACTUAL = PhaseFiter.convbuffer(cplxData, kernel2d_ACTUAL, overlap);
 
         Assert.assertArrayEquals(cplxDataFilt_EXPECTED.real().toArray(), cplxDataFilt_ACTUAL.real().toArray(), DELTA_01);
         Assert.assertArrayEquals(cplxDataFilt_EXPECTED.imag().toArray(), cplxDataFilt_ACTUAL.imag().toArray(), DELTA_01);
