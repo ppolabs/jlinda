@@ -181,7 +181,6 @@ public class TopoPhase {
                     }
 
                     demRadarCode_phase[i][j] = ref_phase;
-                    lambda += dem.longitudeDelta;
 
                 } else {
 
@@ -195,7 +194,7 @@ public class TopoPhase {
                     demRadarCode_x[i][j] = pix;
                     demRadarCode_phase[i][j] = 0;
                 }
-
+                lambda += dem.longitudeDelta;
             }
             phi -= dem.latitudeDelta;
         }

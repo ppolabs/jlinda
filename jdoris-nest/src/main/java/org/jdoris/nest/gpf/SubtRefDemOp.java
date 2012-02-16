@@ -312,6 +312,41 @@ public final class SubtRefDemOp extends Operator {
             Band targetBand_I;
             Band targetBand_Q;
 
+            // TODO: Smarter extension of search space:: use BEAM interpolation to get approximate heights of edges -- should be better then working on ellipsoid!???
+
+            /*
+                final GeoCoding geoCoding = targetProduct.getGeoCoding();
+                final ProductData trgData = targetTile.getDataBuffer();
+
+                pm.beginTask("Computing elevations from " + demName + "...", h);
+                try {
+                     final GeoPos geoPos = new GeoPos();
+                     final PixelPos pixelPos = new PixelPos();
+                     float elevation;
+
+                     for (int y = y0; y < y0 + h; ++y) {
+                         for (int x = x0; x < x0 + w; ++x) {
+                             pixelPos.setLocation(x + 0.5f, y + 0.5f);
+                             geoCoding.getGeoPos(pixelPos, geoPos);
+                             try {
+                                    if(fileElevationModel != null) {
+                                        elevation = fileElevationModel.getElevation(geoPos);
+                                    } else {
+                                        elevation = dem.getElevation(geoPos);
+                                    }
+                                } catch (Exception e) {
+                                elevation = noDataValue;
+                            }
+                            trgData.setElemDoubleAt(targetTile.getDataBufferIndex(x, y), (short) Math.round(elevation));
+                        }
+                        pm.worked(1);
+                    }
+
+             */
+
+            // TODO: smarter extension of search space : foreshortening extension? can I calculate how bit tile I
+            // need (extra space) for the caverage, taking into the consideration only height of the tile?
+
             for (String ifgKey : targetMap.keySet()) {
 
                 ProductContainer product = targetMap.get(ifgKey);
