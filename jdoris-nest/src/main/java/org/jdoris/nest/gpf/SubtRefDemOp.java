@@ -231,8 +231,8 @@ public final class SubtRefDemOp extends Operator {
                 final CplxContainer slave = slaveMap.get(keySlave);
                 final ProductContainer product = new ProductContainer(productName, master, slave, true);
 
-                product.targetBandName_I = "i_" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
-                product.targetBandName_Q = "q_" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
+                product.targetBandName_I = "i" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
+                product.targetBandName_Q = "q" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
 
                 product.masterSubProduct.name = topoPhaseBandName;
                 product.masterSubProduct.targetBandName_I = topoPhaseBandName + "_" + master.date + "_" + slave.date;
@@ -268,7 +268,8 @@ public final class SubtRefDemOp extends Operator {
             final String tag0 = targetMap.get(key).sourceMaster.date;
             final String tag1 = targetMap.get(key).sourceSlave.date;
             if (CREATE_VIRTUAL_BAND) {
-                String countStr = "_" + PRODUCT_TAG + "_" + tag0 + "_" + tag1;
+//                String countStr = "_" + PRODUCT_TAG + "_" + tag0 + "_" + tag1;
+                String countStr = PRODUCT_TAG + "_" + tag0 + "_" + tag1;
                 ReaderUtils.createVirtualIntensityBand(targetProduct, targetProduct.getBand(targetBandName_I), targetProduct.getBand(targetBandName_Q), countStr);
                 ReaderUtils.createVirtualPhaseBand(targetProduct, targetProduct.getBand(targetBandName_I), targetProduct.getBand(targetBandName_Q), countStr);
             }
@@ -345,8 +346,7 @@ public final class SubtRefDemOp extends Operator {
              */
 
             // TODO: smarter extension of search space : foreshortening extension? can I calculate how bit tile I
-            // need (extra space) for the caverage, taking into the consideration only height of the tile?
-
+            // need (extra space) for the coverage, taking into the consideration only height of the tile?
             for (String ifgKey : targetMap.keySet()) {
 
                 ProductContainer product = targetMap.get(ifgKey);
@@ -354,8 +354,9 @@ public final class SubtRefDemOp extends Operator {
                 /// get dem of tile ///
 
                 // compute tile geo-corners ~ work on ellipsoid
-                GeoPos[] geoCorners = GeoUtils.computeCorners(product.sourceMaster.metaData, product.sourceMaster.orbit,
-                        tileWindow);
+                GeoPos[] geoCorners = GeoUtils.computeCorners(product.sourceMaster.metaData,
+                                                              product.sourceMaster.orbit,
+                                                              tileWindow);
 
                 // get corners as DEM indices
                 PixelPos[] pixelCorners = new PixelPos[2];
