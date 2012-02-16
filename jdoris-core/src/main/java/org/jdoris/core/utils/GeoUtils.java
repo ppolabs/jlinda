@@ -3,16 +3,26 @@ package org.jdoris.core.utils;
 import org.esa.beam.framework.datamodel.GeoPos;
 import org.jdoris.core.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
+
 public class GeoUtils {
 
-    /* compute tile geocorners at height defined in float[4] array */
-    public static GeoPos[] computeCorners(final SLCImage meta, final Orbit orbit, final Window tile, final float height[]) throws Exception {
+
+    /* compute input tile geocorners on ellipsoid */
+    public static GeoPos[] computeCorners(final SLCImage meta, final Orbit orbit, final Window tile) throws Exception {
+
+        final float height[] = new float[4];
 
         if (height.length != 4) {
             throw new IllegalArgumentException("input height array has to have 4 elements");
         }
 
         GeoPos[] corners = new GeoPos[2];
+
+        final ArrayList<Double> phi = new ArrayList();
+        final ArrayList<Double> lambda = new ArrayList();
+        
         double[] phiAndLambda;
 
         final double l0 = tile.linelo;
@@ -22,39 +32,38 @@ public class GeoUtils {
 
         // compute Phi, Lambda for Tile corners
         phiAndLambda = orbit.lph2ell(new Point(p0, l0, height[0]), meta);
-        final double phi_l0p0 = phiAndLambda[0];
-        final double lambda_l0p0 = phiAndLambda[1];
+        phi.add(phiAndLambda[0]);
+        lambda.add(phiAndLambda[1]);
 
-        phiAndLambda = orbit.lp2ell(new Point(p0, lN, height[1]), meta);
-        final double phi_lNp0 = phiAndLambda[0];
-        final double lambda_lNp0 = phiAndLambda[1];
+        // compute Phi, Lambda for Tile corners
+        phiAndLambda = orbit.lph2ell(new Point(p0, lN, height[0]), meta);
+        phi.add(phiAndLambda[0]);
+        lambda.add(phiAndLambda[1]);
 
-        phiAndLambda = orbit.lp2ell(new Point(pN, lN, height[2]), meta);
-        final double phi_lNpN = phiAndLambda[0];
-        final double lambda_lNpN = phiAndLambda[1];
+        // compute Phi, Lambda for Tile corners
+        phiAndLambda = orbit.lph2ell(new Point(pN, lN, height[0]), meta);
+        phi.add(phiAndLambda[0]);
+        lambda.add(phiAndLambda[1]);
 
-        phiAndLambda = orbit.lp2ell(new Point(pN, l0, height[3]), meta);
-        final double phi_l0pN = phiAndLambda[0];
-        final double lambda_l0pN = phiAndLambda[1];
+        // compute Phi, Lambda for Tile corners
+        phiAndLambda = orbit.lph2ell(new Point(pN, l0, height[0]), meta);
+        phi.add(phiAndLambda[0]);
+        lambda.add(phiAndLambda[1]);
+
 
         //// Select DEM values based on rectangle outside l,p border ////
         // phi
-        double phiMin = Math.min(Math.min(Math.min(phi_l0p0, phi_lNp0), phi_lNpN), phi_l0pN);
-        double phiMax = Math.max(Math.max(Math.max(phi_l0p0, phi_lNp0), phi_lNpN), phi_l0pN);
+        double phiMin = Collections.min(phi);
+        double phiMax = Collections.max(phi);
+
         // lambda
-        double lambdaMin = Math.min(Math.min(Math.min(lambda_l0p0, lambda_lNp0), lambda_lNpN), lambda_l0pN);
-        double lambdaMax = Math.max(Math.max(Math.max(lambda_l0p0, lambda_lNp0), lambda_lNpN), lambda_l0pN);
+        double lambdaMin = Collections.min(lambda);
+        double lambdaMax = Collections.max(lambda);
 
         corners[0] = new GeoPos((float) (phiMax * Constants.RTOD), (float) (lambdaMin * Constants.RTOD));
         corners[1] = new GeoPos((float) (phiMin * Constants.RTOD), (float) (lambdaMax * Constants.RTOD));
 
         return corners;
-    }
-
-    /* compute input tile geocorners on ellipsoid */
-    public static GeoPos[] computeCorners(final SLCImage meta, final Orbit orbit, final Window tile) throws Exception {
-        final float height[] = new float[4];
-        return computeCorners(meta, orbit, tile, height);
     }
 
     public static GeoPos[] extendCorners(final GeoPos extraGeo, final GeoPos[] inGeo) {
