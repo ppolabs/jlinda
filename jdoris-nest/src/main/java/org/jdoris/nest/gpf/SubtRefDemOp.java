@@ -90,7 +90,7 @@ public final class SubtRefDemOp extends Operator {
     // operator tags
     private static final boolean CREATE_VIRTUAL_BAND = true;
     private static final String PRODUCT_NAME = "srd_ifgs";
-    public static final String PRODUCT_TAG = "_srd";
+    public static final String PRODUCT_TAG = "_ifg_srd";
 
 
     /**
@@ -263,7 +263,9 @@ public final class SubtRefDemOp extends Operator {
             String targetBandName_I = targetMap.get(key).targetBandName_I;
             String targetBandName_Q = targetMap.get(key).targetBandName_Q;
             targetProduct.addBand(targetBandName_I, ProductData.TYPE_FLOAT64);
+            targetProduct.getBand(targetBandName_I).setUnit(Unit.REAL);
             targetProduct.addBand(targetBandName_Q, ProductData.TYPE_FLOAT64);
+            targetProduct.getBand(targetBandName_Q).setUnit(Unit.IMAGINARY);
 
             final String tag0 = targetMap.get(key).sourceMaster.date;
             final String tag1 = targetMap.get(key).sourceSlave.date;
