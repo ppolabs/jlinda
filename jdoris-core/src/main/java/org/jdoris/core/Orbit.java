@@ -233,6 +233,11 @@ public final class Orbit {
         return getXYZ(xyz2t(pointOnEllips, slcimage).y); // inlined
     }
 
+    public synchronized Point lp2orb(final Point sarPixel, final SLCImage slcimage) throws Exception {
+        // return satellite position
+        return getXYZ(xyz2t(lp2xyz(sarPixel, slcimage), slcimage).y); // inlined
+    }
+
     public synchronized Point xyz2t(final Point pointOnEllips, final SLCImage slcimage) {
 
         Point delta;
@@ -504,5 +509,23 @@ public final class Orbit {
         return isInterpolated;
     }
 
+    public double computeEarthRadius(Point p, SLCImage metadata) throws Exception {
+        return this.lp2xyz(p, metadata).norm();
+    }
+
+    public double computeOrbitRadius(Point p, SLCImage metadata) throws Exception {
+        double azimuthTime = metadata.line2ta(p.y);
+        return this.getXYZ(azimuthTime).norm();
+    }
+
+    public double computeAzimuthDelta(Point sarPixel, SLCImage metadata) throws Exception {
+        Point pointOnOrbit = this.getXYZ(metadata.line2ta(sarPixel.y));
+        Point pointOnOrbitPlusOne = this.getXYZ(metadata.line2ta(sarPixel.y + 1));
+        return Math.abs(metadata.getMlAz() * pointOnOrbit.distance(pointOnOrbitPlusOne));
+    }
+
+    public double computeAzimuthResolution(Point sarPixel, SLCImage metadata) throws Exception {
+        return (metadata.getPRF() / metadata.getAzimuthBandwidth()) * (this.computeAzimuthDelta(sarPixel, metadata) / metadata.getMlAz());
+    }
 }
 
