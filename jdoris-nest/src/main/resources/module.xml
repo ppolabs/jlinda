@@ -69,6 +69,14 @@
             <parent>insar_tools</parent>
         </action>
 
+        <action>
+            <id>unwrapping</id>
+            <class>org.esa.beam.visat.actions.ActionGroup</class>
+            <text>Unwrapping</text>
+            <placeAfter>insar_tools</placeAfter>
+            <parent>insar</parent>
+        </action>
+
         <!--action>
             <id>graphs</id>
             <class>org.esa.nest.dat.actions.ComingSoonAction</class>
@@ -132,13 +140,30 @@
             <parent>spectral_filtering</parent>
         </action>
 
-         <action>
-	        <id>InSARMaster</id>
-	        <helpId>InSARMaster</helpId>
-	        <class>org.jdoris.nest.dat.InSARMasterAction</class>
-	        <parent>insar</parent>
-	        <text>Find Optimal Master</text>
-	    </action>
+        <action>
+            <id>InSARMaster</id>
+            <helpId>InSARMaster</helpId>
+            <class>org.jdoris.nest.dat.InSARMasterAction</class>
+            <parent>insar</parent>
+            <text>Find Optimal Master</text>
+        </action>
+
+        <!--/// UNWRAPPING ///-->
+        <action>
+            <id>SnaphuExportOp</id>
+            <class>org.jdoris.nest.dat.unwrapping.SnaphuExportAction</class>
+            <text>Snaphu data export</text>
+            <shortDescr>Export data and construct conf file for SNAPHU unwrapping</shortDescr>
+            <parent>unwrapping</parent>
+        </action>
+
+        <action>
+            <id>SnaphuImportOp</id>
+            <class>org.jdoris.nest.dat.unwrapping.SnaphuImportAction</class>
+            <text>Snaphu data import</text>
+            <shortDescr>Import result of Snaphu to InSAR product</shortDescr>
+            <parent>unwrapping</parent>
+        </action>
 
     </extension>
 
