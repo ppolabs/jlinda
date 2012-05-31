@@ -164,6 +164,232 @@ public class PolyUtils {
         return sum;
     }
 
+    public static double[][] polyval(final double[] x, final double[] y, final double coeff[], int degree) {
+
+        if (degree < -1) {
+            logger.warn("polyValGrid: degree < -1 ????");
+        }
+
+        if (x.length > y.length) {
+            logger.warn("polValGrid: x larger than y, while optimized for y larger x");
+        }
+
+        if (degree == -1) {
+            degree = degreeFromCoefficients(coeff.length);
+        }
+
+        // evaluate polynomial //
+        double[][] result = new double[x.length][y.length];
+        int i;
+        int j;
+        double c00, c10, c01, c20, c11, c02, c30, c21, c12, c03, c40, c31, c22, c13, c04, c50, c41, c32, c23, c14, c05;
+
+        int columns = result[0].length;
+        int rows = result.length;
+        switch (degree) {
+            case 0:
+                result[0][0] = coeff[0];
+                break;
+            case 1:
+                c00 = coeff[0];
+                c10 = coeff[1];
+                c01 = coeff[2];
+                for (j = 0; j < columns; j++) {
+                    double c00pc01y1 = c00 + c01 * y[j];
+                    for (i = 0; i < rows; i++) {
+                        result[i][j] = c00pc01y1 + c10 * x[i];
+                    }
+                }
+                break;
+            case 2:
+                c00 = coeff[0];
+                c10 = coeff[1];
+                c01 = coeff[2];
+                c20 = coeff[3];
+                c11 = coeff[4];
+                c02 = coeff[5];
+                for (j = 0; j < columns; j++) {
+                    double y1 = y[j];
+                    double c00pc01y1 = c00 + c01 * y1;
+                    double c02y2 = c02 * Math.pow(y1, 2);
+                    double c11y1 = c11 * y1;
+                    for (i = 0; i < rows; i++) {
+                        double x1 = x[i];
+                        result[i][j] = c00pc01y1
+                                + c10 * x1
+                                + c20 * Math.pow(x1, 2)
+                                + c11y1 * x1
+                                + c02y2;
+                    }
+                }
+                break;
+            case 3:
+                c00 = coeff[0];
+                c10 = coeff[1];
+                c01 = coeff[2];
+                c20 = coeff[3];
+                c11 = coeff[4];
+                c02 = coeff[5];
+                c30 = coeff[6];
+                c21 = coeff[7];
+                c12 = coeff[8];
+                c03 = coeff[9];
+                for (j = 0; j < columns; j++) {
+                    double y1 = y[j];
+                    double y2 = Math.pow(y1, 2);
+                    double c00pc01y1 = c00 + c01 * y1;
+                    double c02y2 = c02 * y2;
+                    double c11y1 = c11 * y1;
+                    double c21y1 = c21 * y1;
+                    double c12y2 = c12 * y2;
+                    double c03y3 = c03 * y1 * y2;
+                    for (i = 0; i < rows; i++) {
+                        double x1 = x[i];
+                        double x2 = Math.pow(x1, 2);
+                        result[i][j] = c00pc01y1
+                                + c10 * x1
+                                + c20 * x2
+                                + c11y1 * x1
+                                + c02y2
+                                + c30 * x1 * x2
+                                + c21y1 * x2
+                                + c12y2 * x1
+                                + c03y3;
+                    }
+                }
+                break;
+
+            case 4:
+                c00 = coeff[0];
+                c10 = coeff[1];
+                c01 = coeff[2];
+                c20 = coeff[3];
+                c11 = coeff[4];
+                c02 = coeff[5];
+                c30 = coeff[6];
+                c21 = coeff[7];
+                c12 = coeff[8];
+                c03 = coeff[9];
+                c40 = coeff[10];
+                c31 = coeff[11];
+                c22 = coeff[12];
+                c13 = coeff[13];
+                c04 = coeff[14];
+                for (j = 0; j < columns; j++) {
+                    double y1 = y[j];
+                    double y2 = Math.pow(y1, 2);
+                    double c00pc01y1 = c00 + c01 * y1;
+                    double c02y2 = c02 * y2;
+                    double c11y1 = c11 * y1;
+                    double c21y1 = c21 * y1;
+                    double c12y2 = c12 * y2;
+                    double c03y3 = c03 * y1 * y2;
+                    double c31y1 = c31 * y1;
+                    double c22y2 = c22 * y2;
+                    double c13y3 = c13 * y2 * y1;
+                    double c04y4 = c04 * y2 * y2;
+                    for (i = 0; i < rows; i++) {
+                        double x1 = x[i];
+                        double x2 = Math.pow(x1, 2);
+                        result[i][j] = c00pc01y1
+                                + c10 * x1
+                                + c20 * x2
+                                + c11y1 * x1
+                                + c02y2
+                                + c30 * x1 * x2
+                                + c21y1 * x2
+                                + c12y2 * x1
+                                + c03y3
+                                + c40 * x2 * x2
+                                + c31y1 * x2 * x1
+                                + c22y2 * x2
+                                + c13y3 * x1
+                                + c04y4;
+                    }
+                }
+                break;
+            case 5:
+                c00 = coeff[0];
+                c10 = coeff[1];
+                c01 = coeff[2];
+                c20 = coeff[3];
+                c11 = coeff[4];
+                c02 = coeff[5];
+                c30 = coeff[6];
+                c21 = coeff[7];
+                c12 = coeff[8];
+                c03 = coeff[9];
+                c40 = coeff[10];
+                c31 = coeff[11];
+                c22 = coeff[12];
+                c13 = coeff[13];
+                c04 = coeff[14];
+                c50 = coeff[15];
+                c41 = coeff[16];
+                c32 = coeff[17];
+                c23 = coeff[18];
+                c14 = coeff[19];
+                c05 = coeff[20];
+                for (j = 0; j < columns; j++) {
+                    double y1 = y[j];
+                    double y2 = Math.pow(y1, 2);
+                    double y3 = y2 * y1;
+                    double c00pc01y1 = c00 + c01 * y1;
+                    double c02y2 = c02 * y2;
+                    double c11y1 = c11 * y1;
+                    double c21y1 = c21 * y1;
+                    double c12y2 = c12 * y2;
+                    double c03y3 = c03 * y3;
+                    double c31y1 = c31 * y1;
+                    double c22y2 = c22 * y2;
+                    double c13y3 = c13 * y3;
+                    double c04y4 = c04 * y2 * y2;
+                    double c41y1 = c41 * y1;
+                    double c32y2 = c32 * y2;
+                    double c23y3 = c23 * y3;
+                    double c14y4 = c14 * y2 * y2;
+                    double c05y5 = c05 * y3 * y2;
+                    for (i = 0; i < rows; i++) {
+                        double x1 = x[i];
+                        double x2 = Math.pow(x1, 2);
+                        double x3 = x1 * x2;
+                        result[i][j] = c00pc01y1
+                                + c10 * x1
+                                + c20 * x2
+                                + c11y1 * x1
+                                + c02y2
+                                + c30 * x3
+                                + c21y1 * x2
+                                + c12y2 * x1
+                                + c03y3
+                                + c40 * x2 * x2
+                                + c31y1 * x3
+                                + c22y2 * x2
+                                + c13y3 * x1
+                                + c04y4
+                                + c50 * x3 * x2
+                                + c41y1 * x2 * x2
+                                + c32y2 * x3
+                                + c23y3 * x2
+                                + c14y4 * x1
+                                + c05y5;
+                    }
+                }
+                break;
+
+            // TODO: solve up to 5 efficiently, do rest in loop
+            default:
+                for (j = 0; j < columns; j++) {
+                    double yy = y[j];
+                    for (i = 0; i < rows; i++) {
+                        double xx = x[i];
+                        result[i][j] = polyval(xx, yy, coeff, degree);
+                    }
+                }
+        } // switch degree
+
+        return result;
+    }
     public static DoubleMatrix polyval(final DoubleMatrix x, final DoubleMatrix y, final DoubleMatrix coeff, int degree) {
 
         if (!x.isColumnVector()) {
@@ -405,11 +631,14 @@ public class PolyUtils {
     }
 
     public static double polyval(final double x, final double y, final DoubleMatrix coeff, int degree) {
+        return polyval(x, y, coeff.toArray(), degree);
+    }
 
-        if (!coeff.isColumnVector()) {
-            logger.warn("polyValGrid: require (coeff) standing data vectors!");
-            throw new IllegalArgumentException("polyval functions require (coeff) standing data vectors!");
-        }
+    public static double polyval(final double x, final double y, final double[] coeff) {
+        return polyval(x, y, coeff, degreeFromCoefficients(coeff.length));
+    }
+
+    public static double polyval(final double x, final double y, final double[] coeff, int degree) {
 
         if (degree < 0 || degree > 1000) {
             logger.warn("polyval: degree value [" + degree + "] not realistic!");
@@ -423,48 +652,48 @@ public class PolyUtils {
         }
 
         //// Evaluate polynomial ////
-        double sum = coeff.get(0, 0);
+        double sum = coeff[0];
 
         if (degree == 1) {
-            sum += (coeff.get(1, 0) * x
-                    + coeff.get(2, 0) * y);
+            sum += (coeff[1] * x
+                    + coeff[2] * y);
         } else if (degree == 2) {
-            sum += (coeff.get(1, 0) * x
-                    + coeff.get(2, 0) * y
-                    + coeff.get(3, 0) * Math.pow(x, 2)
-                    + coeff.get(4, 0) * x * y
-                    + coeff.get(5, 0) * Math.pow(y, 2));
+            sum += (coeff[1] * x
+                    + coeff[2] * y
+                    + coeff[3] * Math.pow(x, 2)
+                    + coeff[4] * x * y
+                    + coeff[5] * Math.pow(y, 2));
         } else if (degree == 3) {
             final double xx = Math.pow(x, 2);
             final double yy = Math.pow(y, 2);
-            sum += (coeff.get(1, 0) * x
-                    + coeff.get(2, 0) * y
-                    + coeff.get(3, 0) * xx
-                    + coeff.get(4, 0) * x * y
-                    + coeff.get(5, 0) * yy
-                    + coeff.get(6, 0) * xx * x
-                    + coeff.get(7, 0) * xx * y
-                    + coeff.get(8, 0) * x * yy
-                    + coeff.get(9, 0) * yy * y);
+            sum += (coeff[1] * x
+                    + coeff[2] * y
+                    + coeff[3] * xx
+                    + coeff[4] * x * y
+                    + coeff[5] * yy
+                    + coeff[6] * xx * x
+                    + coeff[7] * xx * y
+                    + coeff[8] * x * yy
+                    + coeff[9] * yy * y);
         } else if (degree == 4) {
             final double xx = Math.pow(x, 2);
             final double xxx = xx * x;
             final double yy = Math.pow(y, 2);
             final double yyy = yy * y;
-            sum += (coeff.get(1, 0) * x
-                    + coeff.get(2, 0) * y
-                    + coeff.get(3, 0) * xx
-                    + coeff.get(4, 0) * x * y
-                    + coeff.get(5, 0) * yy
-                    + coeff.get(6, 0) * xxx
-                    + coeff.get(7, 0) * xx * y
-                    + coeff.get(8, 0) * x * yy
-                    + coeff.get(9, 0) * yyy
-                    + coeff.get(10, 0) * xx * xx
-                    + coeff.get(11, 0) * xxx * y
-                    + coeff.get(12, 0) * xx * yy
-                    + coeff.get(13, 0) * x * yyy
-                    + coeff.get(14, 0) * yy * yy);
+            sum += (coeff[1] * x
+                    + coeff[2] * y
+                    + coeff[3] * xx
+                    + coeff[4] * x * y
+                    + coeff[5] * yy
+                    + coeff[6] * xxx
+                    + coeff[7] * xx * y
+                    + coeff[8] * x * yy
+                    + coeff[9] * yyy
+                    + coeff[10] * xx * xx
+                    + coeff[11] * xxx * y
+                    + coeff[12] * xx * yy
+                    + coeff[13] * x * yyy
+                    + coeff[14] * yy * yy);
         } else if (degree == 5) {
             final double xx = Math.pow(x, 2);
             final double xxx = xx * x;
@@ -472,33 +701,33 @@ public class PolyUtils {
             final double yy = Math.pow(y, 2);
             final double yyy = yy * y;
             final double yyyy = yyy * y;
-            sum += (coeff.get(1, 0) * x
-                    + coeff.get(2, 0) * y
-                    + coeff.get(3, 0) * xx
-                    + coeff.get(4, 0) * x * y
-                    + coeff.get(5, 0) * yy
-                    + coeff.get(6, 0) * xxx
-                    + coeff.get(7, 0) * xx * y
-                    + coeff.get(8, 0) * x * yy
-                    + coeff.get(9, 0) * yyy
-                    + coeff.get(10, 0) * xxxx
-                    + coeff.get(11, 0) * xxx * y
-                    + coeff.get(12, 0) * xx * yy
-                    + coeff.get(13, 0) * x * yyy
-                    + coeff.get(14, 0) * yyyy
-                    + coeff.get(15, 0) * xxxx * x
-                    + coeff.get(16, 0) * xxxx * y
-                    + coeff.get(17, 0) * xxx * yy
-                    + coeff.get(18, 0) * xx * yyy
-                    + coeff.get(19, 0) * x * yyyy
-                    + coeff.get(20, 0) * yyyy * y);
+            sum += (coeff[1] * x
+                    + coeff[2] * y
+                    + coeff[3] * xx
+                    + coeff[4] * x * y
+                    + coeff[5] * yy
+                    + coeff[6] * xxx
+                    + coeff[7] * xx * y
+                    + coeff[8] * x * yy
+                    + coeff[9] * yyy
+                    + coeff[10] * xxxx
+                    + coeff[11] * xxx * y
+                    + coeff[12] * xx * yy
+                    + coeff[13] * x * yyy
+                    + coeff[14] * yyyy
+                    + coeff[15] * xxxx * x
+                    + coeff[16] * xxxx * y
+                    + coeff[17] * xxx * yy
+                    + coeff[18] * xx * yyy
+                    + coeff[19] * x * yyyy
+                    + coeff[20] * yyyy * y);
         } else if (degree != 0)                // degreee > 5
         {
             sum = 0.0;
             int coeffIndex = 0;
             for (int l = 0; l <= degree; l++) {
                 for (int k = 0; k <= l; k++) {
-                    sum += coeff.get(coeffIndex, 0) * Math.pow(x, (double) (l - k)) * Math.pow(y, (double) k);
+                    sum += coeff[coeffIndex] * Math.pow(x, (double) (l - k)) * Math.pow(y, (double) k);
                     coeffIndex++;
                 }
             }
@@ -507,4 +736,5 @@ public class PolyUtils {
         return sum;
 
     }
+
 }
