@@ -1,7 +1,4 @@
-package org.jdoris.core.todo_classes;
-
-
-// integration class for DInSAR -- to be removed after initialization -- not to be commited!
+package org.jdoris.core.geocode;
 
 import org.jblas.DoubleMatrix;
 import org.jblas.Solve;
@@ -9,46 +6,38 @@ import org.jdoris.core.Baseline;
 import org.jdoris.core.Ellipsoid;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
+import org.jdoris.core.todo_classes.todo_classes;
 import org.jdoris.core.utils.LinearAlgebraUtils;
 
 import static org.jdoris.core.utils.PolyUtils.normalize2;
 
 /**
- * *************************************************************
- * dinsar                                                    *
- * Differential insar with an unwrapped topo interferogram      *
- * (hgt or real4 format) and a wrapped(!) defo interf.          *
- * if r4 then NaN==-999 is problem with unwrapping, else hgt    *
- * if ampl. =0 then problem flagged with unwrapping.            *
- * The topography is removed from the deformation interferogram *
- * by the formula (prime ' denotes defo pair):                  *
- * dr       = lambda\4pi * [phi' - phi(Bperp'/Bperp)]           *
- * phi_diff = phi(Bperp'/Bperp) - phi'                          *
- * where Bperp is the perpendicular baseline for points on the  *
- * ellipsoid (and not the true one)!                            *
- * I implemented this by computing the baseline for a number    *
- * of points for topo and defo, and then modeling the ratio     *
- * as a 2D polynomial of degree 1 for the image.                *
- * Then evaluating this to compute the new phase (defo only).   *
- * I assume the interferogram files are coregistered on each    *
- * other and have the same dimensions.                          *
- * *
- * If TOPOMASTER file is empty (" "), then use current master   *
- * res file for master orbit (== 3pass), else get orbit         *
- * (==4pass).                                                   *
- * *
- * Input:                                                       *
- * -input parameters                                           *
- * -orbits                                                     *
- * -info on input files                                        *
- * -                                                           *
- * Output:                                                      *
- * -complex float file with differential phase.                *
- * (set to (0,0) for not ok unwrapped parts)                  *
- * *
- * See also Zebker, 1994.                                       *
- * #%// BK 22-Sep-2000                                            *
- * **************************************************************
+ * DInSAR prototype class
+ * <p/>
+ * Differential insar with an unwrapped topo interferogram (hgt or real4 format) and a wrapped(!) defo interf.
+ * if r4 then NaN==-999 is problem with unwrapping, else hgt
+ * if ampl. =0 then problem flagged with unwrapping.
+ * <p/>
+ * The topography is removed from the deformation interferogram by the formula (prime ' denotes defo pair):
+ * <p/>
+ * dr = lambda\4pi * [phi' - phi(Bperp'/Bperp)]
+ * phi_diff = phi(Bperp'/Bperp) - phi'
+ * <p/>
+ * where Bperp is the perpendicular baseline for points on the ellipsoid (and not the true one)!
+ * <p/>
+ * Implementation details: First the baseline for a number of points for topo and defo interferograms computed,
+ * and then the ratio between baselines is modeled by a 2D polynomial of degree 1. Then this polynomial is
+ * evaluated to compute the new (defo only) phase according to the equation above.
+ * It is assumed that the interferogram's are coregistered on each other and have the same dimensions.
+ * <p/>
+ * Input:
+ * -input parameters
+ * -orbits
+ * -info on input files
+ * <p/>
+ * Output:
+ * -complex float file with differential phase.
+ * (set to (0,0) for not ok unwrapped parts)
  */
 
 public class DInSAR {
@@ -108,7 +97,6 @@ public class DInSAR {
         Baseline defo_baseline = new Baseline();
         defo_baseline.model(master, toposlave, masterorbit, toposlaveorbit);
 
-
         double lastline = -1.0;
 
         double[] Bperptopo = new double[LINENUMBER.length];
@@ -116,7 +104,7 @@ public class DInSAR {
 
         for (int i = 0; i < LINENUMBER.length; ++i) {
             Bperptopo[i] = topo_baseline.getBperp(LINENUMBER[i], PIXELNUMBER[i], 0);
-            Bperpdefo[i] = defo_baseline.getBperp(LINENUMBER[i], PIXELNUMBER[i],0);
+            Bperpdefo[i] = defo_baseline.getBperp(LINENUMBER[i], PIXELNUMBER[i], 0);
         }
 
         // ______ Now model ratio Bperpdefo/Bperptopo as linear ______
@@ -126,7 +114,7 @@ public class DInSAR {
         double[] Ratio = new double[Bperpdefo.length];
 
         for (int l = 0; l < Bperpdefo.length; l++) {
-            Ratio[l] = Bperpdefo[l]/Bperptopo[l];
+            Ratio[l] = Bperpdefo[l] / Bperptopo[l];
         }
 
         // ______ Set designmatrix, compute normalmatrix, righthandside ______
