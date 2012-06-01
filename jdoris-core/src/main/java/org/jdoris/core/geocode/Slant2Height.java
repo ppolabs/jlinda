@@ -9,7 +9,6 @@ import org.jdoris.core.Orbit;
 import org.jdoris.core.Point;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.Window;
-import org.jdoris.core.todo_classes.todo_classes;
 import org.jdoris.core.utils.MathUtils;
 import org.jdoris.core.utils.PolyUtils;
 import org.slf4j.LoggerFactory;
@@ -28,12 +27,12 @@ public class Slant2Height {
 
     private static final Logger logger = (Logger) LoggerFactory.getLogger(Slant2Height.class);
 
-    private static final int MAXITER = 10;
-    private static final double CRITERPOS = 1e-6;
-    private static final double CRITERTIM = 1e-10;
-
-    private double m_minpi4cdivlambda;
-    private double s_minpi4cdivlambda;
+    //    private static final int MAXITER = 10;
+//    private static final double CRITERPOS = 1e-6;
+//    private static final double CRITERTIM = 1e-10;
+//
+//    private double m_minpi4cdivlambda;
+//    private double s_minpi4cdivlambda;
     private SLCImage master;
     private Orbit masterOrbit;
 
@@ -48,7 +47,8 @@ public class Slant2Height {
     private static final int MAXHEIGHT = 5000; // max hei for ref.phase
     private static final int TEN = 10;
 
-    private DoubleMatrix data;
+    private volatile DoubleMatrix tile;  // TODO: test whether volatile will work within Operator?!
+    private volatile Window tileWindow;
     private Window dataWindow;
 
     public Slant2Height(int nPoints, int nHeights, int degree1d, int degree2d,
@@ -64,8 +64,8 @@ public class Slant2Height {
         this.slave = slave;
         this.slaveOrbit = slaveOrbit;
 
-        this.m_minpi4cdivlambda = (-4. * PI * SOL) / master.getRadarWavelength();
-        this.s_minpi4cdivlambda = (-4. * PI * SOL) / slave.getRadarWavelength();
+//        this.m_minpi4cdivlambda = (-4. * PI * SOL) / master.getRadarWavelength();
+//        this.s_minpi4cdivlambda = (-4. * PI * SOL) / slave.getRadarWavelength();
 
         if (degree1D - 1 > TEN) {
             logger.error("Internal ERROR: panic, programmers problem -> increase TEN.");
@@ -74,17 +74,26 @@ public class Slant2Height {
 
     }
 
-    public void setData(DoubleMatrix data) {
-        this.data = data;
+    public synchronized void setTile(DoubleMatrix tile) {
+        this.tile = tile;
     }
 
-    public void setDataWindow(Window dataWindow) {
-        this.dataWindow = dataWindow;
+    public synchronized void setTileWindow(Window window) {
+        this.tileWindow = window;
     }
 
-    public DoubleMatrix getData() {
-        return data;
+    public void setDataWindow(Window window) {
+        this.dataWindow = window;
     }
+
+    public Window getTileWindow() {
+        return tileWindow;
+    }
+
+    public DoubleMatrix getTile() {
+        return tile;
+    }
+
 
     /**
      * slant2h-eight (schwabisch)
@@ -107,9 +116,7 @@ public class Slant2Height {
      * <p/>
      * Note: solution to system for betas seems not be very stable!??
      */
-    public void schwabisch(todo_classes.inputgeneral generalinput,
-                           todo_classes.input_slant2h slant2hinput,
-                           todo_classes.productinfo unwrappedinterf) throws Exception {
+    public void schwabisch() throws Exception {
 
         logger.setLevel(Level.DEBUG);
         logger.trace("slant2h Schwabisch (PM 01-Apr-2011)");
@@ -126,12 +133,12 @@ public class Slant2Height {
 
         // Distribute points in original master system (not multilooked)
         // (i,0): line, (i,1): pixel, (i,2) flagfromdisk (not used here)
-        int[][] positionArray = MathUtils.distributePoints(nPoints, unwrappedinterf.win);
+        int[][] positionArray = MathUtils.distributePoints(nPoints, dataWindow);
 
         DoubleMatrix Position = new DoubleMatrix(nPoints, 2);
         for (int i = 0; i < nPoints; i++) {
-            Position.put(i, 1, positionArray[i][0]);
-            Position.put(i, 2, positionArray[i][1]);
+            Position.put(i, 0, positionArray[i][0]);
+            Position.put(i, 1, positionArray[i][1]);
         }
 
         /** ----------------------------------------------------------------------------*/
@@ -140,11 +147,11 @@ public class Slant2Height {
 
         // Compute reference refPhase in N points for height (numheight)
         logger.debug("S2H: schwabisch: STEP1: compute reference refPhase for nHeights.");
+        DoubleMatrix refPhaseZero = new DoubleMatrix(nPoints);
         for (int heightIdx = 0; heightIdx < nHeights; heightIdx++) {
 
             int height = heightIdx * heightStep;
 
-            DoubleMatrix refPhaseZero = new DoubleMatrix(nPoints);
             DoubleMatrix refPhase = new DoubleMatrix(nPoints); // pseudo-observation
 
             // Compute delta r for all points
@@ -169,24 +176,25 @@ public class Slant2Height {
 
         logger.debug("S2H: schwabisch: STEP2: estimate coefficients 1d polynomial.");
 
-        DoubleMatrix design = new DoubleMatrix(nHeights, degree1D + 1); // design matrix
+//        DoubleMatrix design = new DoubleMatrix(nHeights, degree1D + 1); // design matrix
         DoubleMatrix alphas = new DoubleMatrix(nPoints, degree1D + 1); // pseudo-observation
         DoubleMatrix hei = new DoubleMatrix(nHeights, 1);
-        for (int i = 0; i < nHeights; i++)
+        for (int i = 0; i < nHeights; i++) {
             hei.put(i, 0, i * heightStep); // 0, .., 5000
+        }
 
-        // normalize data to [0,1]
+        // normalize tile to [0,1]
         double minPhi = refPhaseMatrix.min();
         double maxPhi = refPhaseMatrix.max();
-        normalize(refPhaseMatrix, minPhi, maxPhi); // regrid data
+        normalize(refPhaseMatrix, minPhi, maxPhi);
 
         for (int i = 0; i < nPoints; i++) {// solve system for all points
-
             alphas.putRow(i, new DoubleMatrix(polyFit(refPhaseMatrix.getRow(i), hei, degree1D)));
-
         } // loop over all points
 
+        /** -------------------------------------------------------------------------------*/
         /** -- STEP 3 : Compute alpha_i coefficients of polynomials as function of (l,p) --*/
+        /** -------------------------------------------------------------------------------*/
 
         logger.debug("S2H: schwabisch: STEP3: estimate coefficients for 2d polynomial.");
         // Compute alpha_i coefficients of polynomials as function of (l,p)
@@ -205,10 +213,10 @@ public class Slant2Height {
 
         // Set up system of equations
         // .... Order unknowns: B00 B10 B01 B20 B11 B02 B30 B21 B12 B03 for degree=3
-        double minL = Position.getColumn(1).min();
-        double maxL = Position.getColumn(1).max();
-        double minP = Position.getColumn(2).min();
-        double maxP = Position.getColumn(2).max();
+        double minL = Position.getColumn(0).min();
+        double maxL = Position.getColumn(0).max();
+        double minP = Position.getColumn(1).min();
+        double maxP = Position.getColumn(1).max();
 
         for (int i = 0; i < nPoints; i++) {
             // ______ normalize coordinates ______
@@ -252,32 +260,32 @@ public class Slant2Height {
         // Evaluate for all points interferogram h=f(l,p,refPhase)
         //  .....recon with multilook, degree1D, degree2D free
         //  .....Multilook factors
-        double mlFacL = unwrappedinterf.multilookL;
-        double mlFacP = unwrappedinterf.multilookP;
+        double mlFacL = 1;//unwrappedinterf.multilookL;
+        double mlFacP = 1;//unwrappedinterf.multilookP;
 
         // Number of lines/pixels of multilooked unwrapped interferogram
-        int mlLines = (int) (Math.floor((dataWindow.linehi - dataWindow.linelo + 1) / mlFacL));
-        int mlPixels = (int) (Math.floor((dataWindow.pixhi - dataWindow.pixlo + 1) / mlFacP));
+        int mlLines = (int) (Math.floor((tileWindow.linehi - tileWindow.linelo + 1) / mlFacL));
+        int mlPixels = (int) (Math.floor((tileWindow.pixhi - tileWindow.pixlo + 1) / mlFacP));
 
         // Line/pixel of first point in original master coordinates
-        double firstLine = (double) (dataWindow.linelo) + (mlFacL - 1.) / 2.;
-        double firstPixel = (double) (dataWindow.pixlo) + (mlFacP - 1.) / 2.;
+        double firstLine = (double) (tileWindow.linelo) + (mlFacL - 1.) / 2.;
+        double firstPixel = (double) (tileWindow.pixlo) + (mlFacP - 1.) / 2.;
 
         // ant axis of pixel coordinates ______
         DoubleMatrix p_axis = new DoubleMatrix(mlPixels, 1);
-        for (int i = 0; i < dataWindow.pixels(); i++) {
+        for (int i = 0; i < tileWindow.pixels(); i++) {
             p_axis.put(i, 0, firstPixel + i * mlFacP);
         }
         normalize(p_axis, minP, maxP);
 
         // ant axis for azimuth coordinates ______
         DoubleMatrix l_axis = new DoubleMatrix(mlLines, 1);
-        for (int k = 0; k < dataWindow.lines(); k++) {
+        for (int k = 0; k < tileWindow.lines(); k++) {
             l_axis.put(k, 0, firstLine + k * mlFacL);
         }
         normalize(l_axis, minL, maxL);
 
-        DoubleMatrix BUFFER = data; //unwrappedinterf.readphase(bufferwin);
+        DoubleMatrix BUFFER = tile; //unwrappedinterf.readphase(bufferwin);
 
         // ---> Lookup table because not known in advance what degree1D is
         DoubleMatrix[] pntALPHA = new DoubleMatrix[TEN];
@@ -293,14 +301,18 @@ public class Slant2Height {
         DoubleMatrix coeffThisPoint = new DoubleMatrix(degree1D + 1, 1);
 
         for (int line = 0; line < mlLines; line++) {
-            for (int pixel = 0; pixel < BUFFER.getColumns(); pixel++) {
+            for (int pixel = 0; pixel < mlPixels; pixel++) {
                 // Check if unwrapped ok, else compute h
                 if (BUFFER.get(line, pixel) != Double.NaN) // else leave NaN
                 {
                     for (int k = 0; k < degree1D + 1; k++) {
                         coeffThisPoint.put(k, 0, pntALPHA[k].get(line, pixel));
                     }
-                    BUFFER.put(line, pixel, PolyUtils.polyVal1D(PolyUtils.normalize2(BUFFER.get(line, pixel), minPhi, maxPhi), coeffThisPoint.toArray()));
+                    double data = BUFFER.get(line, pixel);
+                    double x = PolyUtils.normalize2(data, minPhi, maxPhi);
+                    double[] coeffs = coeffThisPoint.toArray();
+                    double value = PolyUtils.polyVal1D(x, coeffs);
+                    BUFFER.put(line, pixel, value);
                 }
             }
         }
@@ -358,7 +370,7 @@ public class Slant2Height {
     }
 
     private void normalize(DoubleMatrix data, double min, double max) {
-        data.mini(.5 * (min + max));
+        data.subi(.5 * (min + max));
         data.divi(.25 * (max - min));
     }
 
