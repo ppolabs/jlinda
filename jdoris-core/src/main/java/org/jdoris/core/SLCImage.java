@@ -27,6 +27,9 @@ public final class SLCImage {
     private String sarProcessor;
     private double radar_wavelength; // TODO: close this modifier
 
+    // orbit
+    private long orbitNumber;
+
     // geo & orientation
     private Point approxRadarCentreOriginal = new Point(); // use PixelPos as double!
     private GeoPos approxGeoCentreOriginal = new GeoPos();
@@ -37,6 +40,8 @@ public final class SLCImage {
     // azimuth annotations
     private double PRF;
     private double azimuthBandwidth;
+
+    private double mjd;
     private double tAzi1;
     private double tAzi_original;
     private String azimuthWeightingWindow;
@@ -61,8 +66,8 @@ public final class SLCImage {
     private int ovsRg;                 // oversampling of SLC
 
     // multilooking factors
-    private double mlAz;                 // multilooking of SLC
-    private double mlRg;                 // multilooking of SLC
+    private int mlAz = 1;                 // multilooking of SLC
+    private int mlRg = 1;                 // multilooking of SLC
 
     // relative to master geometry, or
     // absolute timing error of master
@@ -90,11 +95,15 @@ public final class SLCImage {
         this.sarProcessor = "SARPR_VMP";            // (VMP (esa paf) or ATLANTIS or TUDELFT) // TODO PGS update?
         this.formatFlag = 0;                        // format of file on disk
 
+        this.orbitNumber = 0;
+
         this.approxXYZCentreOriginal.x = 0.0;
         this.approxXYZCentreOriginal.y = 0.0;
         this.approxXYZCentreOriginal.z = 0.0;
 
         this.radar_wavelength = 0.0565646;          // [m] default ERS2
+
+        this.mjd = 0.;
         this.tAzi1 = 0.0;                           // [s] sec of day
         this.tRange1 = 5.5458330 / 2.0e3;           // [s] one way, default ERS2
         this.rangeWeightingWindow = "HAMMING";
@@ -141,6 +150,9 @@ public final class SLCImage {
 
         this();
 
+        // orbit number
+        this.orbitNumber = element.getAttributeInt(AbstractMetadata.REL_ORBIT);
+
         // units [meters]
         this.radar_wavelength = (Constants.lightSpeed / MEGA) / element.getAttributeDouble(AbstractMetadata.radar_frequency);
 
@@ -149,7 +161,7 @@ public final class SLCImage {
 
         // zero doppler time to 1st pix of subset
         final String t_azi1_UTC = element.getAttributeUTC(AbstractMetadata.first_line_time).toString();
-//        this.tAzi1 = (t_azi1_UTC.getMJD() - (int) t_azi1_UTC.getMJD()) * 24 * 3600;
+        this.mjd = element.getAttributeUTC(AbstractMetadata.first_line_time).getMJD();
         this.tAzi1 = DateUtils.dateTimeToSecOfDay(t_azi1_UTC);
 
         this.rangeBandwidth = element.getAttributeDouble(AbstractMetadata.range_bandwidth);
@@ -202,8 +214,8 @@ public final class SLCImage {
         this.doppler.f_DC_a2 = dopplersArray[0].coefficients[2];
         this.doppler.checkConstant();
 
-        this.mlAz = element.getAttributeDouble(AbstractMetadata.azimuth_looks);
-        this.mlRg = element.getAttributeDouble(AbstractMetadata.range_looks);
+        this.mlAz = (int) element.getAttributeDouble(AbstractMetadata.azimuth_looks);
+        this.mlRg = (int) element.getAttributeDouble(AbstractMetadata.range_looks);
 
     }
 
@@ -213,8 +225,12 @@ public final class SLCImage {
 
         resFile.setSubBuffer("_Start_readfiles", "End_readfiles");
 
-        this.sensor = resFile.parseStringValue("Sensor platform mission identifer");
-        this.sarProcessor = resFile.parseStringValue("SAR_PROCESSOR");
+        this.orbitNumber = Long.parseLong(resFile.parseStringValue("Scene identification:").trim().split("\\s")[1]);
+
+//        this.orbitNumber = new Long(resFile.parseStringValue("Scene identification:").split(" ")[1]);
+
+//        this.sensor = resFile.parseStringValue("Sensor platform mission identifer");
+//        this.sarProcessor = resFile.parseStringValue("SAR_PROCESSOR");
         this.radar_wavelength = resFile.parseDoubleValue("Radar_wavelength \\(m\\)");
 
         this.approxGeoCentreOriginal.lat = (float) resFile.parseDoubleValue("Scene_centre_latitude");
@@ -232,9 +248,11 @@ public final class SLCImage {
         this.tAzi1 = resFile.parseTimeValue("First_pixel_azimuth_time \\(UTC\\)");
         this.azimuthWeightingWindow = resFile.parseStringValue("Weighting_azimuth");
 
+        this.mjd = resFile.parseDateTimeValue("First_pixel_azimuth_time \\(UTC\\)").getMJD();
+
         // range annotations
         this.rsr2x = resFile.parseDoubleValue("Range_sampling_rate \\(computed, MHz\\)") * 2 * MEGA;
-        this.rangeBandwidth = resFile.parseDoubleValue("Total_range_band_width \\(MHz\\)"); // put it already in Hz!
+        this.rangeBandwidth = resFile.parseDoubleValue("Total_range_band_width \\(MHz\\)") * MEGA;
         this.tRange1 = resFile.parseDoubleValue("Range_time_to_first_pixel \\(2way\\) \\(ms\\)") / 2 / 1000;
         this.rangeWeightingWindow = resFile.parseStringValue("Weighting_range");
 
@@ -289,6 +307,10 @@ public final class SLCImage {
     // Convert azimuth time to line number (1 is first line)
     public double ta2line(double azitime) {
         return 1.0 + PRF * (azitime - tAzi1);
+    }
+
+    public Point lp2t(Point p) {
+        return new Point(pix2tr(p.x), line2ta(p.y));
     }
 
     /*--- Getters and setters for Encapsulation ----*/
@@ -356,7 +378,7 @@ public final class SLCImage {
         this.coarseOffsetL = offsetL;
     }
 
-    public double getMlAz() {
+    public int getMlAz() {
         return mlAz;
     }
 
@@ -364,7 +386,7 @@ public final class SLCImage {
         this.mlAz = mlAz;
     }
 
-    public double getMlRg() {
+    public int getMlRg() {
         return mlRg;
     }
 
@@ -372,6 +394,13 @@ public final class SLCImage {
         this.mlRg = mlRg;
     }
 
+    public double getMjd() {
+        return mjd;
+    }
+
+    public long getOrbitNumber() {
+        return orbitNumber;
+    }
 
     public class Doppler {
 
@@ -458,4 +487,21 @@ public final class SLCImage {
 
     }
 
+    // methods to compute range resolution
+    // -----
+    public double computeDeltaRange(double pixel) {
+        return mlRg * (pix2range(pixel + 1) - pix2range(pixel));
+    }
+
+    public double computeDeltaRange(Point sarPixel) {
+        return computeDeltaRange(sarPixel.x);
+    }
+
+    public double computeRangeResolution(double pixel) {
+         return ((rsr2x / 2.) / rangeBandwidth) * (computeDeltaRange(pixel) / mlRg);
+    }
+
+    public double computeRangeResolution(Point sarPixel) {
+        return computeRangeResolution(sarPixel.x);
+    }
 }

@@ -287,5 +287,14 @@ public class todo_classes {
         */
     }
 
-
+    public class input_slant2h {
+        String method; // method selector
+        //       	char fohei[4 * ONE27]; // output filename height
+//       	char folam[4 * ONE27]; // output filename lambda
+//       	char fophi[4 * ONE27]; // output filename phi
+        public int Npoints; //
+        public int degree1d; // only {1,2} possible now due to solve33
+        public int degree2d; //
+        public int Nheights; //
+    }
 }
