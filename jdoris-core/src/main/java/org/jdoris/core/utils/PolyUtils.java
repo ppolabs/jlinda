@@ -132,8 +132,7 @@ public class PolyUtils {
 
     public static double[] polyFit(DoubleMatrix t, DoubleMatrix y, final int degree) throws IllegalArgumentException {
 
-        logger.setLevel(Level.DEBUG);
-
+        logger.setLevel(Level.INFO);
 
         if (t.length != y.length || !t.isVector() || !y.isVector()) {
             logger.error("polyfit: require same size vectors.");
@@ -186,15 +185,12 @@ public class PolyUtils {
         DoubleMatrix y_hat = A.mmul(x);
         DoubleMatrix e_hat = y.sub(y_hat);
 
-        DoubleMatrix e_hat_abs = abs(e_hat);
-
-        // TODO: absMatrix(e_hat_abs).max() there is a simpleBlas function that implements this!
         // 0.05 is already 1 wavelength! (?)
-        if (LinearAlgebraUtils.absMatrix(e_hat_abs).max() > 0.02) {
-            logger.warn("WARNING: Max. approximation error at datapoints (x,y,or z?): {} m", e_hat.normmax());
+        if (e_hat.normmax() > 0.02) {
+            logger.warn("WARNING: Max. approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
 
         } else {
-            logger.info("Max. approximation error at datapoints (x,y,or z?): {} m", e_hat.normmax());
+            logger.debug("Max. approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
         }
 
         if (logger.isDebugEnabled()) {
