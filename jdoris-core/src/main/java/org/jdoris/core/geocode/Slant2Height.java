@@ -33,16 +33,16 @@ public class Slant2Height {
 //
 //    private double m_minpi4cdivlambda;
 //    private double s_minpi4cdivlambda;
-    private SLCImage master;
-    private Orbit masterOrbit;
+    private final SLCImage master;
+    private final Orbit masterOrbit;
 
-    private SLCImage slave;
-    private Orbit slaveOrbit;
+    private final SLCImage slave;
+    private final Orbit slaveOrbit;
 
-    private int nPoints; // where ref.phase is evaluated
-    private int nHeights;
-    private int degree1D; // only possible now.
-    private int degree2D;
+    private final int nPoints; // where ref.phase is evaluated
+    private final int nHeights;
+    private final int degree1D; // only possible now.
+    private final int degree2D;
 
     private static final int MAXHEIGHT = 5000; // max hei for ref.phase
     private static final int TEN = 10;
@@ -298,7 +298,7 @@ public class Slant2Height {
         }
 
         // Evaluate h=f(l,p,phi) for all points in grid in BUFFER
-        DoubleMatrix coeffThisPoint = new DoubleMatrix(degree1D + 1, 1);
+        double[] coeffThisPoint = new double[degree1D + 1]; //DoubleMatrix(degree1D + 1, 1);
 
         for (int line = 0; line < mlLines; line++) {
             for (int pixel = 0; pixel < mlPixels; pixel++) {
@@ -306,12 +306,11 @@ public class Slant2Height {
                 if (BUFFER.get(line, pixel) != Double.NaN) // else leave NaN
                 {
                     for (int k = 0; k < degree1D + 1; k++) {
-                        coeffThisPoint.put(k, 0, pntALPHA[k].get(line, pixel));
+                        coeffThisPoint[k] = pntALPHA[k].get(line, pixel);
                     }
                     double data = BUFFER.get(line, pixel);
                     double x = PolyUtils.normalize2(data, minPhi, maxPhi);
-                    double[] coeffs = coeffThisPoint.toArray();
-                    double value = PolyUtils.polyVal1D(x, coeffs);
+                    double value = PolyUtils.polyVal1D(x, coeffThisPoint);
                     BUFFER.put(line, pixel, value);
                 }
             }
