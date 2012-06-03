@@ -6,10 +6,11 @@ import org.jblas.DoubleMatrix;
 import org.jblas.Solve;
 import org.slf4j.LoggerFactory;
 
-import static org.jblas.MatrixFunctions.abs;
 import static org.jblas.MatrixFunctions.pow;
 
 public class PolyUtils {
+
+    // TODO: Major clean-up and open sourcing of Polynomial and PolyFit classess from ppolabs.commons
 
     public static final Logger logger = (Logger) LoggerFactory.getLogger(PolyUtils.class);
 
@@ -58,9 +59,10 @@ public class PolyUtils {
         return polyFit(normalize(t), y, degree);
     }
 
-    public static double[] polyFit2D(DoubleMatrix x, DoubleMatrix y, DoubleMatrix z, final int degree) throws IllegalArgumentException {
+    public static double[] polyFit2D(final DoubleMatrix x, final DoubleMatrix y, final DoubleMatrix z, final int degree) throws IllegalArgumentException {
 
-        logger.setLevel(Level.DEBUG);
+        logger.setLevel(Level.INFO);
+
         if (x.length != y.length || !x.isVector() || !y.isVector()) {
             logger.error("polyfit: require same size vectors.");
             throw new IllegalArgumentException("polyfit: require same size vectors.");
@@ -72,6 +74,7 @@ public class PolyUtils {
         DoubleMatrix A = new DoubleMatrix(numOfObs, numOfUnkn); // designmatrix
 
         DoubleMatrix mul;
+
         /** Set up design-matrix */
         for (int p = 0; p <= degree; p++) {
             for (int q = 0; q <= p; q++) {
@@ -107,13 +110,8 @@ public class PolyUtils {
         DoubleMatrix y_hat = A.mmul(rhs);
         DoubleMatrix e_hat = y.sub(y_hat);
 
-        DoubleMatrix e_hat_abs = abs(e_hat);
-
-        // TODO: absMatrix(e_hat_abs).max() there is a simpleBlas function that implements this!
-        // 0.05 is already 1 wavelength! (?)
-        if (LinearAlgebraUtils.absMatrix(e_hat_abs).max() > 0.02) {
+        if (e_hat.normmax() > 0.02) {
             logger.warn("WARNING: Max. approximation error at datapoints (x,y,or z?): {} m", e_hat.normmax());
-
         } else {
             logger.info("Max. approximation error at datapoints (x,y,or z?): {} m", e_hat.normmax());
         }
@@ -124,9 +122,7 @@ public class PolyUtils {
             for (int i = 0; i < numOfObs; i++) {
                 logger.debug(" (" + x.get(i) + "," + y.get(i) + ") :" + "\t" + y.get(i) + "\t" + y_hat.get(i) + "\t" + e_hat.get(i));
             }
-
         }
-
         return rhs.toArray();
     }
 
@@ -169,7 +165,6 @@ public class PolyUtils {
 
         // solution seems to be OK up to 10^-09!
         DoubleMatrix x = Solve.solveSymmetric(N, rhs);
-
         DoubleMatrix Qx_hat = Solve.solveSymmetric(N, DoubleMatrix.eye(N.getRows()));
 
         double maxDeviation = (N.mmul(Qx_hat).sub(DoubleMatrix.eye(Qx_hat.rows))).normmax();
@@ -188,7 +183,6 @@ public class PolyUtils {
         // 0.05 is already 1 wavelength! (?)
         if (e_hat.normmax() > 0.02) {
             logger.warn("WARNING: Max. approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
-
         } else {
             logger.debug("Max. approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
         }
