@@ -11,7 +11,7 @@ import org.jdoris.core.utils.MathUtils;
 import org.jdoris.core.utils.PolyUtils;
 
 /**
- * DInSAR prototype class
+ * DInSAR core class
  * <p/>
  * Differential insar with an unwrapped topo interferogram (hgt or real4 format) and a wrapped(!) defo interf.
  * <p/>
@@ -52,7 +52,8 @@ public class DInSAR {
     private volatile DoubleMatrix topoData;
     private volatile ComplexDoubleMatrix defoData;
 
-    public DInSAR(SLCImage masterMeta, SLCImage slaveDefoMeta, SLCImage topoSlaveMeta, Orbit masterOrbit, Orbit slaveDefoOrbit, Orbit slaveTopoOrbit) {
+    public DInSAR(SLCImage masterMeta, SLCImage slaveDefoMeta, SLCImage topoSlaveMeta,
+                  Orbit masterOrbit, Orbit slaveDefoOrbit, Orbit slaveTopoOrbit) {
         this.masterMeta = masterMeta;
         this.slaveDefoMeta = slaveDefoMeta;
         this.topoSlaveMeta = topoSlaveMeta;
@@ -109,8 +110,6 @@ public class DInSAR {
         Baseline defoBaseline = new Baseline();
         defoBaseline.model(masterMeta, slaveDefoMeta, masterOrbit, slaveDefoOrbit);
 
-        double lastline = -1.0;
-
         DoubleMatrix bPerpTopo = new DoubleMatrix(nPoints);
         DoubleMatrix bPerpDefo = new DoubleMatrix(nPoints);
 
@@ -128,12 +127,6 @@ public class DInSAR {
         DoubleMatrix rhs = new DoubleMatrix(PolyUtils.polyFit2D(normalize(position.getColumn(0), minL, maxL),
                 normalize(position.getColumn(1), minP, maxP), baselineRatio, 1));
 
-//        /** per Tile: scale TOPO and subtract from DEFO : FOR TILE!!! */
-//        int numlines = (int) (tileWindow.lines() / masterMeta.getMlAz());
-//        int numpixels = (int) (tileWindow.pixels() / masterMeta.getMlRg());
-//        float firstline = (float) (tileWindow.linelo + (masterMeta.getMlAz() - 1.) / 2.);
-//        float firstpixel = (float) (tileWindow.pixlo + (masterMeta.getMlAz() - 1.) / 2.);
-
         DoubleMatrix azimuthAxisNormalize = DoubleMatrix.linspace((int) tileWindow.linelo, (int) tileWindow.linehi, defoData.rows);
         normalize_inplace(azimuthAxisNormalize, minL, maxL);
 
@@ -145,58 +138,13 @@ public class DInSAR {
         DoubleMatrix scaledTopo = topoData.mul(ratio);
         ComplexDoubleMatrix ratioBaselinesCplx = new ComplexDoubleMatrix(MatrixFunctions.cos(scaledTopo), MatrixFunctions.sin(scaledTopo).neg());
 
+        // check whether any NaNs are coming from unwrapped data
         for (int i = 0; i < defoData.length; i++) {
             if (defoData.data[i] == Double.NaN) {
                 defoData.data[i] = 0.0d;
             }
         }
         defoData.muli(ratioBaselinesCplx);
-
-////        DoubleMatrix ratioline = new DoubleMatrix(linspace((int) firstpixel, (int) (firstpixel + numpixels), (int) numpixels));
-//        DoubleMatrix ratioline = DoubleMatrix.linspace((int) firstpixel, (int) (firstpixel + numpixels - 1), numpixels);
-//        normalize_inplace(ratioline, minP, maxP);
-//        ratioline.muli(rhs[2]);  //     a01*p
-//        ratioline.addi(rhs[0]);  // a00+a01*p
-//
-//        // read in matrices line by line, correct phase ______
-////        ComplexDoubleMatrix DEFO = new ComplexDoubleMatrix(1, numpixels);    // buffer
-//
-//        for (int i = 0; i < numlines - 1; ++i) {
-//
-//            // ratio = a00 + a10*LINE + a01*PIXEL
-//            double line = firstline + i * masterMeta.getMlAz();
-//            DoubleMatrix ratio = ratioline.add(rhs[1] * normalize2(line, minL, maxL));
-//
-//            // read from file, correct, write to file ______
-////            const window filewin(i + 1, i + 1, 1, numpixels);
-//            DoubleMatrix topoRow = topoData.getRow(i); //readphase(filewin);
-//            ComplexDoubleMatrix DEFO = defoData.getRow(i);
-//
-//            // seems faster, but how to check for unwrapping?
-//            //TOPO *= ratio;    // scaled topoData to defoData baseline
-//            //DEFO *= complr4(cos(TOPO),-sin(TOPO));
-//            // better matrix <int32> index = TOPO.find(NaN); later reset??
-//            // and topoData=topoData*ratio; and defoData(index)=(0,0);
-//            // but how to implement this best in matrixclass?
-//            // BK 24-Oct-2000
-//            for (int j = 0; j < numpixels - 1; ++j) {
-//                if (topoRow.get(0, j) == Double.NaN) {
-//                    DEFO.put(0, j, new ComplexDouble(0, 0));
-//                } else {
-//                    double realPart = ratio.get(j) * topoRow.get(j);
-//                    double imagPart = ratio.get(j) * topoRow.get(j);
-//                    DEFO.put(j, DEFO.get(j).mul(new ComplexDouble(Math.cos(realPart), Math.sin(imagPart))));
-////                    DEFO.put(0, j, DEFO.get(0, j).mul(new ComplexDouble(Math.cos(realPart), Math.sin(imagPart))));
-//                }
-////                (TOPO(0, j) == NaN) ?                // if unwrapping ok, then subtract scaled phase
-////                        DEFO(0, j) = complr4(0.0, 0.0) :
-////                        DEFO(0, j) *= complr4(fast_cos(ratio(0, j) * TOPO(0, j)), fast_min_sin(ratio(0, j) * TOPO(0, j)));
-//            }
-//
-//            tempData.putRow(i, DEFO);
-//
-//        }
-
     }
 
     public static double[] linspace(final int lower, final int upper, final int size) {
