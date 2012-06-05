@@ -1,4 +1,4 @@
-package org.jdoris.core.unwrapping;
+package org.jdoris.core.unwrapping.snaphu;
 
 import org.jdoris.core.*;
 
@@ -15,7 +15,7 @@ public class SnaphuConfigFile {
     DecimalFormat format7 = new DecimalFormat("#.#######");
 
     static final float N_CORR_LOOKS = 23.8f;
-    static final String TAB_STRING = "\t\t";
+//    static final String TAB_STRING = "\t\t";
 
     private SLCImage masterSLC;
     private SLCImage slaveSLC;
@@ -31,7 +31,10 @@ public class SnaphuConfigFile {
     public SnaphuConfigFile() {
     }
 
-    public SnaphuConfigFile(SLCImage masterSLC, SLCImage slaveSLC, Orbit masterOrbit, Orbit slaveOrbit, Window dataWindow, SnaphuParameters parameters) {
+    public SnaphuConfigFile(SLCImage masterSLC, SLCImage slaveSLC,
+                            Orbit masterOrbit, Orbit slaveOrbit,
+                            Window dataWindow,
+                            SnaphuParameters parameters) {
         this.masterSLC = masterSLC;
         this.slaveSLC = slaveSLC;
         this.masterOrbit = masterOrbit;
@@ -87,8 +90,8 @@ public class SnaphuConfigFile {
         final double baselineTotal = baseline.getB(pointSAR);
         final double baselineAlpha = baseline.getAlpha(pointSAR);
 
-        String DIMENSIONS = "5142";
-        String IN_FILE_NAME = "Outdata/9192_6687.srp";
+        String DIMENSIONS = Long.toString(dataWindow.pixels() - 1); // account for zeros
+        String IN_FILE_NAME = parameters.phaseFileName;
 
         formattedConfig.format("# CONFIG FOR SNAPHU\n");
         formattedConfig.format("# ---------------------------------------------------------------- \n");
@@ -127,7 +130,8 @@ public class SnaphuConfigFile {
         formattedConfig.format("# File formats #\n");
         formattedConfig.format("################\n");
         formattedConfig.format("\n");
-        formattedConfig.format("INFILEFORMAT \t" + "COMPLEX_DATA\n");
+//        formattedConfig.format("INFILEFORMAT \t" + "COMPLEX_DATA\n"); // Eventually converged to export/work with FLOAT
+        formattedConfig.format("INFILEFORMAT \t" + "FLOAT_DATA\n");
         formattedConfig.format("CORRFILEFORMAT \t" + "FLOAT_DATA\n");
         formattedConfig.format("OUTFILEFORMAT \t" + "FLOAT_DATA\n");
         formattedConfig.format("\n");
@@ -170,6 +174,7 @@ public class SnaphuConfigFile {
 
     }
 
+    // these are flags for controlling parallel processing with Snaphu -> be careful with COST Threshold for TILES
     private void tileControlFlags() {
         configFileBuffer.append("\n"
                 + "################\n"

@@ -1,8 +1,10 @@
-package org.jdoris.core.unwrapping;
+package org.jdoris.core.unwrapping.snaphu;
 
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.Window;
+import org.jdoris.core.unwrapping.snaphu.SnaphuConfigFile;
+import org.jdoris.core.unwrapping.snaphu.SnaphuParameters;
 import org.junit.Before;
 import org.junit.Test;
 

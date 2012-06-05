@@ -1,17 +1,22 @@
-package org.jdoris.core.unwrapping;
+package org.jdoris.core.unwrapping.snaphu;
 
 public class SnaphuParameters {
 
-    public String outFileName;   // output filename
-//    public String outFileFormat; // output format [hgt] real4
-    public String unwrapMode;    // snaphu TOPO DEFO SMOOTH NOSTATCOSTS
-    public String logFileName;   // log filename for snaphu
+    public String outFileName;       // output filename
+//    public String outFileFormat;   // output format [hgt] real4
+    public String unwrapMode;        // snaphu TOPO DEFO SMOOTH NOSTATCOSTS
+    public String logFileName;       // log filename for snaphu
     public String coherenceFileName; // coherence filename for snaphu opt
+    public String phaseFileName;     // phase filename for snaphu opt
     public String verbosityFlag;     // snaphu TRUE or FALSE
     public String snaphuInit;        // snaphu MST or MCF
 
 /*
-    // for parallel processing
+    Note: I decided to remove these control flags from NEST UI. Setting them properly require some level of
+          understanding of the algos implemented in Snaphu. Still they are in the snaphu.conf file, so more
+          experienced user can declare/change them manually.
+
+    // for parallel processing control
     public int nTileRow;
     public int nTileCol;
     public int rowOverlap;
@@ -24,13 +29,15 @@ public class SnaphuParameters {
     }
 
     public SnaphuParameters(String outFileName, String unwrapMode,
-                            String logFileName, String coherenceFileName, String verbosityFlag,
-                            String snaphuInit) {
+                            String logFileName,
+                            String phaseFileName, String coherenceFileName,
+                            String verbosityFlag, String snaphuInit) {
         this.outFileName = outFileName;
-//        this.outFileFormat = outFileFormat;
+//        this.outFileFormat = outFileFormat; // always work with FLOAT
         this.unwrapMode = unwrapMode;
         this.logFileName = logFileName;
         this.coherenceFileName = coherenceFileName;
+        this.phaseFileName = phaseFileName;
         this.verbosityFlag = verbosityFlag;
         this.snaphuInit = snaphuInit;
     }
@@ -51,6 +58,10 @@ public class SnaphuParameters {
         this.logFileName = logFileName;
     }
 
+    public void setPhaseFileName(String phaseFileName) {
+        this.phaseFileName = phaseFileName;
+    }
+
     public void setCoherenceFileName(String coherenceFileName) {
         this.coherenceFileName = coherenceFileName;
     }
@@ -63,6 +74,7 @@ public class SnaphuParameters {
         this.snaphuInit = snaphuInit;
     }
 /*
+    Removed for above mentioned reasons - simplicity in favor of complexity....
 
     public void setnTileRow(int nTileRow) {
         this.nTileRow = nTileRow;
