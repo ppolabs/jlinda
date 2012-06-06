@@ -111,9 +111,9 @@ public class PolyUtils {
         DoubleMatrix e_hat = y.sub(y_hat);
 
         if (e_hat.normmax() > 0.02) {
-            logger.warn("WARNING: Max. approximation error at datapoints (x,y,or z?): {} m", e_hat.normmax());
+            logger.warn("WARNING: Max. polyFit2D approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
         } else {
-            logger.info("Max. approximation error at datapoints (x,y,or z?): {} m", e_hat.normmax());
+            logger.info("Max. polyFit2D approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
         }
 
         if (logger.isDebugEnabled()) {
@@ -429,7 +429,6 @@ public class PolyUtils {
                 }
                 break;
 
-            // TODO: solve up to 5 efficiently, do rest in loop
             default:
                 for (j = 0; j < columns; j++) {
                     double yy = y[j];
