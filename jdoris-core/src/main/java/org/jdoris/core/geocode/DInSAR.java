@@ -35,6 +35,20 @@ import org.jdoris.core.utils.PolyUtils;
  * Output:
  * -complex float file with differential phase.
  * (set to (0,0) for not ok unwrapped parts)
+ *
+ * Known issues:
+ *  - polyfit will trigger warnings on maxerror deviating more then expected, it's because of scaling of error is
+ *    not being performed. See code example how to resolve for this.
+ *
+ *  - potential issues with threading safety, volatile on 'data' fields not being properly tested.
+ *
+ * Note: optimization was done in how the unwrapped_phase is subtracted from DEFO pair. I am working
+ *       with tiles now, and not removing TOPO phase line by line as initally implemented. This resulted
+ *       ~10x improvement. See unit tests for some rough benchmarks.
+ *
+ * Performance issues & TODO: input of TOPO (unwrapped phase coming from SNAPHU) has to be looped
+ *    for a NaN values check. Perhaps it is more efficient to do this check while parsing the dat
+ *    into NEST.
  */
 
 public class DInSAR {
@@ -126,6 +140,26 @@ public class DInSAR {
 
         DoubleMatrix rhs = new DoubleMatrix(PolyUtils.polyFit2D(normalize(position.getColumn(0), minL, maxL),
                 normalize(position.getColumn(1), minP, maxP), baselineRatio, 1));
+
+        // TODO: polyfit will trigger a warning on e_hat larger than expected, for DInSAR e_hat has to be scaled!
+/*
+        ....for DInSAR baseline ratio estimation this error should be scaled
+        ....eg using jblas notation
+
+        double maxErrorRatio = e_hat.normmax() // max error
+        int maxErrorRatioIdx = e_hat.abs().argmax() // index of maximum error
+        double maxRelativeErrorRatio = 100.0 * maxErrorRatio / ratio.get(maxErrorRatioIdx)
+        logger.INFO("maximum error for l,p : {}, {}", x.get(maxErrorRatioIdx), y.get(maxErrorRatioIdx));
+        logger.INFO("Ratio = {}; estimate = {}; rel.error = ", ratio(maxErrorRatioIdx), y_hat(maxErrorRatioIdx), maxRelativeErrorRatio);
+
+
+        if (maxRelativeErrorRatio < 5.0) {
+            logger.INFO("max (relative) error: OK!");
+        } else {
+            logger.WARN("max error quite large");
+            logger.WARN("Error in deformation vector larger than 5% due to mismodeling baseline!");
+        }
+*/
 
         DoubleMatrix azimuthAxisNormalize = DoubleMatrix.linspace((int) tileWindow.linelo, (int) tileWindow.linehi, defoData.rows);
         normalize_inplace(azimuthAxisNormalize, minL, maxL);
