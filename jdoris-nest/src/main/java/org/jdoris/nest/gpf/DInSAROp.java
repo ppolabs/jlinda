@@ -78,20 +78,17 @@ public class DInSAROp extends Operator {
     // operator tags
     private static final boolean CREATE_VIRTUAL_BAND = true;
     private static final String PRODUCT_NAME = "dinsar";
-    public static final String PRODUCT_TAG = "_dinsar";
+    public static final String PRODUCT_TAG = "dinsar";
 
     private int sourceImageWidth;
     private int sourceImageHeight;
-    //    private static final int RATIO_DEGREE = 3;
-    private DoubleMatrix baselineRatioPolynomial;
+
     private CplxContainer master;
     private CplxContainer slaveDefo;
     private CplxContainer slaveTopo;
 
     private Product topoProduct = null;
     private Product defoProduct = null;
-
-    private final static int DEGREE_BASELINE_RATIO_MODEL = 1; // 1st degree polynomial is usually sufficient
 
     /**
      * Initializes this operator and sets the one and only target product.
@@ -174,10 +171,6 @@ public class DInSAROp extends Operator {
         dinsar.setDataWindow(new Window(0, sourceImageHeight, 0, sourceImageWidth));
         dinsar.computeBperpRatios();
 
-//
-//        estimateBperpRatioPolynomial(master.metaData, master.orbit,
-//                slaveDefo.metaData, slaveDefo.orbit,
-//                slaveTopo.metaData, slaveTopo.orbit);
     }
 
     private void getSourceImageDimension() {
@@ -336,7 +329,6 @@ public class DInSAROp extends Operator {
             e.printStackTrace();
         }
     }
-
 
     private void checkUserInput() throws OperatorException {
         // check for the logic in input paramaters
