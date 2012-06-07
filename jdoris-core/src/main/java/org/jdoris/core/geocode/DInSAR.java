@@ -11,7 +11,7 @@ import org.jdoris.core.utils.MathUtils;
 import org.jdoris.core.utils.PolyUtils;
 
 /**
- * DInSAR prototype class
+ * DInSAR core class
  * <p/>
  * Differential insar with an unwrapped topo interferogram (hgt or real4 format) and a wrapped(!) defo interf.
  * <p/>
@@ -35,6 +35,37 @@ import org.jdoris.core.utils.PolyUtils;
  * Output:
  * -complex float file with differential phase.
  * (set to (0,0) for not ok unwrapped parts)
+<<<<<<< HEAD
+ *
+ * Known issues:
+ *  - polyfit will trigger warnings on maxerror deviating more then expected, it's because of scaling of error is
+ *    not being performed. See code example how to resolve for this.
+ *
+ *  - potential issues with threading safety, volatile on 'data' fields not being properly tested.
+ *
+ * Note: optimization was done in how the unwrapped_phase is subtracted from DEFO pair. I am working
+ *       with tiles now, and not removing TOPO phase line by line as initally implemented. This resulted
+ *       ~10x improvement. See unit tests for some rough benchmarks.
+ *
+ * Performance issues & TODO: input of TOPO (unwrapped phase coming from SNAPHU) has to be looped
+ *    for a NaN values check. Perhaps it is more efficient to do this check while parsing the dat
+ *    into NEST.
+=======
+ * <p/>
+ * Known issues:
+ * - polyfit will trigger warnings on maxerror deviating more then expected, it's because of scaling of error is
+ * not being performed. See code example how to resolve for this.
+ * <p/>
+ * - potential issues with threading safety, volatile on 'data' fields not being properly tested.
+ * <p/>
+ * Note: optimization was done in how the unwrapped_phase is subtracted from DEFO pair. I am working
+ * with tiles now, and not removing TOPO phase line by line as initally implemented. This resulted
+ * ~10x improvement. See unit tests for some rough benchmarks.
+ * <p/>
+ * Performance issues & TODO: input of TOPO (unwrapped phase coming from SNAPHU) has to be looped
+ * for a NaN values check. Perhaps it is more efficient to do this check while parsing the dat
+ * into NEST.
+>>>>>>> dinsar_operator
  */
 
 public class DInSAR {
@@ -47,17 +78,24 @@ public class DInSAR {
     final private Orbit slaveTopoOrbit;
 
     private volatile Window dataWindow;
-    private volatile Window tileWindow;
+    private Window tileWindow;
 
-    private volatile DoubleMatrix topoData;
-    private volatile ComplexDoubleMatrix defoData;
+    private DoubleMatrix topoData;
+    private ComplexDoubleMatrix defoData;
 
-    public DInSAR(SLCImage masterMeta, SLCImage slaveDefoMeta, SLCImage topoSlaveMeta, Orbit masterOrbit, Orbit slaveDefoOrbit, Orbit slaveTopoOrbit) {
+    private DoubleMatrix rhs;
+
+    public DInSAR(SLCImage masterMeta, Orbit masterOrbit,
+                  SLCImage slaveDefoMeta, Orbit slaveDefoOrbit,
+                  SLCImage topoSlaveMeta, Orbit slaveTopoOrbit) {
+
         this.masterMeta = masterMeta;
-        this.slaveDefoMeta = slaveDefoMeta;
-        this.topoSlaveMeta = topoSlaveMeta;
         this.masterOrbit = masterOrbit;
+
+        this.slaveDefoMeta = slaveDefoMeta;
         this.slaveDefoOrbit = slaveDefoOrbit;
+
+        this.topoSlaveMeta = topoSlaveMeta;
         this.slaveTopoOrbit = slaveTopoOrbit;
 
         dataWindow = masterMeta.getCurrentWindow();
@@ -83,6 +121,7 @@ public class DInSAR {
         return defoData;
     }
 
+    @Deprecated
     public void dinsar() throws Exception {
 
         // Normalization factors for polynomial
@@ -109,8 +148,6 @@ public class DInSAR {
         Baseline defoBaseline = new Baseline();
         defoBaseline.model(masterMeta, slaveDefoMeta, masterOrbit, slaveDefoOrbit);
 
-        double lastline = -1.0;
-
         DoubleMatrix bPerpTopo = new DoubleMatrix(nPoints);
         DoubleMatrix bPerpDefo = new DoubleMatrix(nPoints);
 
@@ -128,11 +165,25 @@ public class DInSAR {
         DoubleMatrix rhs = new DoubleMatrix(PolyUtils.polyFit2D(normalize(position.getColumn(0), minL, maxL),
                 normalize(position.getColumn(1), minP, maxP), baselineRatio, 1));
 
-//        /** per Tile: scale TOPO and subtract from DEFO : FOR TILE!!! */
-//        int numlines = (int) (tileWindow.lines() / masterMeta.getMlAz());
-//        int numpixels = (int) (tileWindow.pixels() / masterMeta.getMlRg());
-//        float firstline = (float) (tileWindow.linelo + (masterMeta.getMlAz() - 1.) / 2.);
-//        float firstpixel = (float) (tileWindow.pixlo + (masterMeta.getMlAz() - 1.) / 2.);
+        // TODO: polyfit will trigger a warning on e_hat larger than expected, for DInSAR e_hat has to be scaled!
+/*
+        ....for DInSAR baseline ratio estimation this error should be scaled
+        ....eg using jblas notation
+
+        double maxErrorRatio = e_hat.normmax() // max error
+        int maxErrorRatioIdx = e_hat.abs().argmax() // index of maximum error
+        double maxRelativeErrorRatio = 100.0 * maxErrorRatio / ratio.get(maxErrorRatioIdx)
+        logger.INFO("maximum error for l,p : {}, {}", x.get(maxErrorRatioIdx), y.get(maxErrorRatioIdx));
+        logger.INFO("Ratio = {}; estimate = {}; rel.error = ", ratio(maxErrorRatioIdx), y_hat(maxErrorRatioIdx), maxRelativeErrorRatio);
+
+
+        if (maxRelativeErrorRatio < 5.0) {
+            logger.INFO("max (relative) error: OK!");
+        } else {
+            logger.WARN("max error quite large");
+            logger.WARN("Error in deformation vector larger than 5% due to mismodeling baseline!");
+        }
+*/
 
         DoubleMatrix azimuthAxisNormalize = DoubleMatrix.linspace((int) tileWindow.linelo, (int) tileWindow.linehi, defoData.rows);
         normalize_inplace(azimuthAxisNormalize, minL, maxL);
@@ -145,58 +196,106 @@ public class DInSAR {
         DoubleMatrix scaledTopo = topoData.mul(ratio);
         ComplexDoubleMatrix ratioBaselinesCplx = new ComplexDoubleMatrix(MatrixFunctions.cos(scaledTopo), MatrixFunctions.sin(scaledTopo).neg());
 
+        // check whether any NaNs are coming from unwrapped data
         for (int i = 0; i < defoData.length; i++) {
             if (defoData.data[i] == Double.NaN) {
                 defoData.data[i] = 0.0d;
             }
         }
         defoData.muli(ratioBaselinesCplx);
+    }
 
-////        DoubleMatrix ratioline = new DoubleMatrix(linspace((int) firstpixel, (int) (firstpixel + numpixels), (int) numpixels));
-//        DoubleMatrix ratioline = DoubleMatrix.linspace((int) firstpixel, (int) (firstpixel + numpixels - 1), numpixels);
-//        normalize_inplace(ratioline, minP, maxP);
-//        ratioline.muli(rhs[2]);  //     a01*p
-//        ratioline.addi(rhs[0]);  // a00+a01*p
-//
-//        // read in matrices line by line, correct phase ______
-////        ComplexDoubleMatrix DEFO = new ComplexDoubleMatrix(1, numpixels);    // buffer
-//
-//        for (int i = 0; i < numlines - 1; ++i) {
-//
-//            // ratio = a00 + a10*LINE + a01*PIXEL
-//            double line = firstline + i * masterMeta.getMlAz();
-//            DoubleMatrix ratio = ratioline.add(rhs[1] * normalize2(line, minL, maxL));
-//
-//            // read from file, correct, write to file ______
-////            const window filewin(i + 1, i + 1, 1, numpixels);
-//            DoubleMatrix topoRow = topoData.getRow(i); //readphase(filewin);
-//            ComplexDoubleMatrix DEFO = defoData.getRow(i);
-//
-//            // seems faster, but how to check for unwrapping?
-//            //TOPO *= ratio;    // scaled topoData to defoData baseline
-//            //DEFO *= complr4(cos(TOPO),-sin(TOPO));
-//            // better matrix <int32> index = TOPO.find(NaN); later reset??
-//            // and topoData=topoData*ratio; and defoData(index)=(0,0);
-//            // but how to implement this best in matrixclass?
-//            // BK 24-Oct-2000
-//            for (int j = 0; j < numpixels - 1; ++j) {
-//                if (topoRow.get(0, j) == Double.NaN) {
-//                    DEFO.put(0, j, new ComplexDouble(0, 0));
-//                } else {
-//                    double realPart = ratio.get(j) * topoRow.get(j);
-//                    double imagPart = ratio.get(j) * topoRow.get(j);
-//                    DEFO.put(j, DEFO.get(j).mul(new ComplexDouble(Math.cos(realPart), Math.sin(imagPart))));
-////                    DEFO.put(0, j, DEFO.get(0, j).mul(new ComplexDouble(Math.cos(realPart), Math.sin(imagPart))));
-//                }
-////                (TOPO(0, j) == NaN) ?                // if unwrapping ok, then subtract scaled phase
-////                        DEFO(0, j) = complr4(0.0, 0.0) :
-////                        DEFO(0, j) *= complr4(fast_cos(ratio(0, j) * TOPO(0, j)), fast_min_sin(ratio(0, j) * TOPO(0, j)));
-//            }
-//
-//            tempData.putRow(i, DEFO);
-//
-//        }
+    public void computeBperpRatios() throws Exception {
 
+        // Normalization factors for polynomial
+        double minL = dataWindow.linelo;
+        double maxL = dataWindow.linehi;
+        double minP = dataWindow.pixlo;
+        double maxP = dataWindow.pixhi;
+
+        // Model perpendicular baseline for master and defo
+        // .....compute B on grid every 500 lines, 100 pixels
+        // .....in window for topoData/defoData
+        final int nPoints = 200;
+        final int[][] positionArray = MathUtils.distributePoints(nPoints, masterMeta.getCurrentWindow());
+        DoubleMatrix position = new DoubleMatrix(nPoints, 2);
+        for (int i = 0; i < nPoints; i++) {
+            position.put(i, 0, positionArray[i][0]);
+            position.put(i, 1, positionArray[i][1]);
+        }
+
+        // model baselines
+        Baseline topoBaseline = new Baseline();
+        topoBaseline.model(masterMeta, topoSlaveMeta, masterOrbit, slaveTopoOrbit);
+
+        Baseline defoBaseline = new Baseline();
+        defoBaseline.model(masterMeta, slaveDefoMeta, masterOrbit, slaveDefoOrbit);
+
+        DoubleMatrix bPerpTopo = new DoubleMatrix(nPoints);
+        DoubleMatrix bPerpDefo = new DoubleMatrix(nPoints);
+
+        for (int i = 0; i < nPoints; ++i) {
+            bPerpTopo.put(i, topoBaseline.getBperp(position.get(i, 0), position.get(i, 1), 0));
+            bPerpDefo.put(i, defoBaseline.getBperp(position.get(i, 0), position.get(i, 1), 0));
+        }
+
+        // Now model ratio bPerpDefo/bPerpTopo as linear ______
+        //   ...r(l,p) = a00 + a10*l + a01*p ______
+        //   ...give stats on max. error ______
+
+        DoubleMatrix baselineRatio = bPerpDefo.div(bPerpTopo);
+
+        rhs = new DoubleMatrix(PolyUtils.polyFit2D(normalize(position.getColumn(0), minL, maxL),
+                normalize(position.getColumn(1), minP, maxP), baselineRatio, 1));
+
+        // TODO: polyfit will trigger a warning on e_hat larger than expected, for DInSAR e_hat has to be scaled!
+/*
+        ....for DInSAR baseline ratio estimation this error should be scaled
+        ....eg using jblas notation
+
+        double maxErrorRatio = e_hat.normmax() // max error
+        int maxErrorRatioIdx = e_hat.abs().argmax() // index of maximum error
+        double maxRelativeErrorRatio = 100.0 * maxErrorRatio / ratio.get(maxErrorRatioIdx)
+        logger.INFO("maximum error for l,p : {}, {}", x.get(maxErrorRatioIdx), y.get(maxErrorRatioIdx));
+        logger.INFO("Ratio = {}; estimate = {}; rel.error = ", ratio(maxErrorRatioIdx), y_hat(maxErrorRatioIdx), maxRelativeErrorRatio);
+
+
+        if (maxRelativeErrorRatio < 5.0) {
+            logger.INFO("max (relative) error: OK!");
+        } else {
+            logger.WARN("max error quite large");
+            logger.WARN("Error in deformation vector larger than 5% due to mismodeling baseline!");
+        }
+*/
+
+    }
+
+    public void applyDInSAR(final Window tileWindow, final ComplexDoubleMatrix defoData, final DoubleMatrix topoData) {
+
+        // Normalization factors for polynomial
+        double minL = dataWindow.linelo;
+        double maxL = dataWindow.linehi;
+        double minP = dataWindow.pixlo;
+        double maxP = dataWindow.pixhi;
+
+        DoubleMatrix azimuthAxisNormalize = DoubleMatrix.linspace((int) tileWindow.linelo, (int) tileWindow.linehi, defoData.rows);
+        normalize_inplace(azimuthAxisNormalize, minL, maxL);
+
+        DoubleMatrix rangeAxisNormalize = DoubleMatrix.linspace((int) tileWindow.pixlo, (int) tileWindow.pixhi, defoData.columns);
+        normalize_inplace(rangeAxisNormalize, minP, maxP);
+
+        DoubleMatrix ratio = PolyUtils.polyval(azimuthAxisNormalize, rangeAxisNormalize, rhs, PolyUtils.degreeFromCoefficients(rhs.length));
+
+        DoubleMatrix scaledTopo = topoData.mul(ratio);
+        ComplexDoubleMatrix ratioBaselinesCplx = new ComplexDoubleMatrix(MatrixFunctions.cos(scaledTopo), MatrixFunctions.sin(scaledTopo).neg());
+
+        // check whether any NaNs are coming from unwrapped data
+        for (int i = 0; i < defoData.length; i++) {
+            if (defoData.data[i] == Double.NaN) {
+                defoData.data[i] = 0.0d;
+            }
+        }
+        defoData.muli(ratioBaselinesCplx);
     }
 
     public static double[] linspace(final int lower, final int upper, final int size) {
