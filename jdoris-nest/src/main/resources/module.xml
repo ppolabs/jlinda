@@ -7,7 +7,7 @@
     <description>NEST-DORIS InSAR operators</description>
 
     <vendor>PPO.labs</vendor>
-    <copyright>(C) 2011 by PPO.labs</copyright>
+    <copyright>(C) 2012 by PPO.labs</copyright>
     <url>https://github.com/ppolabs/jdoris</url>
     <licenseUrl>http://www.gnu.org/licenses/gpl.html</licenseUrl>
     <funding>European Space Agency</funding>
@@ -82,6 +82,7 @@
 
         <action>
             <id>SubtRefDemOp</id>
+            <helpId>SubtRefDemOp</helpId>
             <class>org.jdoris.nest.dat.SubtRefDemAction</class>
             <text>Topo Phase Removal...</text>
             <shortDescr>Compute and subtract topographic phase</shortDescr>
@@ -101,7 +102,7 @@
             <id>DInSAROp</id>
             <class>org.jdoris.nest.dat.DInSARAction</class>
             <text>Differential InSAR</text>
-            <shortDescr>3 Pass DInSAR</shortDescr>
+            <shortDescr>Three-Pass differential InSAR</shortDescr>
             <placeAfter>CoherenceOp</placeAfter>
             <parent>products</parent>
         </action>
@@ -161,6 +162,7 @@
         <action>
             <id>SnaphuExport</id>
             <class>org.esa.nest.dat.actions.GraphAction</class>
+            <helpId>Unwrap</helpId>
             <text>Snaphu data export</text>
             <dialogTitle>Export data for SNAPHU unwrapping</dialogTitle>
             <graphFile>SnaphuExportGraph.xml</graphFile>
@@ -171,6 +173,7 @@
 
         <action>
             <id>SnaphuImportOp</id>
+            <helpId>Unwrap</helpId>
             <class>org.jdoris.nest.dat.snaphu.SnaphuImportAction</class>
             <text>Snaphu data import</text>
             <shortDescr>Import result of Snaphu to InSAR product</shortDescr>
