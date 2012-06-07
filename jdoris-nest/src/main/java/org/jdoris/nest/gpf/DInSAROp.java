@@ -19,12 +19,10 @@ import org.esa.nest.gpf.OperatorUtils;
 import org.esa.nest.gpf.ReaderUtils;
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
-import org.jblas.MatrixFunctions;
-import org.jdoris.core.Baseline;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
-import org.jdoris.core.utils.MathUtils;
-import org.jdoris.core.utils.PolyUtils;
+import org.jdoris.core.Window;
+import org.jdoris.core.geocode.DInSAR;
 import org.jdoris.nest.utils.BandUtilsDoris;
 import org.jdoris.nest.utils.CplxContainer;
 import org.jdoris.nest.utils.ProductContainer;
@@ -64,7 +62,7 @@ public class DInSAROp extends Operator {
 
 
     // source maps
-    private HashMap<Integer, CplxContainer> masterDefoMap = new HashMap<Integer, CplxContainer>();
+    private HashMap<Integer, CplxContainer> masterMap = new HashMap<Integer, CplxContainer>();
     private HashMap<Integer, CplxContainer> slaveDefoMap = new HashMap<Integer, CplxContainer>();
 
     private HashMap<Integer, CplxContainer> masterTopoMap = new HashMap<Integer, CplxContainer>();
@@ -72,6 +70,10 @@ public class DInSAROp extends Operator {
 
     // target maps
     private HashMap<String, ProductContainer> targetMap = new HashMap<String, ProductContainer>();
+
+    // dinsar core classes map
+    private DInSAR dinsar;
+
 
     // operator tags
     private static final boolean CREATE_VIRTUAL_BAND = true;
@@ -156,7 +158,7 @@ public class DInSAROp extends Operator {
         int[] slaveKeys = new int[2];
         int masterKey = 0;
 
-        for (Integer keyMaster : masterDefoMap.keySet()) {
+        for (Integer keyMaster : masterMap.keySet()) {
             masterKey = keyMaster;
             int i = 0;
             for (Integer keySlave : slaveDefoMap.keySet()) {
@@ -164,13 +166,18 @@ public class DInSAROp extends Operator {
             }
         }
 
-        master = masterDefoMap.get(masterKey);
+        master = masterMap.get(masterKey);
         slaveTopo = slaveTopoMap.get(slaveKeys[0]);
         slaveDefo = slaveDefoMap.get(slaveKeys[0]);
 
-        estimateBperpRatioPolynomial(master.metaData, master.orbit,
-                slaveDefo.metaData, slaveDefo.orbit,
-                slaveTopo.metaData, slaveTopo.orbit);
+        dinsar = new DInSAR(master.metaData, master.orbit, slaveDefo.metaData, slaveDefo.orbit, slaveTopo.metaData, slaveTopo.orbit);
+        dinsar.setDataWindow(new Window(0, sourceImageHeight, 0, sourceImageWidth));
+        dinsar.computeBperpRatios();
+
+//
+//        estimateBperpRatioPolynomial(master.metaData, master.orbit,
+//                slaveDefo.metaData, slaveDefo.orbit,
+//                slaveTopo.metaData, slaveTopo.orbit);
     }
 
     private void getSourceImageDimension() {
@@ -213,9 +220,9 @@ public class DInSAROp extends Operator {
 
     private void constructTargetMetadata() {
 
-        for (Integer keyMaster : masterDefoMap.keySet()) {
+        for (Integer keyMaster : masterMap.keySet()) {
 
-            CplxContainer master = masterDefoMap.get(keyMaster);
+            CplxContainer master = masterMap.get(keyMaster);
 
             int counter = 0;
 
@@ -261,8 +268,8 @@ public class DInSAROp extends Operator {
 
         /* organize metadata */
 
-        // put sourceMaster metadata into the masterDefoMap
-        metaMapPut(masterTag, masterMeta, defoProduct, masterDefoMap);
+        // put sourceMaster metadata into the masterMap
+        metaMapPut(masterTag, masterMeta, defoProduct, masterMap);
 
         // pug sourceSlave metadata into slaveDefoMap
         slaveRoot = defoProduct.getMetadataRoot().getElement(slaveMetadataRoot).getElements();
@@ -277,7 +284,7 @@ public class DInSAROp extends Operator {
 
         /* organize metadata */
 
-        // put sourceMaster metadata into the masterDefoMap
+        // put sourceMaster metadata into the masterMap
         metaMapPut(masterTag, masterMeta, topoProduct, masterTopoMap);
 
         // pug sourceSlave metadata into slaveDefoMap
@@ -331,54 +338,6 @@ public class DInSAROp extends Operator {
     }
 
 
-    private void estimateBperpRatioPolynomial(SLCImage masterMeta, Orbit masterOrbit,
-                                              SLCImage slaveDefoMeta, Orbit slaveDefoOrbit,
-                                              SLCImage topoSlaveMeta, Orbit topoSlaveOrbit) throws Exception {
-
-        // Normalization factors for polynomial
-        double minL = 0;
-        double maxL = sourceImageHeight;
-        double minP = 0;
-        double maxP = sourceImageWidth;
-
-        // Model perpendicular baseline for master and defo
-        // .....compute B on grid every 500 lines, 100 pixels
-        // .....in window for topoData/defoData
-        final int nPoints = 200;
-        final int[][] positionArray = MathUtils.distributePoints(nPoints, masterMeta.getCurrentWindow());
-        DoubleMatrix position = new DoubleMatrix(nPoints, 2);
-        for (int i = 0; i < nPoints; i++) {
-            position.put(i, 0, positionArray[i][0]);
-            position.put(i, 1, positionArray[i][1]);
-        }
-
-        // model baselines
-        Baseline topoBaseline = new Baseline();
-        topoBaseline.model(masterMeta, topoSlaveMeta, masterOrbit, topoSlaveOrbit);
-
-        Baseline defoBaseline = new Baseline();
-        defoBaseline.model(masterMeta, slaveDefoMeta, masterOrbit, slaveDefoOrbit);
-
-        DoubleMatrix bPerpTopo = new DoubleMatrix(nPoints);
-        DoubleMatrix bPerpDefo = new DoubleMatrix(nPoints);
-
-        for (int i = 0; i < nPoints; ++i) {
-            bPerpTopo.put(i, topoBaseline.getBperp(position.get(i, 0), position.get(i, 1), 0));
-            bPerpDefo.put(i, defoBaseline.getBperp(position.get(i, 0), position.get(i, 1), 0));
-        }
-
-        // model ratio bPerpDefo/bPerpTopo as linear polynomial
-        //   ...r(l,p) = a00 + a10*l + a01*p
-        //   ...give stats on max. error
-        DoubleMatrix baselineRatio = bPerpDefo.div(bPerpTopo);
-
-        DoubleMatrix normalizedAzimuthAxis = normalize(position.getColumn(0), minL, maxL);
-        DoubleMatrix normalizedRangeAxis = normalize(position.getColumn(1), minP, maxP);
-
-        baselineRatioPolynomial = new DoubleMatrix(PolyUtils.polyFit2D(normalizedAzimuthAxis, normalizedRangeAxis,
-                baselineRatio, DEGREE_BASELINE_RATIO_MODEL));
-    }
-
     private void checkUserInput() throws OperatorException {
         // check for the logic in input paramaters
         final MetadataElement masterMeta = AbstractMetadata.getAbstractedMetadata(defoProduct);
@@ -397,7 +356,7 @@ public class DInSAROp extends Operator {
             int yN = y0 + targetRectangle.height - 1;
             int x0 = targetRectangle.x;
             int xN = targetRectangle.x + targetRectangle.width - 1;
-//            final Window tileWindow = new Window(y0, yN, x0, xN);
+            final Window tileWindow = new Window(y0, yN, x0, xN);
 
             Band targetBand_I;
             Band targetBand_Q;
@@ -425,31 +384,7 @@ public class DInSAROp extends Operator {
                 }
             }
 
-            ComplexDoubleMatrix scaledComplexTopoPair = null;
-            if (baselineRatioPolynomial.length > 0) {
-
-                // normalize azimuth and range axis
-                DoubleMatrix azimuthAxisNormalized = DoubleMatrix.linspace(y0, yN, doubleTopoPair.rows);
-                azimuthAxisNormalized = normalizeDoubleMatrix(azimuthAxisNormalized);
-
-                DoubleMatrix rangeAxisNormalized = DoubleMatrix.linspace(x0, xN, doubleTopoPair.columns);
-                rangeAxisNormalized = normalizeDoubleMatrix(rangeAxisNormalized);
-
-                // evaluate scaling polynomial on tile grid
-                DoubleMatrix baselineRatio = PolyUtils.polyval(azimuthAxisNormalized, rangeAxisNormalized,
-                        baselineRatioPolynomial, PolyUtils.degreeFromCoefficients(baselineRatioPolynomial.length));
-
-                // scale topo pair
-                DoubleMatrix scaledDoubleTopoPair = doubleTopoPair.mul(baselineRatio);
-
-                // convert to complex
-                // NOTE(!!): sinus part in converting to complex numbers is .neg(), cheaper like this then with .conj()
-                scaledComplexTopoPair = new ComplexDoubleMatrix(MatrixFunctions.cos(scaledDoubleTopoPair), MatrixFunctions.sin(scaledDoubleTopoPair).neg());
-            }
-
-            // subtract scaledComplexTopoPair from complexDefoPair
-            // no .conj() since topoPair is converted to complex with .sin().neg()
-            complexDefoPair.muli(scaledComplexTopoPair);
+            dinsar.applyDInSAR(tileWindow, complexDefoPair, doubleTopoPair);
 
             /// commit complexDefoPair back to target ///
             targetBand_I = targetProduct.getBand(product.targetBandName_I);
@@ -466,29 +401,7 @@ public class DInSAROp extends Operator {
         }
     }
 
-    private DoubleMatrix normalizeDoubleMatrix(DoubleMatrix matrix) {
-        matrix.subi(0.5 * (1 + sourceImageWidth));
-        matrix.divi(0.25 * (sourceImageWidth - 1));
-        return matrix;
-    }
-
-    private DoubleMatrix normalize(DoubleMatrix in, double min, double max) {
-        DoubleMatrix out = in.dup();
-        out.subi(.5 * (min + max));
-        out.divi(.25 * (max - min));
-        return out;
-    }
-
-    /**
-     * The SPI is used to register this operator in the graph processing framework
-     * via the SPI configuration file
-     * {@code META-INF/services/org.esa.beam.framework.gpf.OperatorSpi}.
-     * This class may also serve as a factory for new operator instances.
-     *
-     * @see org.esa.beam.framework.gpf.OperatorSpi#createOperator()
-     * @see org.esa.beam.framework.gpf.OperatorSpi#createOperator(java.util.Map, java.util.Map)
-     */
-    public static class Spi extends OperatorSpi {
+   public static class Spi extends OperatorSpi {
 
         public Spi() {
             super(DInSAROp.class);
