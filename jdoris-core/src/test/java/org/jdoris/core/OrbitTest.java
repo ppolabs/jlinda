@@ -1,27 +1,23 @@
 package org.jdoris.core;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
 public class OrbitTest {
 
+    static Logger logger = (Logger) LoggerFactory.getLogger(OrbitTest.class.getName());
+
     private static final File resFile = new File("/d2/unit_test_data/test_cr.res");
 //    private static final File resFile = new File("test/test_cr.res");
 
     private static Orbit orbit_ACTUAL;
-
-    public static Logger initLog() {
-        String filePathToLog4JProperties = "log4j.properties";
-        Logger logger = Logger.getLogger(Orbit.class);
-        PropertyConfigurator.configure(filePathToLog4JProperties);
-        return logger;
-    }
 
     private static final SLCImage slcimage = new SLCImage();
 
@@ -92,7 +88,7 @@ public class OrbitTest {
     @BeforeClass
     public static void setUpTestData() throws Exception {
 
-        initLog();
+        logger.setLevel(Level.DEBUG);
 
         slcimage.parseResFile(resFile);
 
