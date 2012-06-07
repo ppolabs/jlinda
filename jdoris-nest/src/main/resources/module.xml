@@ -175,12 +175,18 @@
             <helpId>exportSnaphuProduct</helpId>
         </action>
 
-
         <action>
             <id>DInSAROp</id>
             <class>org.jdoris.nest.dat.DInSARAction</class>
             <text>Differential InSAR [DEMO]</text>
             <shortDescr>Three Pass DInSAR DEMO</shortDescr>
+            <parent>fringe_training</parent>
+        </action>
+        <action>
+            <id>Slant2HeightOp</id>
+            <class>org.jdoris.nest.dat.Slant2HeightAction</class>
+            <text>Slant to height conversion</text>
+            <shortDescr>Slant to height conversion....</shortDescr>
             <parent>fringe_training</parent>
         </action>
 
