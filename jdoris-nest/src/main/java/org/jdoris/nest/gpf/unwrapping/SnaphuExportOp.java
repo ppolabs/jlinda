@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @OperatorMetadata(alias = "SnaphuExport",
-        category = "Unwrapping",
+        category = "InSAR\\Unwrapping",
         description = "Export data and prepare conf file for SNAPHU processing",
         internal = false)
 public class SnaphuExportOp extends Operator {

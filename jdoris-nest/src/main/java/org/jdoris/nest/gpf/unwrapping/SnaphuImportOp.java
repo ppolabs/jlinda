@@ -15,7 +15,7 @@ import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
 
 @OperatorMetadata(alias = "SnaphuImport",
-        category = "Unwrapping",
+        category = "InSAR\\Unwrapping",
         description = "Ingest SNAPHU results into NEST InSAR product.",
         internal = false)
 public class SnaphuImportOp extends Operator {

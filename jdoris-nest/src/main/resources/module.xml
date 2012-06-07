@@ -37,14 +37,6 @@
 
     <extension point="beam-ui:actions">
 
-        <!-- action>
-            <id>coregistration</id>
-            <class>org.esa.nest.dat.actions.ComingSoonAction</class>
-            <text>Coregistration (coming soon)</text>
-            <placeBefore>products</placeBefore>
-            <parent>insar</parent>
-        </action -->
-
         <action>
             <id>products</id>
             <class>org.esa.beam.visat.actions.ActionGroup</class>
@@ -77,13 +69,6 @@
             <parent>insar</parent>
         </action>
 
-        <!--action>
-            <id>graphs</id>
-            <class>org.esa.nest.dat.actions.ComingSoonAction</class>
-            <text>Processing Graphs</text>
-            <parent>insar</parent>
-        </action-->
-
         <!--/// PRODUCTS ///-->
 
         <action>
@@ -113,11 +98,19 @@
         </action>
 
         <action>
-            <id>PhaseFilterOp</id>
-            <class>org.jdoris.nest.dat.PhaseFilterAction</class>
-            <text>Phase Filtering...</text>
-            <shortDescr>Phase filter stack of interferograms</shortDescr>
-            <!--<placeAfter>CoherenceOp</placeAfter>-->
+            <id>DInSAROp</id>
+            <class>org.jdoris.nest.dat.DInSARAction</class>
+            <text>Differential InSAR</text>
+            <shortDescr>3 Pass DInSAR</shortDescr>
+            <placeAfter>CoherenceOp</placeAfter>
+            <parent>products</parent>
+        </action>
+        <action>
+            <id>Slant2HeightOp</id>
+            <class>org.jdoris.nest.dat.Slant2HeightAction</class>
+            <text>Slant to height conversion</text>
+            <shortDescr>Slant to height conversion....</shortDescr>
+            <placeAfter>DInSAROp</placeAfter>
             <parent>products</parent>
         </action>
 
@@ -141,6 +134,15 @@
         </action>
 
         <action>
+            <id>PhaseFilterOp</id>
+            <class>org.jdoris.nest.dat.PhaseFilterAction</class>
+            <text>Phase Filtering...</text>
+            <shortDescr>Phase filter stack of interferograms</shortDescr>
+            <placeAfter>spectral_filtering</placeAfter>
+            <parent>insar_tools</parent>
+        </action>
+
+        <action>
             <id>InSARMaster</id>
             <helpId>InSARMaster</helpId>
             <class>org.jdoris.nest.dat.InSARMasterAction</class>
@@ -149,10 +151,20 @@
         </action>
 
         <!--/// UNWRAPPING ///-->
+        <!--<action>-->
+            <!--<id>SnaphuExportOp</id>-->
+            <!--<class>org.jdoris.nest.dat.snaphu.SnaphuExportAction</class>-->
+            <!--<text>Snaphu data export</text>-->
+            <!--<shortDescr>Export data and construct conf file for SNAPHU unwrapping</shortDescr>-->
+            <!--<parent>unwrapping</parent>-->
+        <!--</action>-->
         <action>
-            <id>SnaphuExportOp</id>
-            <class>org.jdoris.nest.dat.snaphu.SnaphuExportAction</class>
+            <id>SnaphuExport</id>
+            <class>org.esa.nest.dat.actions.GraphAction</class>
             <text>Snaphu data export</text>
+            <dialogTitle>Export data for SNAPHU unwrapping</dialogTitle>
+            <graphFile>SnaphuExportGraph.xml</graphFile>
+            <targetProductNameSuffix>_snaphu</targetProductNameSuffix>
             <shortDescr>Export data and construct conf file for SNAPHU unwrapping</shortDescr>
             <parent>unwrapping</parent>
         </action>
@@ -173,21 +185,6 @@
             <useAllFileFilter>true</useAllFileFilter>
             <shortDescr>Export Snaphu Product</shortDescr>
             <helpId>exportSnaphuProduct</helpId>
-        </action>
-
-        <action>
-            <id>DInSAROp</id>
-            <class>org.jdoris.nest.dat.DInSARAction</class>
-            <text>Differential InSAR [DEMO]</text>
-            <shortDescr>Three Pass DInSAR DEMO</shortDescr>
-            <parent>fringe_training</parent>
-        </action>
-        <action>
-            <id>Slant2HeightOp</id>
-            <class>org.jdoris.nest.dat.Slant2HeightAction</class>
-            <text>Slant to height conversion</text>
-            <shortDescr>Slant to height conversion....</shortDescr>
-            <parent>fringe_training</parent>
         </action>
 
     </extension>
