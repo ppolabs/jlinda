@@ -74,7 +74,7 @@
         <action>
             <id>InterferogramOp</id>
             <class>org.jdoris.nest.dat.InterferogramAction</class>
-            <text>Interferogram Formation...</text>
+            <text>Interferogram Formation</text>
             <shortDescr>Interferograms from stack with optional subtraction of 'flat earth' phase</shortDescr>
             <placeBefore>SubtRefDemOp</placeBefore>
             <parent>products</parent>
@@ -84,7 +84,7 @@
             <id>SubtRefDemOp</id>
             <helpId>SubtRefDemOp</helpId>
             <class>org.jdoris.nest.dat.SubtRefDemAction</class>
-            <text>Topo Phase Removal...</text>
+            <text>Topo Phase Removal</text>
             <shortDescr>Compute and subtract topographic phase</shortDescr>
             <placeBefore>CoherenceOp</placeBefore>
             <parent>products</parent>
@@ -93,7 +93,7 @@
         <action>
             <id>CoherenceOp</id>
             <class>org.jdoris.nest.dat.CoherenceAction</class>
-            <text>Coherence Estimation...</text>
+            <text>Coherence Estimation</text>
             <shortDescr>Estimate coherence of stack of images</shortDescr>
             <parent>products</parent>
         </action>
@@ -110,7 +110,7 @@
             <id>Slant2HeightOp</id>
             <class>org.jdoris.nest.dat.Slant2HeightAction</class>
             <text>Slant to height conversion</text>
-            <shortDescr>Slant to height conversion....</shortDescr>
+            <shortDescr>Slant to height conversion</shortDescr>
             <placeAfter>DInSAROp</placeAfter>
             <parent>products</parent>
         </action>
@@ -129,7 +129,7 @@
         <action>
             <id>AzimuthFilterOp</id>
             <class>org.jdoris.nest.dat.AzimuthFilterAction</class>
-            <text>Azimuth Filtering...</text>
+            <text>Azimuth Filtering</text>
             <shortDescr>Filter stack of SAR images in AZIMUTH direction</shortDescr>
             <parent>spectral_filtering</parent>
         </action>
@@ -137,7 +137,7 @@
         <action>
             <id>PhaseFilterOp</id>
             <class>org.jdoris.nest.dat.PhaseFilterAction</class>
-            <text>Phase Filtering...</text>
+            <text>Phase Filtering</text>
             <shortDescr>Phase filter stack of interferograms</shortDescr>
             <placeAfter>spectral_filtering</placeAfter>
             <parent>insar_tools</parent>
