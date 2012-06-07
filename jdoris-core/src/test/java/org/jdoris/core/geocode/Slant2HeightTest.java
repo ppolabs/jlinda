@@ -8,10 +8,7 @@ import org.jblas.DoubleMatrix;
 import org.jdoris.core.Orbit;
 import org.jdoris.core.SLCImage;
 import org.jdoris.core.Window;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -30,7 +27,7 @@ public class Slant2HeightTest {
 
     private static final int ORBIT_DEGREE = 3;
 
-    private static final double DELTA_02 = 1e-02;
+    private static final double DELTA_02 = 1e-02; // tolerance level of 0.01m
 
     private static DoubleMatrix unwrappedPhase;
     private static DoubleMatrix heights;
@@ -43,6 +40,7 @@ public class Slant2HeightTest {
     private static Orbit masterOrbit;
     private static Orbit slaveOrbit;
 
+    // TODO: refactor data reader into util classes of  jdoris-core.io package
 
     @Before
     public void setUp() throws Exception {
@@ -113,29 +111,52 @@ public class Slant2HeightTest {
         return out;
     }
 
-
     @Test
-    public void testSchwabisch() throws Exception {
+    public void testSchwabisch_Prototype() throws Exception {
 
         int nPoints = 200;
         int nHeights = 3;
         int degree1d = 2;
         int degree2d = 5;
 
+        DoubleMatrix inputTile = unwrappedPhase.dup();
+
         StopWatch watch = new StopWatch();
         watch.start();
-        Slant2Height slant = new Slant2Height(nPoints, nHeights, degree1d, degree2d, master, masterOrbit, slave, slaveOrbit);
-        slant.setTileWindow(tileWindow);
-        slant.setDataWindow(dataWindow);
-        slant.setTile(unwrappedPhase);
-        slant.schwabisch();
+        final Slant2Height tempSlant = new Slant2Height(nPoints, nHeights, degree1d, degree2d, master, masterOrbit, slave, slaveOrbit);
+        tempSlant.setTileWindow(tileWindow);
+        tempSlant.setDataWindow(dataWindow);
+        tempSlant.setTile(inputTile);
+        tempSlant.schwabischTotal();
         watch.stop();
 
-        logger.info("Total processing time: {} milli-seconds", watch.getTime());
-
-        Assert.assertArrayEquals(heights.toArray(), slant.getTile().toArray(), DELTA_02);
+        logger.info("Total processing time TOTAL: {} milli-seconds", watch.getTime());
+        Assert.assertArrayEquals(heights.toArray(), tempSlant.getTile().toArray(), DELTA_02);
 
     }
 
+    @Test
+    public void testSchwabisch() throws Exception{
+
+        int nPoints = 200;
+        int nHeights = 3;
+        int degree1d = 2;
+        int degree2d = 5;
+
+        DoubleMatrix inputTile = unwrappedPhase.dup();
+
+        StopWatch watch = new StopWatch();
+
+        watch.start();
+        final Slant2Height slant = new Slant2Height(nPoints, nHeights, degree1d, degree2d, master, masterOrbit, slave, slaveOrbit);
+        slant.setDataWindow(dataWindow);
+        slant.schwabisch();
+        slant.applySchwabisch(tileWindow, inputTile);
+        watch.stop();
+        logger.info("Total processing time for Slant2Height Schwabisch method: {} milli-seconds", watch.getTime());
+
+        Assert.assertArrayEquals(heights.toArray(), inputTile.toArray(), DELTA_02);
+
+    }
 
 }
