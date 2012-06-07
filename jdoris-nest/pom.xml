@@ -76,11 +76,11 @@
             <!--</plugin>-->
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>2.5</version>
+                <version>2.4.2</version>
                 <!-- FOR JDORIS GRAPHS -->
                 <executions>
                     <execution>
-                    <id>copy-resources</id>
+                    <id>copy-internal-graphs</id>
                         <phase>validate</phase>
                         <goals>
                             <goal>copy-resources</goal>
@@ -95,6 +95,26 @@
                                     <filtering>false</filtering>
                                     <includes>
                                         <include>**/*.xml</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                    <id>copy-insar-user-graphs</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <overwrite>true</overwrite>
+                            <outputDirectory>../../nest-src/main/bin/common/graphs/InSAR Graphs</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/graphs</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>**/Snaphu*.xml</include>
                                     </includes>
                                 </resource>
                             </resources>
