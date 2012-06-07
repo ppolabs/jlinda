@@ -112,7 +112,7 @@ public class DInSARTest {
 
         StopWatch watch = new StopWatch();
         watch.start();
-        DInSAR dinsar = new DInSAR(masterMeta, topoSlaveMeta, defoSlaveMeta, masterOrbit, defoSlaveOrbit, topoSlaveOrbit);
+        DInSAR dinsar = new DInSAR(masterMeta, masterOrbit, defoSlaveMeta, defoSlaveOrbit, topoSlaveMeta, topoSlaveOrbit);
         dinsar.setDataWindow(totalDataWindow);
         dinsar.setTileWindow(tileWindow);
         dinsar.setTopoData(topoPhase);
@@ -141,7 +141,7 @@ public class DInSARTest {
 
         StopWatch watch = new StopWatch();
         watch.start();
-        DInSAR dinsar = new DInSAR(masterMeta, topoSlaveMeta, defoSlaveMeta, masterOrbit, defoSlaveOrbit, topoSlaveOrbit);
+        DInSAR dinsar = new DInSAR(masterMeta, masterOrbit, defoSlaveMeta, defoSlaveOrbit, topoSlaveMeta, topoSlaveOrbit);
         dinsar.setDataWindow(totalDataWindow);
         dinsar.computeBperpRatios();
 

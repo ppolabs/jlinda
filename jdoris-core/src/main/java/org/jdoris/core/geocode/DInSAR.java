@@ -68,13 +68,17 @@ public class DInSAR {
 
     private DoubleMatrix rhs;
 
-    public DInSAR(SLCImage masterMeta, SLCImage slaveDefoMeta, SLCImage topoSlaveMeta,
-                  Orbit masterOrbit, Orbit slaveDefoOrbit, Orbit slaveTopoOrbit) {
+    public DInSAR(SLCImage masterMeta, Orbit masterOrbit,
+                  SLCImage slaveDefoMeta, Orbit slaveDefoOrbit,
+                  SLCImage topoSlaveMeta, Orbit slaveTopoOrbit) {
+
         this.masterMeta = masterMeta;
-        this.slaveDefoMeta = slaveDefoMeta;
-        this.topoSlaveMeta = topoSlaveMeta;
         this.masterOrbit = masterOrbit;
+
+        this.slaveDefoMeta = slaveDefoMeta;
         this.slaveDefoOrbit = slaveDefoOrbit;
+
+        this.topoSlaveMeta = topoSlaveMeta;
         this.slaveTopoOrbit = slaveTopoOrbit;
 
         dataWindow = masterMeta.getCurrentWindow();
