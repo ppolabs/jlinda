@@ -106,7 +106,9 @@ public class DInSARTest {
     }
 
     @Test
-    public void testDinsar() throws Exception {
+    public void testDinsarTotal() throws Exception {
+
+        ComplexDoubleMatrix defoData = cplxIfg.dup();
 
         StopWatch watch = new StopWatch();
         watch.start();
@@ -114,7 +116,7 @@ public class DInSARTest {
         dinsar.setDataWindow(totalDataWindow);
         dinsar.setTileWindow(tileWindow);
         dinsar.setTopoData(topoPhase);
-        dinsar.setDefoData(cplxIfg);
+        dinsar.setDefoData(defoData);
         dinsar.dinsar();
         watch.stop();
 
@@ -122,6 +124,34 @@ public class DInSARTest {
 
         // subtracted expected minus computed and convert to deformation : check on +/- 0.001m level
         ComplexDoubleMatrix expected = SarUtils.computeIfg(defoCplxIfg, dinsar.getDefoData());
+
+        int numOfElements = expected.length;
+
+        double[] defoDelta = new double[numOfElements];
+        for (int i = 0; i < numOfElements; i++) {
+            defoDelta[i] = Math.atan2(expected.getImag(i), expected.getReal(i)) * PHASE2DEFO;
+        }
+        Assert.assertArrayEquals(DoubleMatrix.zeros(defoCplxIfg.length).toArray(), defoDelta, DELTA_02);
+    }
+
+    @Test
+    public void testDinsar() throws Exception {
+
+        ComplexDoubleMatrix defoData = cplxIfg.dup();
+
+        StopWatch watch = new StopWatch();
+        watch.start();
+        DInSAR dinsar = new DInSAR(masterMeta, topoSlaveMeta, defoSlaveMeta, masterOrbit, defoSlaveOrbit, topoSlaveOrbit);
+        dinsar.setDataWindow(totalDataWindow);
+        dinsar.computeBperpRatios();
+
+        dinsar.applyDInSAR(tileWindow, defoData, topoPhase);
+        watch.stop();
+
+        logger.info("Total processing time: {} milli-seconds", watch.getTime());
+
+        // subtracted expected minus computed and convert to deformation : check on +/- 0.001m level
+        ComplexDoubleMatrix expected = SarUtils.computeIfg(defoCplxIfg, defoData);
 
         int numOfElements = expected.length;
 
