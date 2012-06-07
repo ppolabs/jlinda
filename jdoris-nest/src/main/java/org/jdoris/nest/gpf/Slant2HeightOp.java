@@ -78,15 +78,19 @@ public class Slant2HeightOp extends Operator {
     // target maps
     private HashMap<String, ProductContainer> targetMap = new HashMap<String, ProductContainer>();
 
+    // classes map: for multi-band support
+    private HashMap<String, Slant2Height> slant2HeightMap = new HashMap<String, Slant2Height>();
+
     // operator tags
     private static final String PRODUCT_NAME = "slant2h";
+
     public static final String PRODUCT_TAG = "slant2h";
 
     private int sourceImageWidth;
     private int sourceImageHeight;
 
     private Band referenceBand = null;
-    private Slant2Height slant2Height;
+//    private Slant2Height slant2Height;
 
 
     @Override
@@ -118,9 +122,12 @@ public class Slant2HeightOp extends Operator {
             for (Integer keySlave : slaveMap.keySet()) {
                 CplxContainer slave = slaveMap.get(keySlave);
 
-                slant2Height = new Slant2Height(nPoints, nHeights, degree1D, degree2D, master.metaData, master.orbit, slave.metaData, slave.orbit);
+                Slant2Height slant2Height = new Slant2Height(nPoints, nHeights, degree1D, degree2D, master.metaData, master.orbit, slave.metaData, slave.orbit);
                 slant2Height.setDataWindow(new Window(0, sourceImageHeight, 0, sourceImageWidth));
                 slant2Height.schwabisch();
+
+                slant2HeightMap.put(slave.date, slant2Height);
+
             }
         }
 
@@ -156,12 +163,15 @@ public class Slant2HeightOp extends Operator {
     }
 
     private void sortOutSourceProducts() {
+
+        // check whether there are absolute phases bands in the product
+        Band tempBand = null;
         for (Band band : sourceProduct.getBands()) {
             if (band.getUnit().equals(Unit.ABS_PHASE)) {
-                referenceBand = band;
+                tempBand = band;
             }
         }
-        if (referenceBand == null) {
+        if (tempBand == null) {
             throw new OperatorException("Slant2HeightOp requires minimum one 'unwrapped' phase band");
         }
     }
@@ -278,6 +288,8 @@ public class Slant2HeightOp extends Operator {
                     Tile tileRealMaster = getSourceTile(product.sourceMaster.realBand, rect);
                     final DoubleMatrix dataMaster = TileUtilsDoris.pullDoubleMatrix(tileRealMaster);// check out from source
 
+                    // get class for this slave from the map
+                    Slant2Height slant2Height = slant2HeightMap.get(product.sourceSlave.date);
                     slant2Height.applySchwabisch(tileWindow, dataMaster);
 
                     TileUtilsDoris.pushDoubleMatrix(dataMaster, targetTile, targetTile.getRectangle());
