@@ -18,5 +18,6 @@
     <mapID target="Unwrap" url="operators/Unwrap.html"/>
     <mapID target="SnaphuExportOp" url="operators/Unwrap.html"/>
     <mapID target="SnaphuImportOp" url="operators/Unwrap.html"/>
+    <mapID target="InSARMaster" url="operators/InSARMaster.html"/>
 
 </map>

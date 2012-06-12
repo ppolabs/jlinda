@@ -148,7 +148,8 @@
             <helpId>InSARMaster</helpId>
             <class>org.jdoris.nest.dat.InSARMasterAction</class>
             <parent>insar</parent>
-            <text>Find Optimal Master</text>
+            <text>InSAR Stack Overview</text>
+            <separatorAfter>true</separatorAfter>
         </action>
 
         <!--/// UNWRAPPING ///-->
