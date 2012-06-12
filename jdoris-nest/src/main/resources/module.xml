@@ -109,8 +109,8 @@
         <action>
             <id>Slant2HeightOp</id>
             <class>org.jdoris.nest.dat.Slant2HeightAction</class>
-            <text>Slant to height conversion</text>
-            <shortDescr>Slant to height conversion</shortDescr>
+            <text>Phase to height conversion</text>
+            <shortDescr>Phase to height conversion</shortDescr>
             <placeAfter>DInSAROp</placeAfter>
             <parent>products</parent>
         </action>
