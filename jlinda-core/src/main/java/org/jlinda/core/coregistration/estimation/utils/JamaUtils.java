@@ -1,4 +1,4 @@
-package org.jdoris.core.coregistration.estimation.utils;
+package org.jlinda.core.coregistration.estimation.utils;
 
 import Jama.Matrix;
 

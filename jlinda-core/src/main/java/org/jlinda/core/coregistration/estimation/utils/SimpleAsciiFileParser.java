@@ -1,4 +1,4 @@
-package org.jdoris.core.coregistration.estimation.utils;
+package org.jlinda.core.coregistration.estimation.utils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;

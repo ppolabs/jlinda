@@ -1,4 +1,4 @@
-package org.jdoris.core.coregistration.estimation;
+package org.jlinda.core.coregistration.estimation;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -12,8 +12,8 @@ import org.ejml.data.DenseMatrix64F;
 import org.ejml.data.RowD1Matrix64F;
 import org.ejml.ops.CommonOps;
 import org.ejml.ops.MatrixFeatures;
-import org.jdoris.core.coregistration.estimation.utils.SimpleAsciiFileParser;
-import org.jdoris.core.utils.PolyUtils;
+import org.jlinda.core.coregistration.estimation.utils.SimpleAsciiFileParser;
+import org.jlinda.core.utils.PolyUtils;
 import org.perf4j.StopWatch;
 import org.slf4j.LoggerFactory;
 

@@ -1,32 +1,27 @@
-package org.jdoris.core.coregistration.estimation;
+package org.jlinda.core.coregistration.estimation;
 
+import Jama.Matrix;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import org.jblas.DoubleMatrix;
-import org.jblas.Solve;
-import org.jdoris.core.coregistration.estimation.utils.SimpleAsciiFileParser;
-import org.jdoris.core.utils.PolyUtils;
+import org.jlinda.core.coregistration.estimation.utils.JamaUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.jlinda.core.coregistration.estimation.utils.SimpleAsciiFileParser;
+import org.jlinda.core.utils.PolyUtils;
 import org.perf4j.StopWatch;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.jblas.MatrixFunctions.abs;
-import static org.jblas.MatrixFunctions.pow;
 
+public class TestEstimation_JAMA {
 
-public class TestEstimation_DoubleMatrix {
-
-    private static final Logger logger = (Logger) LoggerFactory.getLogger(TestEstimation_DoubleMatrix.class);
+    private static final Logger logger = (Logger) LoggerFactory.getLogger(TestEstimation_JAMA.class);
 
     public static void main(String[] args) throws IOException {
-
-        StopWatch clockFull = new StopWatch();
-        clockFull.start();
 
         logger.setLevel(Level.INFO);
         logger.trace("Start Estimation");
@@ -39,22 +34,20 @@ public class TestEstimation_DoubleMatrix {
 //        SimpleAsciiFileParser fileParser = new SimpleAsciiFileParser("/d1/list.ttt.txt");
 //        String inputFile = "CPM_Data.linear_weight.csv";
         String inputFile = "CPM_Data.none_weight.BIG.csv";
-//        String inputFile = "cpm_input";
         String inputDir = "/d2/test.processing/unit_tests/etna.volcano/process/crop/01486_21159.cpm/";
-
 
         /** define input parameters */
         // only degree
         int degree = 2;
-        String weight = "linear";
-//        String weight = "none";
+//        String weight = "linear";
+        String weight = "none";
 
         int numLines = 10000;
 
         boolean DONE = false;
         int ITERATION = 0;
         int MAX_ITERATIONS = 10;
-        final double COH_TRESHOLD = 0.35d;
+        final double COH_TRESHOLD = 0.3d;
 
         final double CRIT_VALUE = 1.97d;
 
@@ -94,8 +87,8 @@ public class TestEstimation_DoubleMatrix {
             double coherence = entry[5];
             if (coherence > COH_TRESHOLD) {
                 index.add((int) entry[0]);
-                lines.add(PolyUtils.normalize2(entry[1], minL, maxL));
-                pixels.add(PolyUtils.normalize2(entry[2], minP, maxP));
+                lines.add((double) PolyUtils.normalize2(entry[1], minL, maxL));
+                pixels.add((double) PolyUtils.normalize2(entry[2], minP, maxP));
                 yL.add(entry[3]);
                 yP.add(entry[4]);
                 coh.add(coherence);
@@ -133,73 +126,88 @@ public class TestEstimation_DoubleMatrix {
             }
 
 
-            DoubleMatrix A = SystemOfEquations.constructDesignMatrix(new DoubleMatrix(lines.toArray()), new DoubleMatrix(pixels.toArray()), degree);
-            final DoubleMatrix A_transpose = A.transpose();
+            Matrix A = new Matrix(SystemOfEquations.constructDesignMatrix_loop(lines.toArray(), pixels.toArray(), degree));
+            Matrix A_transpose = A.transpose();
             logger.info("TIME FOR SETUP of SYSTEM : {}", stopWatch.lap("setup"));
 
 
-            DoubleMatrix Qy_1; // vector
+            Matrix Qy_1; // vector
             switch (weight) {
                 case "linear":
                     logger.debug("Using sqrt(coherence) as weights");
-                    Qy_1 = new DoubleMatrix(coh.toArray());
+                    Qy_1 = new Matrix(coh.toArray(), coh.size());
                     // Normalize weights to avoid influence on estimated var.factor
                     logger.debug("Normalizing covariance matrix for LS estimation");
-                    Qy_1.divi(Qy_1.mean()); // normalize vector
+//                    Qy_1.times(JamaUtils.sum(Qy_1) / Qy_1.getRowDimension());
+                    JamaUtils.normalize(Qy_1);
                     break;
                 case "quadratic":
                     logger.debug("Using coherence as weights.");
-                    Qy_1 = new DoubleMatrix(coh.toArray());
-                    Qy_1.muli(Qy_1);
+                    Qy_1 = new Matrix(coh.toArray(), coh.size());
+                    Qy_1.times(Qy_1);
                     // Normalize weights to avoid influence on estimated var.factor
                     logger.debug("Normalizing covariance matrix for LS estimation.");
-                    Qy_1.divi(Qy_1.mean()); // normalize vector
+//                    Qy_1.times(JamaUtils.sum(Qy_1) / Qy_1.getRowDimension());
+                    JamaUtils.normalize(Qy_1);
                     break;
                 case "bamler":
                     // TODO: see Bamler papers IGARSS 2000 and 2004
                     logger.warn("Bamler weighting method NOT IMPLEMENTED, falling back to None.");
-                    Qy_1 = DoubleMatrix.ones(numObs);
+                    Qy_1 = JamaUtils.ones(numObs, 1);
                     break;
                 case "none":
-                    Qy_1 = DoubleMatrix.ones(numObs);
+                    Qy_1 = JamaUtils.ones(numObs, 1);
                     break;
                 default:
-                    Qy_1 = DoubleMatrix.ones(numObs);
+                    Qy_1 = JamaUtils.ones(numObs, 1);
                     break;
             }
 
             logger.info("TIME FOR SETUP of VC vector: {}", stopWatch.lap("VC vector"));
 
-//            final DoubleMatrix Qy_1_diag = DoubleMatrix.diag(Qy_1);
+//            final Matrix Qy_1_diag = Matrix.diag(Qy_1);
+
+//            Matrix Qy_1_diag = new Matrix(numObs, numObs);
+//            for (int i = 0; i < numObs; i++) {
+//                Qy_1_diag.set(i, i, Qy_1.get(i, 0));
+//            }
 //            logger.info("TIME FOR SETUP of VC diag matris: {}", stopWatch.lap("diag VC matrix"));
 
 
             /** temp matrices */
-            final DoubleMatrix yL_matrix = new DoubleMatrix(yL.toArray());
-            final DoubleMatrix yP_matrix = new DoubleMatrix(yP.toArray());
+            final Matrix yL_matrix = new Matrix(yL.toArray(), yL.size());
+            final Matrix yP_matrix = new Matrix(yP.toArray(), yP.size());
             logger.info("TIME FOR SETUP of TEMP MATRICES: {}", stopWatch.lap("Temp matrices"));
 
             /** normal matrix */
-            final DoubleMatrix N = A_transpose.mmul(diagxmat(Qy_1, A));
-            DoubleMatrix Qx_hat = N.dup(); // store N into Qx_hat
+            final Matrix N = A_transpose.times(diagTimesMat_unsafe(Qy_1, A));
+            Matrix Qx_hat = N.copy(); // store N into Qx_hat
             logger.info("TIME FOR SETUP of NORMAL MATRIX: {}", stopWatch.lap("Normal matrix"));
 
             /** right hand sides */
-            DoubleMatrix rhsL = A_transpose.mmul(diagxmat(Qy_1, yL_matrix));
-            DoubleMatrix rhsP = A_transpose.mmul(diagxmat(Qy_1, yP_matrix));
+//            DoubleMatrix rhsL = A_transpose.mmul(Qy_1_diag.mmul(yL_matrix));
+            Matrix rhsL = A_transpose.times(diagTimesMat_unsafe(Qy_1, yL_matrix));
+            Matrix rhsP = A_transpose.times(diagTimesMat_unsafe(Qy_1, yP_matrix));
             logger.info("TIME FOR SETUP of RightHand Side: {}", stopWatch.lap("Right-hand-side"));
 
             /** compute solution */
-            rhsL = Solve.solvePositive(Qx_hat, rhsL);
-            rhsP = Solve.solvePositive(Qx_hat, rhsP);
+            rhsL = Qx_hat.solve(rhsL);
+//            rhsL = Solve.solvePositive(Qx_hat, rhsL);
+//            rhsP = Solve.solvePositive(Qx_hat, rhsP);
+            rhsP = Qx_hat.solve(rhsP);
             logger.info("TIME FOR SOLVING of System: {}", stopWatch.lap("Solving System"));
 
             /** inverting of Qx_hat for stability check */
-            Qx_hat = Solve.solvePositive(Qx_hat, DoubleMatrix.eye(Qx_hat.getRows())); // store inverted N back into Qx_hat
+            Qx_hat = Qx_hat.inverse();
+//            Qx_hat = Qx_hat.solve(Matrix.identity(numUnk, numUnk));
+//            Qx_hat = Solve.solvePositive(Qx_hat, DoubleMatrix.eye(Qx_hat.getRows())); // store inverted N back into Qx_hat
             logger.info("TIME FOR INVERSION OF N: {}", stopWatch.lap("Inversion of N"));
 
             /** test inversion and check stability: max(abs([N*inv(N) - E)) ?= 0 */
-            double maxDeviation = (N.mmul(Qx_hat).sub(DoubleMatrix.eye(Qx_hat.getRows()))).normmax();
+//            double maxDeviation = abs(N.mmul(Qx_hat).sub(DoubleMatrix.eye(Qx_hat.getRows()))).max();
+            double maxDeviation = JamaUtils.getMax(N.times(Qx_hat).minus(Matrix.identity(numUnk, numUnk)));
+            double minDeviation = JamaUtils.getMin(N.times(Qx_hat).minus(Matrix.identity(numUnk, numUnk)));
+            maxDeviation = Math.max(maxDeviation, minDeviation);
             if (maxDeviation > .01) {
                 logger.error("COREGPM: maximum deviation N*inv(N) from unity = {}. This is larger than 0.01", maxDeviation);
                 throw new IllegalStateException("COREGPM: maximum deviation N*inv(N) from unity)");
@@ -208,35 +216,38 @@ public class TestEstimation_DoubleMatrix {
             }
             logger.info("TIME FOR STABILITY CHECK: {}", stopWatch.lap("Stability Check"));
 
-            logger.debug("Coeffs in Azimuth direction: {}", rhsL.toString());
-            logger.debug("Coeffs in Range direction: {}", rhsP.toString());
+            logger.debug("Coeffs in Azimuth direction: {}", ArrayUtils.toString(rhsL.getArray()));
+            logger.debug("Coeffs in Range direction: {}", ArrayUtils.toString(rhsP.getArray()));
             logger.debug("Max Deviation: {}", maxDeviation);
 
             /** some other stuff if the scale is okay */
-            DoubleMatrix Qy_hat = A.mmul(Qx_hat.mmul(A_transpose));
-            DoubleMatrix Qe_hat = Qy_hat.mul(-1f);
-            Qe_hat.addi(DoubleMatrix.diag(DoubleMatrix.ones(numObs).div(Qy_1)));
+            Matrix Qy_hat = A.times(Qx_hat.times(A_transpose));
+            Matrix Qe_hat = Qy_hat.uminus();
+            logger.debug("Qe_hat(1,1): {} ", Qe_hat.get(1, 1));
 
-            DoubleMatrix yL_hat = A.mmul(rhsL);
-            DoubleMatrix eL_hat = yL_matrix.sub(yL_hat);
+//            Qe_hat.addi(FloatMatrix.diag(FloatMatrix.ones(Qy_1.length).div(Qy_1)));
 
-            DoubleMatrix yP_hat = A.mmul(rhsP);
-            DoubleMatrix eP_hat = yP_matrix.sub(yP_hat);
+//            Matrix diagonalTemp = (new Matrix(numObs, 1, 1)).arrayRightDivide(Qy_1);
+            for (int i = 0; i < numObs; i++) {
+                Qe_hat.set(i, i, Qe_hat.get(i, i) + 1 / Qy_1.get(i, 0));
+            }
+
+            Matrix yL_hat = A.times(rhsL);
+            Matrix eL_hat = yL_matrix.minus(yL_hat);
+
+            Matrix yP_hat = A.times(rhsP);
+            Matrix eP_hat = yP_matrix.minus(yP_hat);
 //            scale diagonal
             logger.info("TIME FOR DATA preparation for TESTING: {}", stopWatch.lap("Testing Setup"));
 
             /** overal model test (variance factor) */
-            double overAllModelTest_L;
-            double overAllModelTest_P;
+            double overAllModelTest_L = 0;
+            double overAllModelTest_P = 0;
 
-/*
-        for (int i = 0; i < numObs; i++) {
-            overAllModelTest_L += Math.pow(eL_hat.get(i), 2) * Qy_1.get(i);
-            overAllModelTest_P += Math.pow(eP_hat.get(i), 2) * Qy_1.get(i);
-        }
-*/
-            overAllModelTest_L = (pow(eL_hat, 2).mul(Qy_1)).sum();
-            overAllModelTest_P = (pow(eP_hat, 2).mul(Qy_1)).sum();
+            for (int i = 0; i < numObs; i++) {
+                overAllModelTest_L += Math.pow(eL_hat.get(i, 0), 2) * Qy_1.get(i, 0);
+                overAllModelTest_P += Math.pow(eP_hat.get(i, 0), 2) * Qy_1.get(i, 0);
+            }
             logger.info("TIME FOR OMT: {}", stopWatch.lap("OMT"));
 
             /** WHAT IS THE REFERENCE FOR THESE CONSTANT VALUES???? */
@@ -253,29 +264,35 @@ public class TestEstimation_DoubleMatrix {
             /** Assumed Qy diag */
 
             /** initialize */
-            DoubleMatrix wTest_L = new DoubleMatrix(numObs);
-            DoubleMatrix wTest_P = new DoubleMatrix(numObs);
+            Matrix wTest_L = new Matrix(numObs, 1);
+            Matrix wTest_P = new Matrix(numObs, 1);
 
             for (int i = 0; i < numObs; i++) {
-                wTest_L.put(i, eL_hat.get(i) / (Math.sqrt(Qe_hat.get(i, i)) * SIGMA_L));
-                wTest_P.put(i, eP_hat.get(i) / (Math.sqrt(Qe_hat.get(i, i)) * SIGMA_P));
+                wTest_L.set(i, 0, eL_hat.get(i, 0) / (Math.sqrt(Qe_hat.get(i, i)) * SIGMA_L));
+                wTest_P.set(i, 0, eP_hat.get(i, 0) / (Math.sqrt(Qe_hat.get(i, i)) * SIGMA_P));
             }
 
             /** find maxima's */
             // azimuth
-            winL = abs(wTest_L).argmax();
-            double maxWinL = abs(wTest_L).get(winL);
+            double[] winL_Array = JamaUtils.getAbsArgMax(wTest_L);
+            winL = (int) winL_Array[1];
+            double maxWinL = winL_Array[0];
             logger.debug("maximum wtest statistic azimuth = {} for window number: {} ", maxWinL, index.get(winL));
 
             // range
-            winP = abs(wTest_P).argmax();
-            double maxWinP = abs(wTest_P).get(winP);
+            double[] winP_Array = JamaUtils.getAbsArgMax(wTest_P);
+            winP = (int) winP_Array[1];
+            double maxWinP = winP_Array[0];
             logger.debug("maximum wtest statistic range = {} for window number: {} ", maxWinP, index.get(winP));
 
             /** use summed wTest in Azimuth and Range direction for outlier detection */
-            DoubleMatrix wTestSum = pow(wTest_L, 2).add(pow(wTest_P, 2));
-            maxWSum_idx = abs(wTestSum).argmax();
-            double maxWSum = abs(wTestSum).get(maxWSum_idx);
+            Matrix wTestSum = new Matrix(numObs, 1);
+            for (int i = 0; i < numObs; i++) {
+                wTestSum.set(i, 0, Math.pow(wTest_L.get(i, 0), 2) + Math.pow(wTest_P.get(i, 0), 2));
+            }
+            double[] maxWSum_idx_Array = JamaUtils.getAbsArgMax(wTestSum);
+            maxWSum_idx = (int) maxWSum_idx_Array[1];
+            double maxWSum = maxWSum_idx_Array[0];
             logger.info("Detected outlier: summed sqr.wtest = {}; observation: {}", maxWSum, index.get(maxWSum_idx));
 
             /** Test if we are done yet */
@@ -294,10 +311,6 @@ public class TestEstimation_DoubleMatrix {
 
             if (ITERATION >= MAX_ITERATIONS) {
                 logger.info("max. number of iterations reached (exiting loop).");
-
-                clockFull.stop();
-                logger.info("Time for {} iterations {}: ", ITERATION, clockFull.getElapsedTime());
-
                 DONE = true; // we reached max. (or no max_iter specified)
             }
 
@@ -335,20 +348,30 @@ public class TestEstimation_DoubleMatrix {
      * C=diagxmat(vec,B) C=diag(vec) * B
      */
 
-    public static DoubleMatrix diagxmat(final DoubleMatrix diag, final DoubleMatrix B) {
+    public static Matrix diagTimesMat_unsafe(final Matrix diag, final Matrix B) {
 
-        if (!diag.isVector())
-            logger.error("diagXMat: sizes A,B: diag is NOT vector.");
+        // no check on dimensions
+        if (!JamaUtils.isColumnVector(diag) || !JamaUtils.isRowVector(diag)) {
+            logger.error("diagxmat: diag is NOT vector");
+        }
 
-        DoubleMatrix result = B.dup();
+        Matrix result = B.copy();
 
-        for (int i = 0; i < result.getRows(); i++) {
-            for (int j = 0; j < result.getColumns(); j++) {
-                result.put(i, j, result.get(i, j) * diag.get(i));
+        if (JamaUtils.isColumnVector(diag)) {
+            for (int i = 0; i < result.getRowDimension(); i++) {
+                for (int j = 0; j < result.getColumnDimension(); j++) {
+                    result.set(i, j, result.get(i, j) * diag.get(i, 0));
+                }
+            }
+        }
+        if (JamaUtils.isRowVector(diag)) {
+            for (int i = 0; i < result.getRowDimension(); i++) {
+                for (int j = 0; j < result.getColumnDimension(); j++) {
+                    result.set(i, j, result.get(i, j) * diag.get(0, i));
+                }
             }
         }
         return result;
-
     } // END diagxmat
 
 

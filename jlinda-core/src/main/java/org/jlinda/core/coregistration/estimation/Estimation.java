@@ -1,12 +1,12 @@
-package org.jdoris.core.coregistration.estimation;
+package org.jlinda.core.coregistration.estimation;
 
 import org.jblas.Decompose;
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 import org.jblas.Solve;
-import org.jdoris.core.coregistration.estimation.utils.SimpleAsciiFileParser;
-import org.jdoris.core.utils.LinearAlgebraUtils;
-import org.jdoris.core.utils.PolyUtils;
+import org.jlinda.core.coregistration.estimation.utils.SimpleAsciiFileParser;
+import org.jlinda.core.utils.LinearAlgebraUtils;
+import org.jlinda.core.utils.PolyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

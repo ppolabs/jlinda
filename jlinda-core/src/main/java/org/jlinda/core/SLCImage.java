@@ -336,10 +336,21 @@ public final class SLCImage {
         return approxXYZCentreOriginal;
     }
 
+    public void setCurrentWindow(final Window window) {
+        this.currentWindow = window;
+    }
+
     public Window getCurrentWindow() {
         return currentWindow;
     }
 
+    public Window getOriginalWindow() {
+        return originalWindow;
+    }
+
+    public void setOriginalWindow(final Window window) {
+        this.originalWindow = window;
+    }
     public double getPRF() {
         return PRF;
     }
@@ -424,8 +435,19 @@ public final class SLCImage {
         this.ovsRg = ovsRg;
     }
 
+    public void setSlaveMaterOffset() {
+        this.slaveMasterOffsets = new SlaveWindow();
+    }
+
     public SlaveWindow getSlaveMaterOffset() {
-        return new SlaveWindow();
+        return slaveMasterOffsets;
+    }
+
+    public void setSlaveMasterOffset(double ll00, double pp00, double ll0N, double pp0N, double llN0,
+                                     double ppN0, double llNN, double ppNN) {
+
+        this.slaveMasterOffsets = new SlaveWindow(ll00, pp00, ll0N, pp0N, llN0, ppN0, llNN, ppNN);
+
     }
 
     public class Doppler {

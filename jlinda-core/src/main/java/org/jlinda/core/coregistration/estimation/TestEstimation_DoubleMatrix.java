@@ -1,4 +1,4 @@
-package org.jdoris.core.coregistration.estimation;
+package org.jlinda.core.coregistration.estimation;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -6,28 +6,25 @@ import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import org.ejml.data.DenseMatrix64F;
-import org.ejml.data.RowD1Matrix64F;
-import org.jdoris.core.coregistration.estimation.utils.SimpleAsciiFileParser;
-import org.jdoris.core.utils.PolyUtils;
+import org.jblas.DoubleMatrix;
+import org.jblas.Solve;
+import org.jlinda.core.coregistration.estimation.utils.SimpleAsciiFileParser;
+import org.jlinda.core.utils.PolyUtils;
 import org.perf4j.StopWatch;
 import org.slf4j.LoggerFactory;
-import org.ujmp.core.Matrix;
-import org.ujmp.core.MatrixFactory;
-import org.ujmp.core.calculation.Calculation;
-import org.ujmp.core.matrix.DenseMatrix;
 
 import java.io.IOException;
 
+import static org.jblas.MatrixFunctions.abs;
+import static org.jblas.MatrixFunctions.pow;
 
-/**
- * 'Delft' school LS estimation procedure: EJML library used for math backend
- */
-public class TestEstimation_UJMP {
 
-    private static final Logger logger = (Logger) LoggerFactory.getLogger(TestEstimation_UJMP.class);
+public class TestEstimation_DoubleMatrix {
+
+    private static final Logger logger = (Logger) LoggerFactory.getLogger(TestEstimation_DoubleMatrix.class);
 
     public static void main(String[] args) throws IOException {
+
         StopWatch clockFull = new StopWatch();
         clockFull.start();
 
@@ -36,12 +33,18 @@ public class TestEstimation_UJMP {
 
         /** estimation without Data Snooping -- only AdjustA */
 
+        // work only with arrays, DoubleMatrix is used only in estimation!!!
+
         /** load data */
 //        SimpleAsciiFileParser fileParser = new SimpleAsciiFileParser("/d1/list.ttt.txt");
+//        String inputFile = "CPM_Data.linear_weight.csv";
         String inputFile = "CPM_Data.none_weight.BIG.csv";
+//        String inputFile = "cpm_input";
         String inputDir = "/d2/test.processing/unit_tests/etna.volcano/process/crop/01486_21159.cpm/";
 
+
         /** define input parameters */
+        // only degree
         int degree = 2;
         String weight = "linear";
 //        String weight = "none";
@@ -50,7 +53,7 @@ public class TestEstimation_UJMP {
 
         boolean DONE = false;
         int ITERATION = 0;
-        int MAX_ITERATIONS = 100;
+        int MAX_ITERATIONS = 10;
         final double COH_TRESHOLD = 0.35d;
 
         final double CRIT_VALUE = 1.97d;
@@ -64,10 +67,13 @@ public class TestEstimation_UJMP {
         int winP;
 
         SimpleAsciiFileParser fileParser = new SimpleAsciiFileParser(inputDir + inputFile, numLines);
+//        double[][] data = fileParser.parseDoubleArray();
         TIntObjectHashMap<double[]> data = fileParser.parseDoubleMap();
 
+//        List<double[]> dataArray = Arrays.asList(data);
         /** reformat data to _processing_ structure : using CPM_DATA like file for testing */
-        // (0) idx (1) PosL (2) PosX (3) OffL (4) OffX (5) Coherence (6)
+        // (0) idx (1) PosL (2) PosX (3) OffL (4) OffX (5) Coherence (6) eL (7) eP (8) wtestL (9) wtestP
+//        int numObs = data.length;
         int numObs;
         int numUnk = PolyUtils.numberOfCoefficients(degree);
 
@@ -126,96 +132,74 @@ public class TestEstimation_UJMP {
                 throw new ArithmeticException("coregpm: Number of windows > threshold is smaller than parameters solved for.");
             }
 
-            double[][] data1 = SystemOfEquations.constructDesignMatrix_loop(lines.toArray(), pixels.toArray(), degree);
-            Matrix A = MatrixFactory.importFromArray(data1);
-            Matrix A_transpose = A.transpose();
 
+            DoubleMatrix A = SystemOfEquations.constructDesignMatrix(new DoubleMatrix(lines.toArray()), new DoubleMatrix(pixels.toArray()), degree);
+            final DoubleMatrix A_transpose = A.transpose();
             logger.info("TIME FOR SETUP of SYSTEM : {}", stopWatch.lap("setup"));
 
-            Matrix Qy_1; // vector
+
+            DoubleMatrix Qy_1; // vector
             switch (weight) {
                 case "linear":
                     logger.debug("Using sqrt(coherence) as weights");
-                    Qy_1 = MatrixFactory.linkToArray(coh.toArray());
+                    Qy_1 = new DoubleMatrix(coh.toArray());
                     // Normalize weights to avoid influence on estimated var.factor
                     logger.debug("Normalizing covariance matrix for LS estimation");
-                    Qy_1.divide(Qy_1.getMeanValue());
+                    Qy_1.divi(Qy_1.mean()); // normalize vector
                     break;
                 case "quadratic":
-                    Qy_1 = MatrixFactory.linkToArray(coh.toArray());
                     logger.debug("Using coherence as weights.");
-                    Qy_1.times(Qy_1);
-                    logger.debug("Normalizing covariance matrix for LS estimation");
-                    Qy_1.divide(Qy_1.getMeanValue());
+                    Qy_1 = new DoubleMatrix(coh.toArray());
+                    Qy_1.muli(Qy_1);
+                    // Normalize weights to avoid influence on estimated var.factor
+                    logger.debug("Normalizing covariance matrix for LS estimation.");
+                    Qy_1.divi(Qy_1.mean()); // normalize vector
                     break;
                 case "bamler":
                     // TODO: see Bamler papers IGARSS 2000 and 2004
                     logger.warn("Bamler weighting method NOT IMPLEMENTED, falling back to None.");
-                    Qy_1 = DenseMatrix.factory.eye(numObs);
+                    Qy_1 = DoubleMatrix.ones(numObs);
                     break;
                 case "none":
-                    logger.debug("No weighting.");
-                    Qy_1 = DenseMatrix.factory.eye(numObs);
+                    Qy_1 = DoubleMatrix.ones(numObs);
                     break;
                 default:
-                    Qy_1 = DenseMatrix.factory.eye(numObs);
-//                    Qy_1 = onesEJML(numObs);
-
+                    Qy_1 = DoubleMatrix.ones(numObs);
                     break;
             }
 
-            logger.info("TIME FOR SETUP of VC diag matris: {}", stopWatch.lap("diag VC matrix"));
+            logger.info("TIME FOR SETUP of VC vector: {}", stopWatch.lap("VC vector"));
 
-//            /** temp matrices */
-            final Matrix yL_matrix = MatrixFactory.linkToArray(yL.toArray());
-            final Matrix yP_matrix = MatrixFactory.linkToArray(yP.toArray());
+//            final DoubleMatrix Qy_1_diag = DoubleMatrix.diag(Qy_1);
+//            logger.info("TIME FOR SETUP of VC diag matris: {}", stopWatch.lap("diag VC matrix"));
+
+
+            /** temp matrices */
+            final DoubleMatrix yL_matrix = new DoubleMatrix(yL.toArray());
+            final DoubleMatrix yP_matrix = new DoubleMatrix(yP.toArray());
             logger.info("TIME FOR SETUP of TEMP MATRICES: {}", stopWatch.lap("Temp matrices"));
 
             /** normal matrix */
-            Matrix diagxmat = diagxmat(Qy_1, A);
-            Matrix N = A_transpose.mtimes(diagxmat);
-            Matrix Qx_hat = N.copy();
+            final DoubleMatrix N = A_transpose.mmul(diagxmat(Qy_1, A));
+            DoubleMatrix Qx_hat = N.dup(); // store N into Qx_hat
             logger.info("TIME FOR SETUP of NORMAL MATRIX: {}", stopWatch.lap("Normal matrix"));
 
             /** right hand sides */
-            // azimuth
-            Matrix rhsL = A_transpose.mtimes(diagxmat(Qy_1, yL_matrix));
-            Matrix rhsP = A_transpose.mtimes(diagxmat(Qy_1, yP_matrix));
+            DoubleMatrix rhsL = A_transpose.mmul(diagxmat(Qy_1, yL_matrix));
+            DoubleMatrix rhsP = A_transpose.mmul(diagxmat(Qy_1, yP_matrix));
             logger.info("TIME FOR SETUP of RightHand Side: {}", stopWatch.lap("Right-hand-side"));
 
-            rhsL = Qx_hat.solveSymm(rhsL);
-            rhsP = Qx_hat.solveSymm(rhsP);
-
-//
-//            LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(100, 100);
-//            /** compute solution */
-//            if (!solver.setA(Qx_hat)) {
-//                throw new IllegalArgumentException("Singular Matrix");
-//            }
-//            solver.solve(rhsL, rhsL);
-//            solver.solve(rhsP, rhsP);
+            /** compute solution */
+            rhsL = Solve.solvePositive(Qx_hat, rhsL);
+            rhsP = Solve.solvePositive(Qx_hat, rhsP);
             logger.info("TIME FOR SOLVING of System: {}", stopWatch.lap("Solving System"));
-//
-//            double maxDeviation = solver.quality();
-//            /** inverting of Qx_hat for stability check */
-//            logger.info("Quality measure: {} ", maxDeviation);
-//
-////            DenseMatrix64F Qx_hat_invert = Qx_hat.copy();
-//            solver.invert(Qx_hat);
 
-            Qx_hat = Qx_hat.inv();
-
-
+            /** inverting of Qx_hat for stability check */
+            Qx_hat = Solve.solvePositive(Qx_hat, DoubleMatrix.eye(Qx_hat.getRows())); // store inverted N back into Qx_hat
             logger.info("TIME FOR INVERSION OF N: {}", stopWatch.lap("Inversion of N"));
-////            Qx_hat = Solve.solvePositive(Qx_hat, DenseMatrix64F.eye(Qx_hat.getRows())); // store inverted N back into Qx_hat
-//
+
             /** test inversion and check stability: max(abs([N*inv(N) - E)) ?= 0 */
-
-            Matrix eye = MatrixFactory.eye(Qx_hat.getRowCount(), Qx_hat.getColumnCount());
-            double maxDeviation = (N.mtimes(Qx_hat).minus(eye)).abs(Calculation.Ret.LINK).getMaxValue();
-
-
-//            double maxDeviation = abs(N.mmul(Qx_hat).sub(DenseMatrix64F.eye(Qx_hat.getRows()))).max();
+            double maxDeviation = (N.mmul(Qx_hat).sub(DoubleMatrix.eye(Qx_hat.getRows()))).normmax();
             if (maxDeviation > .01) {
                 logger.error("COREGPM: maximum deviation N*inv(N) from unity = {}. This is larger than 0.01", maxDeviation);
                 throw new IllegalStateException("COREGPM: maximum deviation N*inv(N) from unity)");
@@ -229,66 +213,69 @@ public class TestEstimation_UJMP {
             logger.debug("Max Deviation: {}", maxDeviation);
 
             /** some other stuff if the scale is okay */
-            Matrix Qe_hat = A.mtimes(Qx_hat).mtimes(A_transpose).mtimes(-1d);
-            scaleInputDiag(Qe_hat, Qy_1);
+            DoubleMatrix Qy_hat = A.mmul(Qx_hat.mmul(A_transpose));
+            DoubleMatrix Qe_hat = Qy_hat.mul(-1f);
+            Qe_hat.addi(DoubleMatrix.diag(DoubleMatrix.ones(numObs).div(Qy_1)));
 
-            Matrix yL_hat = A.mtimes(rhsL);
-            Matrix eL_hat = yL_matrix.minus(yL_hat);
-            Matrix yP_hat = A.mtimes(rhsP);
-            Matrix eP_hat = yL_matrix.minus(yP_hat);
+            DoubleMatrix yL_hat = A.mmul(rhsL);
+            DoubleMatrix eL_hat = yL_matrix.sub(yL_hat);
+
+            DoubleMatrix yP_hat = A.mmul(rhsP);
+            DoubleMatrix eP_hat = yP_matrix.sub(yP_hat);
+//            scale diagonal
             logger.info("TIME FOR DATA preparation for TESTING: {}", stopWatch.lap("Testing Setup"));
 
             /** overal model test (variance factor) */
-            double overAllModelTest_L = 0;
-            double overAllModelTest_P = 0;
+            double overAllModelTest_L;
+            double overAllModelTest_P;
 
-            for (int i = 0; i < numObs; i++) {
-                overAllModelTest_L += Math.pow(eL_hat.getAsDouble(i, 0), 2) * Qy_1.getAsDouble(i, 0);
-                overAllModelTest_P += Math.pow(eP_hat.getAsDouble(i, 0), 2) * Qy_1.getAsDouble(i, 0);
-            }
+/*
+        for (int i = 0; i < numObs; i++) {
+            overAllModelTest_L += Math.pow(eL_hat.get(i), 2) * Qy_1.get(i);
+            overAllModelTest_P += Math.pow(eP_hat.get(i), 2) * Qy_1.get(i);
+        }
+*/
+            overAllModelTest_L = (pow(eL_hat, 2).mul(Qy_1)).sum();
+            overAllModelTest_P = (pow(eP_hat, 2).mul(Qy_1)).sum();
+            logger.info("TIME FOR OMT: {}", stopWatch.lap("OMT"));
+
             /** WHAT IS THE REFERENCE FOR THESE CONSTANT VALUES???? */
             final double SIGMA_L = 0.15;
             final double SIGMA_P = 0.10;
-//
+
             overAllModelTest_L = (overAllModelTest_L / Math.pow(SIGMA_L, 2)) / (numObs - numUnk);
             overAllModelTest_P = (overAllModelTest_P / Math.pow(SIGMA_P, 2)) / (numObs - numUnk);
 
             logger.debug("Overall Model Test Lines: {}", overAllModelTest_L);
             logger.debug("Overall Model Test Pixels: {}", overAllModelTest_P);
-//
-            logger.info("TIME FOR OMT: {}", stopWatch.lap("OMT"));
+
             /** ---------------------- DATASNOPING ----------------------------------- **/
             /** Assumed Qy diag */
 
             /** initialize */
-            Matrix wTest_L = DenseMatrix.factory.zeros(numObs, 1);
-            Matrix wTest_P = DenseMatrix.factory.zeros(numObs, 1);
+            DoubleMatrix wTest_L = new DoubleMatrix(numObs);
+            DoubleMatrix wTest_P = new DoubleMatrix(numObs);
 
             for (int i = 0; i < numObs; i++) {
-                wTest_L.setAsDouble(eL_hat.getAsDouble(i, 0) / (Math.sqrt(Qe_hat.getAsDouble(i, i)) * SIGMA_L), i, 0);
-                wTest_P.setAsDouble(eP_hat.getAsDouble(i, 0) / (Math.sqrt(Qe_hat.getAsDouble(i, i)) * SIGMA_P), i, 0);
+                wTest_L.put(i, eL_hat.get(i) / (Math.sqrt(Qe_hat.get(i, i)) * SIGMA_L));
+                wTest_P.put(i, eP_hat.get(i) / (Math.sqrt(Qe_hat.get(i, i)) * SIGMA_P));
             }
 
             /** find maxima's */
             // azimuth
-            winL = (int) wTest_L.indexOfMax(Calculation.Ret.LINK, 1).getAsDouble(1);
-            double maxWinL = Math.abs(wTest_L.getAsDouble(winL, 0));
+            winL = abs(wTest_L).argmax();
+            double maxWinL = abs(wTest_L).get(winL);
+            logger.debug("maximum wtest statistic azimuth = {} for window number: {} ", maxWinL, index.get(winL));
 
             // range
-            winP = (int) wTest_P.indexOfMax(Calculation.Ret.LINK, 1).getAsDouble(1);
-            double maxWinP = Math.abs(wTest_P.getAsDouble(winP, 0));
-
-            logger.debug("maximum wtest statistic azimuth = {} for window number: {} ", maxWinL, index.get(winL));
+            winP = abs(wTest_P).argmax();
+            double maxWinP = abs(wTest_P).get(winP);
             logger.debug("maximum wtest statistic range = {} for window number: {} ", maxWinP, index.get(winP));
 
             /** use summed wTest in Azimuth and Range direction for outlier detection */
-            Matrix wTestSum = DenseMatrix.factory.zeros(numObs, 1);
-            for (int i = 0; i < numObs; i++) {
-                wTestSum.setAsDouble(Math.pow(wTest_L.getAsDouble(i, 0), 2) + Math.pow(wTest_P.getAsDouble(i, 0), 2), i, 0);
-            }
-
-            maxWSum_idx = (int) wTestSum.indexOfMax(Calculation.Ret.LINK, 1).getAsDouble(1);
-            double maxWSum = wTestSum.getAsDouble(winP, 0);
+            DoubleMatrix wTestSum = pow(wTest_L, 2).add(pow(wTest_P, 2));
+            maxWSum_idx = abs(wTestSum).argmax();
+            double maxWSum = abs(wTestSum).get(maxWSum_idx);
             logger.info("Detected outlier: summed sqr.wtest = {}; observation: {}", maxWSum, index.get(maxWSum_idx));
 
             /** Test if we are done yet */
@@ -306,12 +293,12 @@ public class TestEstimation_UJMP {
             }
 
             if (ITERATION >= MAX_ITERATIONS) {
-                clockFull.stop();
-                logger.info("TOTAL TIME FOR for 100 ITERATIONS {}: ", clockFull.getElapsedTime());
-
                 logger.info("max. number of iterations reached (exiting loop).");
-                DONE = true; // we reached max. (or no max_iter specified)
 
+                clockFull.stop();
+                logger.info("Time for {} iterations {}: ", ITERATION, clockFull.getElapsedTime());
+
+                DONE = true; // we reached max. (or no max_iter specified)
             }
 
             /** Only warn if last iteration has been done */
@@ -336,106 +323,33 @@ public class TestEstimation_UJMP {
 
             ITERATION++;// update counter here!
 
+        }
 
-        } // only warn when iterating
+
+    } // only warn when iterating
 
 
-    }    // iterations remove outliers
+//    }    // iterations remove outliers
 
     /**
      * C=diagxmat(vec,B) C=diag(vec) * B
      */
 
-    public static Matrix diagxmat(final Matrix diag, final Matrix B) {
+    public static DoubleMatrix diagxmat(final DoubleMatrix diag, final DoubleMatrix B) {
 
-//        if (!diag.isColumnVector() || !diag.isRowVector()) {
-//            logger.error("diagXMat: sizes A,B: diag is NOT vector.");
-//
-//        }
+        if (!diag.isVector())
+            logger.error("diagXMat: sizes A,B: diag is NOT vector.");
 
-        Matrix result = B.copy();
-        for (int i = 0; i < result.getRowCount(); i++) {
-            for (int j = 0; j < result.getColumnCount(); j++) {
-                result.setAsDouble(result.getAsDouble(i, j) * diag.getAsDouble(i, 0), i, j);
+        DoubleMatrix result = B.dup();
 
+        for (int i = 0; i < result.getRows(); i++) {
+            for (int j = 0; j < result.getColumns(); j++) {
+                result.put(i, j, result.get(i, j) * diag.get(i));
             }
         }
         return result;
+
     } // END diagxmat
 
-    public static void scaleInputDiag(final Matrix matrix, Matrix diag) {
-        for (int i = 0; i < matrix.getRowCount(); i++) {
-            matrix.setAsDouble(matrix.getAsDouble(i, i) + 1 / diag.getAsDouble(i, 0), i, i);
-        }
-    } // END diagxmat
-
-    public static double[] ones(int rows, int columns) {
-        double[] m = new double[rows * columns];
-        for (int i = 0; i < rows * columns; i++) {
-            m[i] = 1;
-        }
-        return m;
-    }
-
-    public static double[] ones(int length) {
-        return ones(length, 1);
-    }
-
-    public static RowD1Matrix64F onesEJML(int rows, int columns) {
-        DenseMatrix64F m = new DenseMatrix64F(rows, columns);
-        for (int i = 0; i < rows * columns; i++) {
-            m.set(i, 1);
-        }
-        return m;
-    }
-
-    public static RowD1Matrix64F onesEJML(int length) {
-        return onesEJML(length, 1);
-    }
-
-    /**
-     * Returns the linear index of the maximal element of the abs()
-     * matrix. If there are more than one elements with this value,
-     * the first one is returned.
-     */
-    public static int absArgmax(RowD1Matrix64F matrix) {
-        int numElements = matrix.getNumElements();
-        if (numElements == 0) {
-            return -1;
-        }
-        double v = Double.NEGATIVE_INFINITY;
-        int a = -1;
-        for (int i = 0; i < numElements; i++) {
-            double abs = Math.abs(matrix.get(i));
-            if (!Double.isNaN(abs) && abs > v) {
-                v = abs;
-                a = i;
-            }
-        }
-
-        return a;
-    }
-
-    /**
-     * Returns the linear index of the maximal element of the abs()
-     * matrix. If there are more than one elements with this value,
-     * the first one is returned.
-     */
-    public static int argmax(RowD1Matrix64F matrix) {
-        int numElements = matrix.getNumElements();
-        if (numElements == 0) {
-            return -1;
-        }
-        double v = Double.NEGATIVE_INFINITY;
-        int a = -1;
-        for (int i = 0; i < numElements; i++) {
-            if (!Double.isNaN(matrix.get(i)) && matrix.get(i) > v) {
-                v = matrix.get(i);
-                a = i;
-            }
-        }
-
-        return a;
-    }
 
 }

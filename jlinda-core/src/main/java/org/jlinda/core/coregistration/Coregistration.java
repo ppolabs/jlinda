@@ -1,35 +1,20 @@
-package org.jdoris.core.coregistration;
+package org.jlinda.core.coregistration;
 
 import org.apache.log4j.Logger;
 import org.jblas.*;
-import org.jdoris.core.*;
-import org.jdoris.core.todo_classes.Input;
-import org.jdoris.core.todo_classes.todo_classes;
-import org.jdoris.core.utils.*;
+import org.jlinda.core.*;
+import org.jlinda.core.todo_classes.Input;
+import org.jlinda.core.todo_classes.todo_classes;
+import org.jlinda.core.utils.*;
 
 import java.util.Arrays;
 import java.util.Comparator;
 
-import static java.lang.Math.ceil;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static org.jdoris.core.utils.PolyUtils.normalize2;
-import static org.jdoris.core.utils.PolyUtils.polyval;
+import static java.lang.Math.*;
+import static org.jlinda.core.utils.PolyUtils.normalize2;
+import static org.jlinda.core.utils.PolyUtils.polyval;
 
 public class Coregistration implements ICoregistration {
-
-    public static final String NEAREST_NEIGHBOR = "Nearest-neighbor interpolation";
-    public static final String BILINEAR = "Bilinear interpolation";
-    public static final String BICUBIC = "Bicubic interpolation";
-    public static final String BICUBIC2 = "Bicubic2 interpolation";
-    public static final String RECT = "Step function (nearest-neighbor)";
-    public static final String TRI = "Linear interpolation";
-    public static final String CC4P = "Cubic convolution (4 points)";
-    public static final String CC6P = "Cubic convolution (6 points)";
-    public static final String TS6P = "Truncated sinc (6 points)";
-    public static final String TS8P = "Truncated sinc (8 points)";
-    public static final String TS16P = "Truncated sinc (16 points)";
-
 
     static Logger logger = Logger.getLogger(Coregistration.class.getName());
 
@@ -859,13 +844,28 @@ public class Coregistration implements ICoregistration {
                     logger.warn("FINE: AccP for magfft can be half of the Window size at max, changing to " + AccP);
                 }
 
-                // ______ Oversample complex chips by factor two ______
-                // ______ neg.shift input shifts to -> 0
+                // Oversample complex chips by factor two
+                // neg.shift input shifts to -> 0
                 logger.debug("Centering azimuth spectrum patches around 0");
                 final double m_pixlo = (double) (master.pixlo);// neg.shift -> 0
                 final double s_pixlo = (double) (mask.pixlo);// neg.shift -> 0
-                shiftazispectrum(Master, minfo, -m_pixlo);// shift from fDC to zero
-                shiftazispectrum(Mask, sinfo, -s_pixlo);// shift from fDC to zero
+                double mPrf = minfo.getPRF();
+                double sPrf = sinfo.getPRF();
+                double mRsr2x = minfo.getRsr2x();
+                double sRsr2x = sinfo.getRsr2x();
+
+                double[] mFdc = new double[3];
+                mFdc[0] = minfo.doppler.getF_DC_a0();
+                mFdc[1] = minfo.doppler.getF_DC_a1();
+                mFdc[2] = minfo.doppler.getF_DC_a2();
+
+                double[] sFdc = new double[3];
+                sFdc[0] = sinfo.doppler.getF_DC_a0();
+                sFdc[1] = sinfo.doppler.getF_DC_a1();
+                sFdc[2] = sinfo.doppler.getF_DC_a2();
+
+                shiftazispectrum(Master, mPrf, mRsr2x, mFdc, -m_pixlo);// shift from fDC to zero
+                shiftazispectrum(Mask, sPrf, sRsr2x, sFdc, -s_pixlo);// shift from fDC to zero
                 logger.info("Oversampling patches with factor two using zero padding");
                 final ComplexDoubleMatrix m_ovs_chip = SarUtils.oversample(Master, 2, 2);
                 final ComplexDoubleMatrix s_ovs_chip = SarUtils.oversample(Mask, 2, 2);
@@ -883,7 +883,11 @@ public class Coregistration implements ICoregistration {
 
             } else if (fineinput.method.equals("fc_magspace")) {
 
-                coheren = coherencespace(fineinput, Master, Mask, offsetL, offsetP);
+//                coheren = coherencespace(fineinput, Master, Mask, offsetL, offsetP);
+                int accL = 0;
+                int accP = 0;
+                int osFactor = 1;
+                coheren = coherencespace(accL, accP, osFactor, Master, Mask, offsetL, offsetP);
 
 
             } else {
@@ -1087,8 +1091,9 @@ public class Coregistration implements ICoregistration {
     } // END coherencefft
 
     @Override
-    public double crosscorrelate(ComplexDoubleMatrix Master, ComplexDoubleMatrix Mask, int ovsfactor, int AccL,
-                                 int AccP,
+    public double crosscorrelate(ComplexDoubleMatrix Master, ComplexDoubleMatrix Mask,
+                                 int ovsfactor,
+                                 int AccL, int AccP,
                                  double offsetL, double offsetP) {
 
         logger.trace("crosscorrelate (PM 15-Apr-2012)");
@@ -1129,12 +1134,13 @@ public class Coregistration implements ICoregistration {
         ComplexDoubleMatrix Master2 = ComplexDoubleMatrix.zeros(twoL, twoP); // initial 0
         ComplexDoubleMatrix Mask2 = ComplexDoubleMatrix.zeros(twoL, twoP); // initial 0
 
-        Window windef = new Window(0, 0, 0, 0); // defaults to total matrix
+        Window windef = new Window(); // defaults to total matrix
         Window win1 = new Window(0, L - 1, 0, P - 1);
         Window win2 = new Window(halfL, halfL + L - 1, halfP, halfP + P - 1);
 
-        LinearAlgebraUtils.setdata(Master2, win1, new ComplexDoubleMatrix(magMaster, null), windef); // zero-mean magnitude
-        LinearAlgebraUtils.setdata(Mask2, win2, new ComplexDoubleMatrix(magMask, null), windef); // zero-mean magnitude
+        // TODO: something is going wrong with declarations of data here
+        LinearAlgebraUtils.setdata(Master2, win1, new ComplexDoubleMatrix(magMaster), windef); // zero-mean magnitude
+        LinearAlgebraUtils.setdata(Mask2, win2, new ComplexDoubleMatrix(magMask), windef); // zero-mean magnitude
 
         // ______ Crossproducts in spectral/space domain ______
         // ______ Use Mask2 to store cross products temporarly ______
@@ -1142,7 +1148,9 @@ public class Coregistration implements ICoregistration {
         SpectralUtils.fft2D_inplace(Mask2);
 
         Master2.conji();
-        Mask2.mul(Master2); // corr = conj(M).*S
+        Mask2.muli(Master2); // corr = conj(M).*S
+
+//        Mask2.mmuli(Master2);
 
         SpectralUtils.invfft2D_inplace(Mask2); // real(Mask2): cross prod. in space
 
@@ -1159,33 +1167,30 @@ public class Coregistration implements ICoregistration {
         // --- automatically the real/imag parts contain the norms ---
         for (l = L; l < twoL; ++l) {
             for (p = P; p < twoP; ++p) {
-                double realPart = magMask.get(l - L, p - P);
-                double imagPart = magMaster.get(twoL - 1 - l, twoP - 1 - p);
-                Master2.put(l, p, new ComplexDouble(Math.pow(realPart, 2), Math.pow(imagPart, 2)));
+                double realPart = magMaster.get(twoL - 1 - l, twoP - 1 - p);
+                double imagPart = magMask.get(l - L, p - P);
+                ComplexDouble value = new ComplexDouble(Math.pow(realPart, 2), Math.pow(imagPart, 2));
+                Master2.put(l, p, value);
             }
         }
 
         // allocate block for reuse
-        ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix(DoubleMatrix.ones(twoL, twoP), null);
-        SpectralUtils.fft2D_inplace(BLOCK);
-        BLOCK.conji();
-
-        // --- use a static block for fast computation ---
-        //        if (BLOCK.rows != twoL || BLOCK.columns != twoP) {
-        //            logger.debug("crosscorrelate:changing static block to size [" + twoL + ", " + twoP + "]");
-        //            BLOCK.resize(twoL, twoP);
-        //            for (l = halfL; l < halfL + L; ++l)
-        //                for (p = halfP; p < halfP + P; ++p)
-        //                    BLOCK.put(l, p, new ComplexDouble(1,0));
-        //            SpectralUtils.fft2D_inplace(BLOCK);
-        //            BLOCK.conji();// static variable: keep this for re-use
-        //        }
+        ComplexDoubleMatrix BLOCK = new ComplexDoubleMatrix(0, 0);
+        if (BLOCK.rows != twoL || BLOCK.columns != twoP) {
+            logger.debug("crosscorrelate:changing static block to size [" + twoL + ", " + twoP + "]");
+            BLOCK.resize(twoL, twoP);
+            for (l = halfL; l < halfL + L; ++l)
+                for (p = halfP; p < halfP + P; ++p)
+                    BLOCK.put(l, p, new ComplexDouble(1, 0));
+            SpectralUtils.fft2D_inplace(BLOCK);
+            BLOCK.conji();// static variable: keep this for re-use
+        }
 
         // _____ Compute the cross-products, i.e., the norms for each shift ---
         // ______ Master2(0,0):Master2(N,N) for shifts = -N/2:N/2 ______
         SpectralUtils.fft2D_inplace(Master2);
 
-        Master2.mul(BLOCK);
+        Master2.muli(BLOCK);
 
         SpectralUtils.invfft2D_inplace(Master2);// real(Master2): powers of Master; imag(Master2): Mask
 
@@ -1197,12 +1202,14 @@ public class Coregistration implements ICoregistration {
         long maxcorrP = 0;// local index in Covar of maxcorr
 
         ComplexDouble maskValueTemp;
+        ComplexDouble master2ValueTemp;
 
         for (l = 0; l <= L; ++l) { // all shifts
             for (p = 0; p <= P; ++p) {// all shifts
                 maskValueTemp = Mask2.get(l, p);
+                master2ValueTemp = Master2.get(l, p);
 
-                Covar.put(l, p, maskValueTemp.real() / Math.sqrt(maskValueTemp.real()) * maskValueTemp.imag());
+                Covar.put(l, p, maskValueTemp.real() / Math.sqrt(master2ValueTemp.real() * master2ValueTemp.imag()));
                 if (Covar.get(l, p) > maxcorr) {
                     maxcorr = Covar.get(l, p);
                     maxcorrL = l;// local index in Covar of maxcorr
@@ -1237,30 +1244,26 @@ public class Coregistration implements ICoregistration {
                 maxcorrP = P - AccP;
             }
 
-            // --- Now get the chip around max corr ---
-            //matrix<real4> chip(2*AccL,2*AccP);// locally oversample corr
-            //for (l=maxcorrL-AccL; l<maxcorrL+AccL; ++l)
-            //  for (p=maxcorrP-AccP; p<maxcorrP+AccP; ++p)
-            //    chip(l-(maxcorrL-AccL),p-(maxcorrP-AccP)) = Covar(l,p);
-
             Window win3 = new Window(maxcorrL - AccL, maxcorrL + AccL - 1, maxcorrP - AccP, maxcorrP + AccP - 1);
 
-            final DoubleMatrix chip = new DoubleMatrix(); // construct as part
+            final DoubleMatrix chip = new DoubleMatrix((int) win3.lines(), (int) win3.pixels()); // construct as part
             LinearAlgebraUtils.setdata(chip, Covar, win3);
 
-            // --- (4b) oversample chip to obtain sub-pixel max ---
+            // (4b) oversample chip to obtain sub-pixel max : here I can also fit the PolyNomial - much faster!
             int offL;
             int offP;
 
-            //            maxcorr = max(oversample(chip, ovsfactor, ovsfactor), offL, offP);
-            DoubleMatrix chipOversampled = SarUtils.oversample(new ComplexDoubleMatrix(chip, null), ovsfactor, ovsfactor).getReal();
+            DoubleMatrix chipOversampled = SarUtils.oversample(new ComplexDoubleMatrix(chip), ovsfactor, ovsfactor).getReal();
             int corrIndex = chipOversampled.argmax();
-            offL = chipOversampled.indexRows(corrIndex);
-            offP = chipOversampled.indexColumns(corrIndex);
+            offL = chipOversampled.indexColumns(corrIndex); // lines are in columns - JBLAS column major
+            offP = chipOversampled.indexRows(corrIndex); // pixels are index in rows - JBLAS is column major
             maxcorr = chipOversampled.get(corrIndex);
 
-            offsetL = -halfL + maxcorrL - AccL + (double) (offL) / (double) (ovsfactor);
-            offsetP = -halfP + maxcorrP - AccP + (double) (offP) / (double) (ovsfactor);
+            offsetL = -halfL + maxcorrL - AccL + (double) offL / (double) ovsfactor;
+            offsetP = -halfP + maxcorrP - AccP + (double) offP / (double) ovsfactor;
+
+            System.out.println("Oversampling factor: " + ovsfactor);
+            System.out.println("Sub-pixel level offset: " + offsetL + ", " + offsetP + " (corr=" + maxcorr + ")");
 
             logger.debug("Sub-pixel level offset: " + offsetL + ", " + offsetP + " (corr=" + maxcorr + ")");
         }
@@ -1268,19 +1271,20 @@ public class Coregistration implements ICoregistration {
     }
 
     @Override
-    public double coherencespace(Input.FineCorr fineinput, ComplexDoubleMatrix Master, ComplexDoubleMatrix Mask,
+    public double coherencespace(final int AccL, final int AccP, final int osfactor,
+                                 ComplexDoubleMatrix Master, ComplexDoubleMatrix Mask,
                                  double offsetL, double offsetP) {
 
         logger.trace("coherencespace (PM 14-Feb-2012)");
 
-        // ______ Internal variables ______
+        // Internal variables
         final int L = Master.rows;
         final int P = Master.columns;
-        final int AccL = fineinput.AccL;
-        final int AccP = fineinput.AccP;
-        final int factor = fineinput.osfactor;
+//        final int AccL = fineinput.AccL;
+//        final int AccP = fineinput.AccP;
+        final int factor = osfactor;
 
-        // ______Select parts of Master/slave______
+        // Select parts of Master/slave
         final int MasksizeL = L - 2 * AccL;
         final int MasksizeP = P - 2 * AccP;
 
@@ -1299,52 +1303,38 @@ public class Coregistration implements ICoregistration {
         DoubleMatrix coher = new DoubleMatrix(2 * AccL, 2 * AccP); // store result
 
         // 1st element: shift==AccL
-        Window windef = new Window(0, 0, 0, 0); // defaults to total
+        Window windef = new Window(); // defaults to total
 
-
-        if (fineinput.method.equals("fc_cmplxspace")) {
-            logger.error("not implemented in v1.0");
-            throw new InternalError();
-        } else if (fineinput.method.equals("fc_magspace")) {
-
-            DoubleMatrix magMask = SarUtils.magnitude(Mask); // magnitude
-            magMask.subi(magMask.mean()); // subtract mean
-            DoubleMatrix Mask2 = new DoubleMatrix();
-            LinearAlgebraUtils.setdata(Mask2, magMask, winmask); // construct as part
-            double normmask = Math.pow(Mask2.norm2(), 2);
-            DoubleMatrix Master2 = new DoubleMatrix(MasksizeL, MasksizeP);
-            DoubleMatrix magMaster = SarUtils.magnitude(Master);
-            Geometry.center(magMaster); // magMaster.subi(magMaster.mean());
-            Window winmaster = new Window();
-            for (int i = 0; i < 2 * AccL; i++) {
-                winmaster.linelo = i;
-                winmaster.linehi = i + MasksizeL - 1;
-                for (int j = 0; j < 2 * AccP; j++) {
-                    winmaster.pixlo = j;
-                    winmaster.pixhi = j + MasksizeP - 1;
-                    LinearAlgebraUtils.setdata(Master2, windef, magMaster, winmaster);
-                    // ______Coherence for this position______
-                    double cohs1s2 = 0.;
-                    double cohs1s1 = 0.;
-                    for (int k = 0; k < MasksizeL; k++) {
-                        for (int l = 0; l < MasksizeP; l++) {
-                            cohs1s2 += (Master2.get(k, l) * Mask2.get(k, l));
-                            cohs1s1 += Math.pow(Master2.get(k, l), 2);
-                        }
+        DoubleMatrix magMask = SarUtils.magnitude(Mask); // magnitude
+        magMask.subi(magMask.mean()); // subtract mean
+        DoubleMatrix Mask2 = new DoubleMatrix((int) winmask.lines(), (int) winmask.pixels());
+        LinearAlgebraUtils.setdata(Mask2, magMask, winmask); // construct as part
+        double normmask = Math.pow(Mask2.norm2(), 2);
+        DoubleMatrix Master2 = new DoubleMatrix(MasksizeL, MasksizeP);
+        DoubleMatrix magMaster = SarUtils.magnitude(Master);
+        Geometry.center(magMaster); // magMaster.subi(magMaster.mean());
+        Window winmaster = new Window();
+        for (int i = 0; i < 2 * AccL; i++) {
+            winmaster.linelo = i;
+            winmaster.linehi = i + MasksizeL - 1;
+            for (int j = 0; j < 2 * AccP; j++) {
+                winmaster.pixlo = j;
+                winmaster.pixhi = j + MasksizeP - 1;
+                LinearAlgebraUtils.setdata(Master2, windef, magMaster, winmaster);
+                // ______Coherence for this position______
+                double cohs1s2 = 0.;
+                double cohs1s1 = 0.;
+                for (int k = 0; k < MasksizeL; k++) {
+                    for (int l = 0; l < MasksizeP; l++) {
+                        cohs1s2 += (Master2.get(k, l) * Mask2.get(k, l));
+                        cohs1s1 += Math.pow(Master2.get(k, l), 2);
                     }
-                    coher.put(i, j, cohs1s2 / Math.sqrt(cohs1s1 * normmask)); // [-1 1]
                 }
+                coher.put(i, j, cohs1s2 / Math.sqrt(cohs1s1 * normmask)); // [-1 1]
             }
+        }
 
-
-        } else {
-
-            logger.error("unknown method");
-            throw new IllegalArgumentException("unknown method");
-        } // switch method
-
-
-        // ______ Correlation in space domain ______
+        // Correlation in space domain
         int offL;
         int offP;
         final DoubleMatrix coher8 = oversample(coher, factor, factor);
@@ -1353,13 +1343,16 @@ public class Coregistration implements ICoregistration {
         offL = coher8.indexRows(coher8MaxIndex);
         offP = coher8.indexColumns(coher8MaxIndex);
         final double maxcor = coher8.get(coher8MaxIndex);
-        offsetL = AccL - offL / (double) (factor); // update by reference
-        offsetP = AccP - offP / (double) (factor); // update by reference
+        offsetL = AccL - offL / (double) (factor); // update by reference - this does not work in JAVA
+        offsetP = AccP - offP / (double) (factor); // update by reference - this does not work in JAVA
+
+        System.out.println("Oversampling factor: " + factor);
+        System.out.println("Sub-pixel level offset: " + offsetL + ", " + offsetP + " (corr=" + maxcor + ")");
         return maxcor;
     }
 
     private DoubleMatrix oversample(final DoubleMatrix data, final int factor, final int factor1) {
-        return SarUtils.oversample(new ComplexDoubleMatrix(data, null), factor, factor).getReal();
+        return SarUtils.oversample(new ComplexDoubleMatrix(data), factor, factor).getReal();
     }
 
     @Override
@@ -1381,8 +1374,10 @@ public class Coregistration implements ICoregistration {
     }
 
     @Override
-    public void resample(Input.General generalinput, Input.Resample resampleinput, SLCImage master, SLCImage
-            slave, double[] cpmL, double[] cpmP, int demassist) {
+    public void resample(Input.Resample resampleinput,
+                         SLCImage master, SLCImage slave,
+                         double[] cpmL, double[] cpmP,
+                         int demassist) {
 
         logger.trace("resample (BK 16-Mar-1999; BK 09-Nov-2000)");
         if (resampleinput.shiftAziSpectra == true)
@@ -1429,7 +1424,7 @@ public class Coregistration implements ICoregistration {
          *  ...kernel in azimuth should be sampled higher
          *  ...and may be different from range due to different oversampling ratio and spectral shift (const)
          */
-        LUT lut = new LUT(RECT, Npoints);
+        LUT lut = new LUT(LUT.RECT, Npoints);
         lut.constructLUT();
         lut.overviewOfLut();
 
@@ -1519,7 +1514,6 @@ public class Coregistration implements ICoregistration {
         // RESULT ---> not the same size as master, depends which tile is being resampled!
         // ComplexDoubleMatrix RESULT = new ComplexDoubleMatrix(bufferLines, (int) (overlap.pixhi - overlap.pixlo + 1));
         ComplexDoubleMatrix RESULT = ComplexDoubleMatrix.zeros(bufferLines, (int) (overlap.pixhi - overlap.pixlo + 1)); // set to ZERO
-
         ComplexDoubleMatrix PART = new ComplexDoubleMatrix(Npoints, Npoints);
 
         logger.info("Overlap window: " + overlap.linelo + ":" + overlap.linehi + ", " + overlap.pixlo + ":" + overlap.pixhi);
@@ -1615,16 +1609,21 @@ public class Coregistration implements ICoregistration {
                     }
                 }
 
-//                // For speed: define setdata internally (memcpy)
-//                for (int i = 0; i < nPoints; i++){
-//                    memcpy(PART[i], BUFFER[i + firstL - firstline] + firstP
-//                            - slave.currentwindow.pixlo, Npointsxsize);
-//
-//                }
+                // TODO: this has to be fixed
+/*
+                // For speed: define setdata internally (memcpy)
+                int firstLine;
+                for (int i = 0; i < Npoints; i++){
+                    PART.put(BUFFER.get(i + firstL-firstLine))
+                    memcpy(PART[i], BUFFER[i + firstL - firstline] + firstP
+                            - slave.currentwindow.pixlo, Npointsxsize);
 
-//                // ______ NO VECLIB: slower, but works ______
-//                RESULT(linecnt, pixel - overlap.pixlo) = ((matTxmat(PART * kernelP, kernelL)) (0, 0));
+                }
+*/
 
+
+                // TODO: this was quick fix perhaps it will not work
+                RESULT.put(linecnt, (int) (pixel - overlap.pixlo), LinearAlgebraUtils.matTxmat(PART.mul(kernelP), kernelL).get(0, 0));
 
             }
 
@@ -1869,13 +1868,14 @@ public class Coregistration implements ICoregistration {
         int beginp = (Mask.columns - 1) / 2; // floor
 
         DoubleMatrix Result = DoubleMatrix.zeros(A.rows, A.columns); // init to 0
+        DoubleMatrix Am = new DoubleMatrix(Mask.rows, Mask.columns);
 
 // ______First Window of A, updated at end of loop______
         Window winA = new Window(0, Mask.rows - 1, 0, Mask.columns - 1);
-        Window windef = new Window(0, 0, 0, 0);// defaults to total Am
+//        Window windef = new Window(0, Am.rows - 1, 0, Am.columns - 1);// defaults to total Am
+        Window windef = new Window();// defaults to total Am
 
 // ______Correlate part of Result______
-        DoubleMatrix Am = new DoubleMatrix(Mask.rows, Mask.columns);
         for (int i = beginl; i < A.rows - beginl; i++) {
             for (int j = beginp; j < A.columns - beginp; j++) {
 
@@ -1915,7 +1915,6 @@ public class Coregistration implements ICoregistration {
 
 
     /**
-     * *************************************************************
      * shiftazispectrum                                          *
      * Shift spectrum of input matrix data either from fDC to zero, *
      * or from zero to fDC (Doppler centroid frequency).            *
@@ -1931,41 +1930,38 @@ public class Coregistration implements ICoregistration {
      * approximation is used. If fDC is smaller then 2 percent of   *
      * PRF then no shifting is performed.                           *
      * memory intensive cause matrix is used.                       *
-     * *
-     * #%// BK 09-Nov-2000                                            *
-     * this is not ok for ovs data *
-     * #%// BK 12-Aug-2005                                            *
-     * **************************************************************
      */
-    private void shiftazispectrum(ComplexDoubleMatrix data, // slcdata in space domain
-                                  final SLCImage slcinfo, // polynomial fDC
-                                  final double shift) // abs(shift)==firstpix in slave system)
+    public void shiftazispectrum(final ComplexDoubleMatrix data, // slcData in space domain
+                                 final double prf,
+                                 final double rsr2x,
+                                 final double[] doppler,   // polynomial fDC
+                                 final double shift)       // abs(shift) == firstpix in slave system)
     {
 
-        // ______ Evaluate fdc for all columns ______
-        if (slcinfo.doppler.getF_DC_a0() == 0 && slcinfo.doppler.getF_DC_a1() == 0 && slcinfo.doppler.getF_DC_a2() == 0) // no shift at all
+        // Evaluate fdc for all columns
+        if (doppler[0] == 0 && doppler[1] == 0 && doppler[2] == 0) // no shift at all
             return;
 
-// ______ Some constants ______
+        // Some constants
         final int NLINES = data.rows; // compute e^ix
         final int NCOLS = data.columns; // width
         final int SIGN = (shift < 0) ? -1 : 1; // e^{SIGN*i*x}
 // -1
         final double PIXLO = Math.abs(shift) - 1; // first column for fDC polynomial
 
-// ______ Compute fDC for all columns ______
-// ______ Create axis to evaluate fDC polynomial ______
-// ______ fDC(column) = fdc_a0 + fDC_a1*(col/RSR) + fDC_a2*(col/RSR)^2 ______
-// ______ offset slave,master defined as: cols=colm+offsetP ______
+        // Compute fDC for all columns
+        // Create axis to evaluate fDC polynomial
+        // fDC(column) = fdc_a0 + fDC_a1*(col/RSR) + fDC_a2*(col/RSR)^2
+        // offset slave,master defined as: cols=colm+offsetP
         DoubleMatrix FDC = new DoubleMatrix(1, NCOLS);
-        FDC.fill(slcinfo.doppler.getF_DC_a0()); // constant term
-        if (slcinfo.doppler.getF_DC_a1() != 0 || slcinfo.doppler.getF_DC_a2() != 0) // check to save time
+        FDC.fill(doppler[0]); // constant term
+        if (doppler[1] != 0 || doppler[2] != 0) // check to save time
         {
             // doppler progression over range axis
-            DoubleMatrix xaxis = DoubleMatrix.linspace((int) PIXLO, (int) PIXLO + NCOLS, NCOLS);
-            xaxis.divi(slcinfo.getRsr2x() / 2);
-            FDC.addi(xaxis.mul(slcinfo.doppler.getF_DC_a1())); // linear term
-            FDC.addi(MatrixFunctions.pow(xaxis, 2).mul(slcinfo.doppler.getF_DC_a2())); // cubic term
+            DoubleMatrix xaxis = DoubleMatrix.linspace((int) PIXLO, (int) (PIXLO + NCOLS - 1), NCOLS);
+            xaxis.divi(rsr2x / 2);
+            FDC.addi(xaxis.mul(doppler[1])); // linear term
+            FDC.addi(MatrixFunctions.pow(xaxis, 2).mul(doppler[2])); // cubic term
         }
 
         logger.debug("fDC of first pixel: " + FDC.get(0, 0));
@@ -1974,382 +1970,34 @@ public class Coregistration implements ICoregistration {
         else
             logger.debug("Shifting from fDC to zero.");
 
-// ====== Actually shift the azimuth spectrum ======
-
-// TODO: check orientation of vectors, potential bug here - standing vs lying vector?!?
-        DoubleMatrix trend = DoubleMatrix.linspace(1, NLINES, NLINES).transpose();
+        // Actually shift the azimuth spectrum
+        // TODO: check indexing for yAxis vector : this doesn't look righ, however, it is consistent with DORIS.core
+        // .... spectra of the first range line should be also shifted!
+//        DoubleMatrix trend = DoubleMatrix.linspace(1, NLINES, NLINES).transpose();
+        DoubleMatrix trend = DoubleMatrix.linspace(0, NLINES - 1, NLINES);
+        trend.muli(2 * Constants.PI / prf);
 
         trend.assertMultipliesWith(FDC); // check on orientation
-        trend.mmuli(2 * Constants.PI / slcinfo.getPRF()).muli(FDC);
+        DoubleMatrix P = trend.mmul(FDC);
 
 //        for (int ii = 0; ii < NLINES; ++ii) {
-//            trend.put(ii, 0, (2 * ii) * Constants.PI / slcinfo.getPRF());
+//            trend.put(ii, 0, (2 * ii) * Constants.PI / doppler.getPRF());
 //        }
 //
 //        matrix<real8> P = trend * FDC;
 
         ComplexDoubleMatrix cplxTrend = (SIGN == -1) ?
-                new ComplexDoubleMatrix(MatrixFunctions.cos(trend), MatrixFunctions.sin(trend).neg()) :
-                new ComplexDoubleMatrix(MatrixFunctions.cos(trend), MatrixFunctions.sin(trend));
+                new ComplexDoubleMatrix(MatrixFunctions.cos(P), MatrixFunctions.sin(P).neg()) :
+                new ComplexDoubleMatrix(MatrixFunctions.cos(P), MatrixFunctions.sin(P));
 
         data.muli(cplxTrend);
 
     } // END shiftazispectrum
 
-    private enum ResampleKernels {
-        RECT, TRI,
-        TS6P, TS8P, TS16P,
-        CC4P, CC6P,
-        RS_KNAB4P, RS_KNAB6P, RS_KNAB8P, RS_KNAB10P, RS_KNAB16P,
-        RS_RC6P, RS_RC12P
-    }
-
-
-    private class LUT {
-
-        private static final int INTERVAL = 127;            // precision: 1./interval [pixel]
-        private final int nInterval = INTERVAL + 1;   // size of lookup table
-        private final double dx = 1.0 / INTERVAL;       // interval look up table
-
-        private DoubleMatrix kernel;
-        private DoubleMatrix axis;
-
-        private String method;
-        private int kernelLength;
-
-        LUT(String method, int kernelLength) {
-            this.method = method;
-            this.kernelLength = kernelLength;
-        }
-
-        public DoubleMatrix getKernel() {
-            return kernel;
-        }
-
-        public DoubleMatrix getAxis() {
-            return axis;
-        }
-
-        // construct kernel axis for numberOfKernelPoints
-        // eg. kernelLength = 4  --->  xKernelAxis = [-1 0 1 2]
-        private double[] defineAxis(final int kernelLength) {
-            final double[] xKernelAxis = new double[kernelLength];
-            for (int i = 0; i < kernelLength; ++i) {
-                xKernelAxis[i] = 1.0d - (kernelLength / 2) + i;
-            }
-            return xKernelAxis;
-        }
-
-        public void constructLUT() {
-
-            double[] kernelAxis = defineAxis(kernelLength);
-
-            // temp matrices
-            DoubleMatrix kernelTemp;
-            DoubleMatrix axisTemp;
-
-            // initialization
-            kernel = new DoubleMatrix(nInterval, kernelLength);
-            axis = new DoubleMatrix(nInterval, kernelLength);
-
-            for (int i = 0; i < nInterval; i++) {
-                //                switch (ResampleKernels.valueOf(resampleMethod.toUpperCase())) {
-                //                    case RECT:
-                //                        kernelTemp = new DoubleMatrix(rect(kernelAxis));
-                //                        kernel.putRow(i,kernelTemp);
-                //                        break;
-                //                    case TRI:
-                //            ......
-                if (method.equals(RECT)) {
-                    kernelTemp = new DoubleMatrix(rect(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                } else if (method.equals(TRI)) {
-                    kernelTemp = new DoubleMatrix(tri(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                } else if (method.equals(TS6P)) {
-                    kernelTemp = new DoubleMatrix(ts6(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                } else if (method.equals(TS8P)) {
-                    kernelTemp = new DoubleMatrix(ts8(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                } else if (method.equals(TS16P)) {
-                    kernelTemp = new DoubleMatrix(ts16(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                } else if (method.equals(CC4P)) {
-                    kernelTemp = new DoubleMatrix(cc4(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                } else if (method.equals(CC6P)) {
-                    kernelTemp = new DoubleMatrix(cc6(kernelAxis));
-                    kernelTemp.divi(kernelTemp.sum()); // normalize
-                    kernel.putRow(i, kernelTemp);
-                }
-                axisTemp = new DoubleMatrix(kernelAxis).sub(dx);
-                axis.putRow(i, axisTemp);
-                kernelAxis = axisTemp.toArray();
-            }
-
-            // normalization
-            kernel.divColumnVector(kernel.rowSums());
-
-        }
-
-        /**
-         * Log kernels to check sum, etc.
-         */
-        public void overviewOfLut() {
-
-            logger.debug("Overview of LUT for interpolation kernel follows:");
-            logger.debug("-------------------------------------------------");
-
-            for (int i = 0; i < nInterval; ++i) {
-
-                // math
-                DoubleMatrix row = kernel.getRow(i);
-                double sum = row.sum();
-                row.divi(sum);
-
-                // logger
-                logger.debug(axis.toString());
-                logger.debug("Normalized kernel by dividing LUT elements by sum:");
-                logger.debug(row.toString() + "( sum   : " + sum + ")");
-
-            }
-            logger.debug("Resample: normalized lookup table created (kernel and axis).");
-        }
-
-
-        // methods for interpolators
-        // -------------------------------------------
-        // cc4: cubic convolution 4 points
-        // input:
-        //   - x-axis
-        // output:
-        //  - y=f(x); function evaluated at x
-        public double[] cc4(final double[] x) {
-
-            final double alpha = -1.0;
-            final double[] y = new double[x.length];
-
-            for (int i = 0; i < y.length; i++) {
-                final double xx2 = Math.sqrt(x[i]);
-                final double xx = Math.sqrt(xx2);
-                if (xx < 1)
-                    y[i] = (alpha + 2) * xx2 * xx - (alpha + 3) * xx2 + 1;
-                else if (xx < 2)
-                    y[i] = alpha * xx2 * xx - 5 * alpha * xx2 + 8 * alpha * xx - 4 * alpha;
-                else
-                    y[i] = 0;
-            }
-
-            return y;
-
-        } // END cc4
-
-
-        // cc6: cubic convolution 4 points
-        // input:
-        //   - x-axis
-        // output:
-        //  - y=f(x); function evaluated at x
-
-        private double[] cc6(final double[] x) {
-
-            final double alpha = -0.5;
-            final double beta = 0.5;
-            final double[] y = new double[x.length];
-
-            for (int i = 0; i < y.length; i++) {
-                final double xx2 = Math.pow(x[i], 2);
-                final double xx = Math.sqrt(xx2);
-                if (xx < 1)
-                    y[i] = (alpha - beta + 2) * xx2 * xx - (alpha - beta + 3) * xx2 + 1;
-                    //y[i] = (alpha+beta+2)*xx2*xx - (alpha+beta+3)*xx2 + 1; // wrong in reference paper??
-                else if (xx < 2)
-                    y[i] = alpha * xx2 * xx - (5 * alpha - beta) * xx2
-                            + (8 * alpha - 3 * beta) * xx - (4 * alpha - 2 * beta);
-                else if (xx < 3)
-                    y[i] = beta * xx2 * xx - 8 * beta * xx2 + 21 * beta * xx - 18 * beta;
-                else
-                    y[i] = 0.0;
-            }
-
-            return y;
-
-        } // END cc6
-
-        // ts6: truncated sinc 6 points
-        // input:
-        //   - x-axis
-        // output:
-        //  - y=f(x); function evaluated at x
-
-        private double[] ts6(final double[] x) {
-
-            final double[] y = new double[x.length];
-
-            for (int i = 0; i < y.length; i++)
-                y[i] = sinc(x[i]) * rect(x[i] / 6.0);
-
-            return y;
-
-        } // END ts6
-
-        // ts8: truncated sinc 8 points
-        // input:
-        //   - x-axis
-        // output:
-        //  - y=f(x); function evaluated at x
-
-        private double[] ts8(final double[] x) {
-
-            final double[] y = new double[x.length];
-
-            for (int i = 0; i < y.length; i++)
-                y[i] = sinc(x[i]) * rect(x[i] / 8.0);
-
-            return y;
-
-        } // END ts8
-
-        // ts16: truncated sinc 6 points
-        // input:
-        //   - x-axis
-        // output:
-        //  - y=f(x); function evaluated at x
-
-        private double[] ts16(final double[] x) {
-
-            double[] y = new double[x.length];
-
-            for (int i = 0; i < y.length; i++)
-                y[i] = sinc(x[i]) * rect(x[i] / 16.0);
-
-            return y;
-
-        } // END cc6
-
-        // rect :: rect function for matrix (stepping function?)
-        // input:
-        //    - x-axis
-        // output:
-        //    - y=f(x); function evaluated at x
-
-        private double[] rect(final double[] x) {
-            final double[] y = new double[x.length];
-            for (int i = 0; i < y.length; i++) {
-                y[i] = rect(x[i]);
-            }
-            return y;
-        } // END rect
-
-        // tri ::  tri function for matrix (piecewize linear?, triangle)
-        // input:
-        //    - x-axis
-        // output:
-        //    - y=f(x); function evaluated at x
-
-        private double[] tri(final double[] x) {
-            final double[] y = new double[x.length];
-            for (int i = 0; i < y.length; i++) {
-                y[i] = tri(x[i]);
-            }
-            return y;
-        } // END tri
-
-        /*
-              knab :: KNAB window of N points, oversampling factor CHI
-                   defined by: Migliaccio IEEE letters vol41,no5, pp1105,1110, 2003
-                   k = sinc(x).*(cosh((pi*v*L/2)*sqrt(1-(2.*x./L).^2))/cosh(pi*v*L/2));
-                    input:
-                       - x-axis
-                       - oversampling factor of bandlimited sigal CHI
-                       - N points of kernel size
-                   output:
-                       - y=f(x); function evaluated at x
-        */
-
-        private double[] knab(final double[] x, final double CHI, final int N) {
-            final double[] y = new double[x.length];
-            final double v = 1.0 - 1.0 / CHI;
-            final double vv = Math.PI * v * N / 2.0;
-            final double coshvv = Math.cosh(vv);
-
-            for (int i = 0; i < y.length; i++) {
-                y[i] = sinc(x[i]) * Math.cosh(vv * Math.sqrt(1.0 - Math.pow(2.0 * x[i] / (double) N, 2))) / coshvv;
-            }
-            return y;
-
-        } // END knab
-
-        /*
-       rc_kernel: Raised Cosine window of N points, oversampling factor CHI
-                  defined by: Cho, Kong and Kim, J.Elektromagn.Waves and appl
-                                    vol19, no.1, pp, 129-135, 2005;
-       claimed to be best, 0.9999 for 6 points kernel.
-       k(x) = sinc(x).*[cos(v*pi*x)/(1-4*v^2*x^2)]*rect(x/L)
-             where v = 1-B/fs = 1-1/Chi (roll-off factor; ERS: 15.55/18.96)
-             L = 6 (window size)
-        input:
-                - x-axis
-                - oversampling factor of bandlimited sigal CHI
-                - N points of kernel size
-       output:
-                - y=f(x); function evaluated at x
-        */
-
-        private double[] rc_kernel(final double[] x, final double CHI, final int N) {
-
-            final double[] y = new double[x.length];
-            final double v = 1.0 - 1.0 / CHI;// alpha in paper cho05
-            final double v2 = 2.0 * v;
-            final double vPI = v * Math.PI;
-
-            for (int i = 0; i < y.length; i++) {
-                y[i] = sinc(x[i]) * rect(x[i] / N) *
-                        Math.cos(vPI * x[i]) / (1.0 - Math.pow(v2 * x[i], 2));
-            }
-            return y;
-        } // END rc_kernel
-
-        private double sinc(final double x) {
-            return ((x == 0) ? 1 : Math.sin(Math.PI * x) / (Math.PI * x));
-        }
-
-        private double rect(final double x) {
-            double ans = 0.0;
-            if (x < 0.5 && x > -0.5) {
-                ans = 1;
-            } else if (x == 0.5 || x == -0.5) {
-                ans = 0.5;
-            }
-            return ans;
-        }
-
-        private double tri(final double x) {
-            double ans = 0.0;
-            if (x < 1.0 && x > -1.0) {
-                ans = (x < 0) ? 1 + x : 1 - x;
-            }
-            return ans;
-        }
-
-    }
-
-
     /**
-     * *************************************************************
-     * getoverlap                                                   *
-     * *
-     * overlap of 2 windows in same coord. system                   *
-     * #%// BK 21-Sep-2000
-     * **************************************************************
+     * getoverlap : overlap of 2 windows in same coord. system
      */
+    @Deprecated
     public static Window getOverlap(final Window master, final Window slave) {
         Window overlap = new Window(slave);
         if (master.linelo > overlap.linelo)
@@ -2365,69 +2013,75 @@ public class Coregistration implements ICoregistration {
 
 
     /**
-     * *************************************************************
-     * getoverlap                                                   *
-     * *
-     * compute approx. rectangular overlap (master coord.)          *
-     * between master/slave with help of transformation polynomial  *
-     * Bert Kampes 10-Mar-99                                        *
-     * **************************************************************
+     * getoverlap : compute approx. rectangular overlap (master coord.)
+     * between master/slave with help of transformation polynomial
      */
     public static Window getOverlap(final SLCImage master, final SLCImage slave, final double[] cpmL, final double[] cpmP) {
 
         // ______ Normalize data for polynomial ______
-        double minL = master.getCurrentWindow().linelo;
-        double maxL = master.getCurrentWindow().linehi;
-        double minP = master.getCurrentWindow().pixlo;
-        double maxP = master.getCurrentWindow().pixhi;
+        double minL = master.getOriginalWindow().linelo;
+        double maxL = master.getOriginalWindow().linehi;
+        double minP = master.getOriginalWindow().pixlo;
+        double maxP = master.getOriginalWindow().pixhi;
 
         logger.info("getoverlap: polynomial normalized by factors: " + minL + " " + maxL + " " + minP + " " + maxP + " to [-2,2]");
 
-        // ______offset = A(slave system) - A(master system)______
-        // ______Corners of slave in master system______
-        // ______Offsets for slave corners (approx.)______
-        // ______ approx: defined as offset = f(l,p)_M in master system not slave.
+        // offset = A(slave system) - A(master system)
+        // ....corners of slave in master system
+        // ....offsets for slave corners (approx.)
+        // ....approx: defined as offset = f(l,p)_M in master system not slave.
         double approxOffL = cpmL[0]; // zero order term;
         double approxOffP = cpmP[0]; // zero order term;
 
-        Window slvCrnt = slave.getCurrentWindow();
-        Window slvCrntNorm = new Window(slvCrnt);
-        slvCrntNorm.linelo = (long) PolyUtils.normalize2(slvCrnt.linelo - approxOffL, minL, maxL);
-        slvCrntNorm.linehi = (long) PolyUtils.normalize2(slvCrnt.linelo - approxOffL, minL, maxL);
-        slvCrntNorm.pixhi = (long) PolyUtils.normalize2(slvCrnt.linelo - approxOffP, minP, maxP);
-        slvCrntNorm.pixlo = (long) PolyUtils.normalize2(slvCrnt.linelo - approxOffP, minP, maxP);
+        final double sL00 = slave.getCurrentWindow().linelo -
+                polyval(normalize2((double) slave.getCurrentWindow().linelo - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixlo - approxOffP, minP, maxP), cpmL);
 
-        // Use normalized polynomial
-        final double s_l_00 = slvCrnt.linelo - polyval(slvCrntNorm.linelo, slvCrntNorm.pixlo, cpmL);
-        final double s_p_00 = slvCrnt.pixlo - polyval(slvCrntNorm.linelo, slvCrntNorm.pixlo, cpmP);
-        final double s_l_0N = slvCrnt.linelo - polyval(slvCrntNorm.linelo, slvCrntNorm.pixhi, cpmL);
-        final double s_p_0N = slvCrnt.pixhi - polyval(slvCrntNorm.linelo, slvCrntNorm.pixhi, cpmP);
-        final double s_l_N0 = slvCrnt.linehi - polyval(slvCrntNorm.linehi, slvCrntNorm.pixlo, cpmL);
-        final double s_p_N0 = slvCrnt.pixhi - polyval(slvCrntNorm.linehi, slvCrntNorm.pixlo, cpmP);
-        final double s_l_NN = slvCrnt.pixhi - polyval(slvCrntNorm.linehi, slvCrntNorm.pixhi, cpmL);
-        final double s_p_NN = slvCrnt.linehi - polyval(slvCrntNorm.linehi, slvCrntNorm.pixhi, cpmP);
+        final double sP00 = slave.getCurrentWindow().pixlo -
+                polyval(normalize2((double) slave.getCurrentWindow().linelo - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixlo - approxOffP, minP, maxP), cpmP);
+
+        final double sL0N = slave.getCurrentWindow().linelo -
+                polyval(normalize2((double) slave.getCurrentWindow().linelo - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixhi - approxOffP, minP, maxP), cpmL);
+
+        final double sP0N = slave.getCurrentWindow().pixhi -
+                polyval(normalize2((double) slave.getCurrentWindow().linelo - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixhi - approxOffP, minP, maxP), cpmP);
+
+        final double sLN0 = slave.getCurrentWindow().linehi -
+                polyval(normalize2((double) slave.getCurrentWindow().linehi - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixlo - approxOffP, minP, maxP), cpmL);
+
+        final double sPN0 = slave.getCurrentWindow().pixlo -
+                polyval(normalize2((double) slave.getCurrentWindow().linehi - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixlo - approxOffP, minP, maxP), cpmP);
+
+        final double sLNN = slave.getCurrentWindow().linehi -
+                polyval(normalize2((double) slave.getCurrentWindow().linehi - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixhi - approxOffP, minP, maxP), cpmL);
+
+        final double sPNN = slave.getCurrentWindow().pixhi -
+                polyval(normalize2((double) slave.getCurrentWindow().linehi - approxOffL, minL, maxL),
+                        normalize2((double) slave.getCurrentWindow().pixhi - approxOffP, minP, maxP), cpmP);
+
 
         // Corners of overlap master,slave in master system
         Window win = new Window();
-        win.linelo = max((int) (master.getCurrentWindow().linelo), (int) (Math.ceil(max(s_l_00, s_l_0N))));
-        win.linehi = max((int) (master.getCurrentWindow().linehi), (int) (Math.ceil(max(s_l_N0, s_l_NN))));
-        win.pixlo = max((int) (master.getCurrentWindow().pixlo), (int) (Math.ceil(max(s_p_00, s_p_N0))));
-        win.pixhi = max((int) (master.getCurrentWindow().pixhi), (int) (Math.ceil(max(s_p_0N, s_p_NN))));
+        win.linelo = max((int) (master.getCurrentWindow().linelo), (int) (Math.ceil(max(sL00, sL0N))));
+        win.linehi = min((int) (master.getCurrentWindow().linehi), (int) (Math.ceil(max(sLN0, sLNN))));
+        win.pixlo = max((int) (master.getCurrentWindow().pixlo), (int) (Math.ceil(max(sP00, sPN0))));
+        win.pixhi = min((int) (master.getCurrentWindow().pixhi), (int) (Math.ceil(max(sP0N, sPNN))));
         return win;
     } // END getoverlap
 
 
     /**
-     * *************************************************************
-     * getoverlap                                                   *
-     * *
-     * compute rectangular overlap between master and slave         *
-     * (master coordinate system)                                   *
-     * Freek van Leijen, 22-SEP-2007                                *
-     * **************************************************************
+     * getoverlap: compute rectangular overlap between master and slave
+     * (master coordinate system)
      */
-    public Window getOverlap(final SLCImage master, final SLCImage slave,
-                             final double Npointsd2, final double timing_L, final double timing_P) {
+    public static Window getOverlap(final SLCImage master, final SLCImage slave,
+                                    final double Npointsd2, final double timing_L, final double timing_P) {
 
         double ml0 = master.getCurrentWindow().linelo;
         double mlN = master.getCurrentWindow().linehi;
@@ -2469,17 +2123,12 @@ public class Coregistration implements ICoregistration {
 
 
     /**
-     * *************************************************************
-     * lineintersect                                                *
-     * *
-     * compute intersection point of two line segments              *
-     * (master coordinate system)                                   *
-     * Freek van Leijen, 22-SEP-2007                                *
-     * **************************************************************
+     * lineintersect : compute intersection point of two line segments
+     * (master coordinate system)
      */
-    private double[] lineIntersect(final double ax, final double ay, final double bx,
-                                   final double by, final double cx, final double cy, final double dx,
-                                   final double dy) {
+    private static double[] lineIntersect(final double ax, final double ay, final double bx,
+                                          final double by, final double cx, final double cy, final double dx,
+                                          final double dy) {
 
         double[] exy = new double[2]; // x,y coordinate
 

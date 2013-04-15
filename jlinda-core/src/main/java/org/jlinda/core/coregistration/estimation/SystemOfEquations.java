@@ -1,4 +1,4 @@
-package org.jdoris.core.coregistration.estimation;
+package org.jlinda.core.coregistration.estimation;
 
 import gnu.trove.list.array.TFloatArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -6,7 +6,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.jblas.DoubleMatrix;
 import org.jblas.FloatMatrix;
 import org.jblas.MatrixFunctions;
-import org.jdoris.core.utils.PolyUtils;
+import org.jlinda.core.utils.PolyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

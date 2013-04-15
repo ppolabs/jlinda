@@ -1,10 +1,10 @@
-package org.jdoris.core.coregistration;
+package org.jlinda.core.coregistration;
 
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
-import org.jdoris.core.*;
-import org.jdoris.core.todo_classes.Input;
-import org.jdoris.core.todo_classes.todo_classes;
+import org.jlinda.core.*;
+import org.jlinda.core.todo_classes.Input;
+import org.jlinda.core.todo_classes.todo_classes;
 
 public interface ICoregistration {
 
@@ -55,9 +55,14 @@ public interface ICoregistration {
             double offsetL, double offsetP);
 
     // ______ Correlation in space domain ______
-    double coherencespace(Input.FineCorr fineinput,
-                          final ComplexDoubleMatrix Master, final ComplexDoubleMatrix Mask,
+//    double coherencespace(Input.FineCorr fineinput,
+//                          final ComplexDoubleMatrix Master, final ComplexDoubleMatrix Mask,
+//                          double offsetL, double offsetP);
+
+    double coherencespace(final int AccL, final int AccP, final int osfactor,
+                          ComplexDoubleMatrix Master, ComplexDoubleMatrix Mask,
                           double offsetL, double offsetP);
+
 
     // ______ Compute ICoregistration parameters ______
     //      const window            &originalmaster,
@@ -72,8 +77,7 @@ public interface ICoregistration {
     DoubleMatrix getofffile(String file, float threshold);
 
     // ______ Resample slave ______
-    void resample(final Input.General generalinput,
-                  final Input.Resample resampleinput,
+    void resample(final Input.Resample resampleinput,
                   final SLCImage master, final SLCImage slave,
                   final double[] cpmL, final double[] cpmP,
                   final int demassist);
