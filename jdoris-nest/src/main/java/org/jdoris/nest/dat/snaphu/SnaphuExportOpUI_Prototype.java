@@ -59,8 +59,8 @@ public class SnaphuExportOpUI_Prototype extends BaseOperatorUI {
 
     @Override
     public void updateParameters() {
-        OperatorUIUtils.updateBandList(ifgBandList, paramMap, "masterBandNames");
-        OperatorUIUtils.updateBandList(cohBandList, paramMap, "slaveBandNames");
+        OperatorUIUtils.updateParamList(ifgBandList, paramMap, "masterBandNames");
+        OperatorUIUtils.updateParamList(cohBandList, paramMap, "slaveBandNames");
 
         paramMap.put("statCostMode", statCostMode.getSelectedItem());
         paramMap.put("initMethod", initMethod.getSelectedItem());
