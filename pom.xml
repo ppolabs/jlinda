@@ -4,14 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <name>jDoris</name>
-    <groupId>org.jdoris</groupId>
-    <artifactId>jdoris</artifactId>
-    <version>0.3</version>
+    <name>jLinda</name>
+    <groupId>org.jlinda</groupId>
+    <artifactId>jlinda</artifactId>
+    <version>0.0</version>
+
+    <description>Java Library for Interferometric Data Analysis (jLinda)</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jdoris.version>0.3</jdoris.version>
+        <jlinda.version>0.0</jlinda.version>
         <nest.version>5.0</nest.version>
         <beam.version>5.0-4.10.4</beam.version>
         <jblas.version>1.2.0</jblas.version>
@@ -23,7 +25,7 @@
 
     <organization>
         <name>PPO.labs</name>
-        <url>http://www.ppolabs.com/jdoris</url>
+        <url>http://www.ppolabs.com/jlinda</url>
     </organization>
     <inceptionYear>2011</inceptionYear>
 
@@ -36,8 +38,8 @@
     </licenses>
 
     <modules>
-        <module>jdoris-core</module>
-        <module>jdoris-nest</module>
+        <module>jlinda-core</module>
+        <module>jlinda-nest</module>
     </modules>
 
     <repositories>
@@ -76,7 +78,7 @@
     </repositories>
 
     <build>
-        <outputDirectory>${outputdir}/modules/${project.artifactId}-${jdoris.version}</outputDirectory>
+        <outputDirectory>${outputdir}/modules/${project.artifactId}-${jlinda.version}</outputDirectory>
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
