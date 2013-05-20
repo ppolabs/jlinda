@@ -757,7 +757,7 @@ public class CoregistrationTest {
     }
 
 
-    public FloatMatrix correlate(FloatMatrix A, FloatMatrix Mask) {
+    private FloatMatrix correlate_FLOAT(FloatMatrix A, FloatMatrix Mask) {
 
         double varM = 0.; // variance of Mask
         Mask.subi(Mask.mean());
@@ -782,7 +782,7 @@ public class CoregistrationTest {
             for (int j = beginp; j < A.columns - beginp; j++) {
 
                 // Am.setdata(windef, A, winA); // Am no allocs.
-                setdata(Am, windef, A, winA);
+                setdata_FLOAT(Am, windef, A, winA);
 
                 Am.subi(Am.mean()); // center around mean
                 float covAM = (float) 0.; // covariance A,Mask
@@ -813,7 +813,7 @@ public class CoregistrationTest {
      * if outWin==0 defaults to totalB, inWin==0 defaults to totalA
      * first line matrix =0 (?)
      */
-    public static void setdata(FloatMatrix outMatrix, Window outWin, FloatMatrix inMatrix, Window inWin) {
+    private static void setdata_FLOAT(FloatMatrix outMatrix, Window outWin, FloatMatrix inMatrix, Window inWin) {
 
         if (outWin.linehi == 0 && outWin.pixhi == 0) {
             outWin.linehi = outMatrix.rows - 1;
@@ -855,12 +855,12 @@ public class CoregistrationTest {
         }
     }
 
-    public FloatMatrix intensity(final ComplexFloatMatrix inputMatrix) {
+    private FloatMatrix intensity_FLOAT(final ComplexFloatMatrix inputMatrix) {
         return pow(inputMatrix.real(), 2).add(pow(inputMatrix.imag(), 2));
     }
 
-    public FloatMatrix magnitude(final ComplexFloatMatrix inputMatrix) {
-        return sqrt(intensity(inputMatrix));
+    private FloatMatrix magnitude_FLOAT(final ComplexFloatMatrix inputMatrix) {
+        return sqrt(intensity_FLOAT(inputMatrix));
     }
 
 
