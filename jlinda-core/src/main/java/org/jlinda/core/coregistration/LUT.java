@@ -41,6 +41,9 @@ public class LUT {
     private String method;
     private int kernelLength;
 
+    public static int getInterval() {
+        return INTERVAL;
+    }
 
     LUT(String method, int kernelLength) {
         this.method = method;

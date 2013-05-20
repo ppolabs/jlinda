@@ -4,9 +4,11 @@ package org.jlinda.core.coregistration;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import org.jblas.*;
+import org.jlinda.core.Constants;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
 import org.jlinda.core.io.DataReader;
+import org.jlinda.core.utils.LinearAlgebraUtils;
 import org.jlinda.core.utils.MathUtils;
 import org.jlinda.core.utils.PolyUtils;
 import org.jlinda.core.utils.SarUtils;
@@ -20,8 +22,12 @@ import java.nio.ByteOrder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.lang.Math.ceil;
+import static java.lang.Math.min;
 import static org.jblas.MatrixFunctions.pow;
 import static org.jblas.MatrixFunctions.sqrt;
+import static org.jlinda.core.utils.PolyUtils.normalize2;
+import static org.jlinda.core.utils.PolyUtils.polyval;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class CoregistrationTest {
@@ -64,6 +70,7 @@ public class CoregistrationTest {
 
     }
 
+    @Ignore
     @Test
     public void firstTest_MagSpace() throws Exception {
 
@@ -176,6 +183,7 @@ public class CoregistrationTest {
 
     }
 
+    @Ignore
     @Test
     public void secondTest_MagFFT() throws Exception {
 
@@ -227,6 +235,7 @@ public class CoregistrationTest {
     }
 
 
+    @Ignore
     @Test
     public void secondTest_fineMagFFT() throws Exception {
 
@@ -282,6 +291,7 @@ public class CoregistrationTest {
 
     }
 
+    @Ignore
     @Test
     public void thirdTest_shiftSpectrum() throws Exception {
 
@@ -347,6 +357,7 @@ public class CoregistrationTest {
 
     }
 
+    @Ignore
     @Test
     public void fourthTest_shiftSpectrumAndMagFFT() throws Exception {
 
@@ -433,6 +444,7 @@ public class CoregistrationTest {
 
     }
 
+    @Ignore
     @Test
     public void fifthTest_coherenceSpace() throws Exception {
 
@@ -509,8 +521,8 @@ public class CoregistrationTest {
         slave.setSlaveMasterOffset(1.38941008e+02, -2.19844746e+00, 1.38856333e+02, -2.39968790e+00,
                 1.38911145e+02, -2.19893253e+00, 1.38936348e+02, -2.36860850e+00);
 
-        boolean shiftazi = true;
-        int memory = 500;
+        boolean shiftAziSpectra = true;
+        boolean demAssisted = false;
         String method = "cc6p";
 
         int polyOrder = 2;
@@ -535,11 +547,9 @@ public class CoregistrationTest {
 
         // PROCESSING
         // ----------------------------------
-        if (shiftazi == true) {
+        if (shiftAziSpectra == true) {
             logger.info("Shifting kernel_L to data fDC");
         }
-
-        final int BUFFERMEMSIZE = memory;
 
         final int Npoints = extractNumber(method); // #pnts interpolator
         logger.debug("Number of kernel points: {}", Npoints);
@@ -551,8 +561,6 @@ public class CoregistrationTest {
 
         final int Npointsd2 = Npoints / 2;
         final int Npointsd2m1 = Npointsd2 - 1;
-//        final int sizeofci16 = sizeof(compli16);
-//        final int sizeofcr4 = sizeof(complr4);
 
         // Normalize data for polynomial
         final double minL = master.getOriginalWindow().linelo;
@@ -566,9 +574,9 @@ public class CoregistrationTest {
 
         // For KNAB/Raised Cosine kernel if requested
         // ...Because kernel is same in az. and rg. min. must be used.
-        float CHI_az = (float) (slave.getPRF() / slave.getAzimuthBandwidth());// oversampling factor az
-        float CHI_rg = (float) ((slave.getRsr2x() / 2.0) / slave.getRangeBandwidth());// oversampling factor rg
-        float CHI = Math.min(CHI_az, CHI_rg);// min. oversampling factor of data
+        final float CHI_az = (float) (slave.getPRF() / slave.getAzimuthBandwidth());// oversampling factor az
+        final float CHI_rg = (float) ((slave.getRsr2x() / 2.0) / slave.getRangeBandwidth());// oversampling factor rg
+        final float CHI = min(CHI_az, CHI_rg);// min. oversampling factor of data
         logger.info("Oversampling ratio azimuth (PRF/ABW): {}", CHI_az);
         logger.info("Oversampling ratio range (RSR/RBW): {}", CHI_rg);
         logger.info("KNAB/RC kernel uses: oversampling ratio: {}", CHI);
@@ -578,18 +586,6 @@ public class CoregistrationTest {
         }
 
         /** Create lookup table */
-        // ........ e.g. four point interpolator
-        // ........ interpolating point: p=6.4925
-        // ........ required points: 5, 6, 7, 8
-        // ........ kernel number from lookup table: floor(.4925*interval+.5)
-        // ........  table[0]= 0 1 0 0 ;table[interval]= 0 0 1 0
-        // ........ intervals in lookup table: dx
-        // ........ for high doppler 100 is OK (fdc=3prf; 6pi --> 10deg error?)
-        final int INTERVAL = 127; // precision: 1./interval [pixel]
-        final int Ninterval = INTERVAL + 1; // size of lookup table
-        final double dx = 1.0d / INTERVAL; // interval look up table
-        logger.info("resample: lookup table size: " + Ninterval);
-
         /** Notes:
          *  ...Lookup table complex because of multiplication with complex
          *  ...Loopkup table for azimuth and range and
@@ -605,76 +601,219 @@ public class CoregistrationTest {
         final ComplexDoubleMatrix pntKernelRg = new ComplexDoubleMatrix(lut.getKernel());
         final DoubleMatrix pntAxis = lut.getAxis();
 
-        // Degree of coregistration polynomial
-        final int degree_cpmL = PolyUtils.degreeFromCoefficients(cpmL.length);
-        final int degree_cpmP = PolyUtils.degreeFromCoefficients(cpmP.length);
+//        // Degree of coregistration polynomial
+//        final int degree_cpmL = PolyUtils.degreeFromCoefficients(cpmL.length);
+//        final int degree_cpmP = PolyUtils.degreeFromCoefficients(cpmP.length);
 
         // Compute overlap between master and slave
-        Window overlap = Coregistration.getOverlap(master, slave, (double) Npointsd2, 0d, 0d);
-//        Window oldOverlap = Coregistration.getOverlap(master, slave, cpmL, cpmP);
-        logger.debug("[New method] Overlap between master and slave, in master coordinates: {}", overlap.toString());
+        Window fullOverlap = Coregistration.getOverlap(master, slave, (double) Npointsd2, 0d, 0d);
+        logger.info("Overlap window: " + fullOverlap.linelo + ":" + fullOverlap.linehi + ", " + fullOverlap.pixlo + ":" + fullOverlap.pixhi);
 
-        // get the data
-        // -------------------------------------------------------------------------------
-        // declare file names
-        String fileName = "resample_buffer.cr4";
+        Window tileOverlap = fullOverlap;
 
-        int nRows = 2750;
-        int nCols = 550;
-
-        ComplexDoubleMatrix buffer = DataReader.readCplxFloatData(processingPath + dataPath + fileName, nRows, nCols, littleEndian);
-        logger.info("Buffer size: {} rows, {} cols", nRows, nCols);
-
-
-        // ----------------------------------------------------------------------------
+        /* WORK OUT RESAMPLING OUTPUT GEOMETRY */
 
         // overlap between master and slave in MASTER COORDINATE SYSTEM
-
-        Window masterWindow = new Window();
-        Window slaveWindow = new Window();
-
-//        Window fullMasterCrop = new Window(minL, maxL, minP, maxP);
-
-
-        int firstline = 0;
-        int lastline = 0;
+        int firstTileLine;
+        int lastTileLine;
+        int firstTilePixel;
+        int lastTilePixel;
 
         int line;
         int pixel;
 
-        int percent = 0;
-        int tenpercent = (int) (Math.rint(overlap.lines() / 10.0)); // round
-        if (tenpercent == 0)
-            tenpercent = 1000; // avoid error: x%0
+        /* TILE MANAGEMENT THAT GOES INTO OPERATOR PART WHERE SLAVE DATA IS PULLED */
+        // -------------------- slave tile management start here -----------------
+        // - here part that is pulled from slave data is computed
+        // - normalization is the same as used for the estimation of the coregistration polynomial
+        // - in this test assume that the tile is the size of the whole buffer
 
+        final double normPixLo = normalize2(fullOverlap.pixlo, minP, maxP);
+        final double normPixHi = normalize2(fullOverlap.pixhi, minP, maxP);
+        final double normLinLo = normalize2(fullOverlap.linelo, minL, maxL);
+        final double normLinHi = normalize2(fullOverlap.linehi, minL, maxL);
+
+        // upper/lower line --
+        line = (int) tileOverlap.linelo;
+        firstTileLine = (int) ((ceil(min(line + polyval(normalize2(line, minL, maxL), normPixLo, cpmL),
+                line + polyval(normalize2(line, minL, maxL), normPixHi, cpmL))))
+                - Npoints);
+
+//        final int line2 = line + tileLines - 1;
+        final int line2 = (int) (line + tileOverlap.lines() - 1);
+        lastTileLine = (int) ((ceil(min(line2 + polyval(normalize2(line2, minL, maxL),
+                normPixLo, cpmL), line2 + polyval(normalize2(line2, minL, maxL), normPixHi, cpmL))))
+                + Npoints);
+
+        // upper/lower pixel --
+        pixel = (int) tileOverlap.pixlo;
+        firstTilePixel = (int) ((ceil(min(pixel + polyval(normLinLo, normalize2(pixel, minP, maxP), cpmP),
+                line + polyval(normLinHi, normalize2(pixel, minP, maxP), cpmP))))
+                - Npoints);
+
+//        int pixel2 = pixel + tilePixels - 1;
+        int pixel2 = (int) (pixel + tileOverlap.pixels() - 1);
+        lastTilePixel = (int) ((ceil(min(pixel2 + polyval(normLinLo, normalize2(pixel2, minP, maxP), cpmP),
+                pixel2 + polyval(normLinHi, normalize2(pixel2, minP, maxP), cpmP))))
+                - Npoints);
+
+        //final int FORSURE = 5;
+        final int FORSURE = 25; // buffer larger 2 x FORSURE start/end
+        // azimuth direction + extra
+        firstTileLine -= FORSURE;
+        lastTileLine += FORSURE;
+        // range direction + extra
+        firstTilePixel -= FORSURE;
+        lastTilePixel += FORSURE;
+
+        // Account for edges
+        if (firstTileLine < (int) (slave.getCurrentWindow().linelo))
+            firstTileLine = (int) slave.getCurrentWindow().linelo;
+
+        if (lastTileLine > (int) (slave.getCurrentWindow().linehi))
+            lastTileLine = (int) slave.getCurrentWindow().linehi;
+
+        if (firstTilePixel < (int) (slave.getCurrentWindow().pixlo))
+            firstTilePixel = (int) slave.getCurrentWindow().pixlo;
+
+        if (lastTilePixel > (int) (slave.getCurrentWindow().pixhi))
+            lastTilePixel = (int) slave.getCurrentWindow().pixhi;
+
+        // Fill slave BUFFER from data pool
+//                Window winSlaveFile = new Window(firstBufferLine, lastBufferLine, // part of slave loaded
+//                        slave.getCurrentWindow().pixlo, // from file in BUFFER.
+//                        slave.getCurrentWindow().pixhi);
+
+        // part of slave loaded
+        Window winSlaveFile = new Window(firstTileLine, lastTileLine, firstTilePixel, lastTilePixel);
+
+        logger.debug("Reading slave: [" + winSlaveFile.linelo + ":" + winSlaveFile.linehi + ", "
+                + winSlaveFile.pixlo + ":" + winSlaveFile.pixhi + "]");
+
+        /* LOAD TEST DATA */
+
+        // file name
+        String fileName = "resample_buffer.cr4";
+
+        // now I work with smaller buffer
+        int nRows = (int) winSlaveFile.lines();
+        int nCols = (int) winSlaveFile.pixels();
+
+        ComplexDoubleMatrix BUFFER = DataReader.readCplxFloatData(processingPath + dataPath + fileName, nRows, nCols, littleEndian);
+        logger.info("Loaded BUFFER size: {} rows, {} cols", nRows, nCols);
+
+        // -------------------- slave tile management stop here -----------------
+
+
+        /* SET OUTPUT/RESULT TILE */
+        final int tileLines = (int) (slave.getCurrentWindow().lines()); // buffer bufferLines
+        final int tilePixels = (int) (slave.getCurrentWindow().pixels()); // buffer bufferLines
+
+//        ComplexDoubleMatrix RESULT = ComplexDoubleMatrix.zeros(bufferLines, (int) (overlap.pixhi - overlap.pixlo + 1));
+        ComplexDoubleMatrix RESULT = ComplexDoubleMatrix.zeros((int) tileOverlap.lines(), (int) tileOverlap.pixels());
+
+        // temp matrix for parsing interpolated results
+        ComplexDoubleMatrix PART = new ComplexDoubleMatrix(Npoints, Npoints);
+
+        /* ACTUAL DATA RESAMPLING */
+
+        /* Evaluate coregistration polynomial */
+        double interpL = 0;
+        double interpP = 0;
+
+        int pixelCnt = 0;
+        int lineCnt = 0;
+
+
+        // Progress messages
+	    int percent = 0;
+	    int tenpercent = (int)(Math.ceil(tileOverlap.lines() / 10.0)); // round
+	    if (tenpercent == 0)
+		    tenpercent = 1000; // avoid error: x%0
+
+
+        clock.start();
 
         // loop that does the job!
-        for (line = (int) overlap.linelo; line <= overlap.linehi; line++) {
-            // Progress messages
-            if (((line - overlap.linelo) % tenpercent) == 0) {
-                logger.info("RESAMPLE: {}%", percent);
+        for (line = (int) tileOverlap.linelo; line <= tileOverlap.linehi; line++) {
+
+        	// Progress messages
+    		if (((line - tileOverlap.linelo) % tenpercent) == 0) {
+                logger.info("RESAMPLE: {} %", percent);
                 percent += 10;
             }
 
-            /*
-            * if buffer full write the data, empty the buffer
-            * */
+            for (pixel = (int) tileOverlap.pixlo; pixel <= (int) (tileOverlap.pixhi); pixel++) {
 
-            /*
-            * if new buffer is required ask for more data
-            * */
+                if (!demAssisted) {
+                    interpL = line + polyval(normalize2(line, minL, maxL), normalize2(pixel, minP, maxP), cpmL); // ~ 255.35432
+                    interpP = pixel + polyval(normalize2(line, minL, maxL), normalize2(pixel, minP, maxP), cpmP); // ~ 2.5232
+                }
 
-            /*
-            * if all data fiddling is in place then perform the actual resampling line be line, pixel by pixel
-            * */
+                /* Get correct lines for interpolation */
+                int fl_interpL = (int) (interpL);
+                int fl_interpP = (int) (interpP);
+                int firstL = fl_interpL - Npointsd2m1; // e.g. 254 (5 6 7)
+                int firstP = fl_interpP - Npointsd2m1; // e.g. 1   (2 3 4)
+                double interpLdec = interpL - fl_interpL; // e.g. .35432
+                double interpPdec = interpP - fl_interpP; // e.g. .5232
 
-            // FOR TEST I DO HAVE THE FIRST BUFFER AS PULLED FROM DORIS THAT I SHOULD RUN RESAMPLE ON AND CHECK WHETHER IT MATCHES THE OUTPUT!
+                int kernelnoL = (int) (interpLdec * LUT.getInterval() + 0.5); // lookup table index
+                int kernelnoP = (int) (interpPdec * LUT.getInterval() + 0.5); // lookup table index
 
+                ComplexDoubleMatrix kernelL = pntKernelAz.getRow(kernelnoL);
+                final DoubleMatrix pntAxisRow = pntAxis.getRow(kernelnoL);
+
+                final ComplexDoubleMatrix kernelP = pntKernelRg.getRow(kernelnoP);
+
+                // Shift azimuth kernel with fDC before interpolation ______
+                if (shiftAziSpectra == true) {
+                    // get Doppler centroid
+                    double tmp = 2.0 * Constants.PI * slave.doppler.pix2fdc(interpP) / slave.getPRF();
+                    // ...to shift spectrum of convolution kernel to fDC of data, multiply
+                    // ...in the space domain with a phase trend of -2pi*t*fdc/prf
+                    // ...(to shift back (no need) you would use +fdc), see manual;
+                    for (int i = 0; i < Npoints; ++i) {
+
+                        // Modify kernel, shift spectrum to fDC
+                        double t = pntAxisRow.get(i) * tmp;
+                        kernelL.put(i, kernelL.get(i).mul(new ComplexDouble(Math.cos(t), (-1) * Math.sin(t)))); // note '-' (see manual)
+                    }
+                }
+
+                Window inWin = new Window(firstL - firstTileLine, firstL - firstTileLine + (Npoints - 1),
+                        firstP - firstTilePixel, firstP - firstTilePixel + (Npoints - 1));
+
+                LinearAlgebraUtils.setdata(PART, BUFFER, inWin);
+
+//                logger.debug("Result (line,pixel): {},{}", line, pixel);
+//                logger.debug("Result (line,pixel): {},{}", lineCnt, pixelCnt);
+
+//                    RESULT.put(lineCnt, (int) (pixel - overlap.pixlo), LinearAlgebraUtils.matTxmat(PART.mul(kernelP), kernelL).get(0, 0));
+//                RESULT.put(line, pixel, LinearAlgebraUtils.matTxmat(PART.mmul(kernelP.transpose()), kernelL.transpose()).get(0, 0));
+                RESULT.put(lineCnt, pixelCnt, LinearAlgebraUtils.matTxmat(PART.mmul(kernelP.transpose()), kernelL.transpose()).get(0, 0));
+                pixelCnt++;
+
+            }
+
+            lineCnt++;
+            pixelCnt = 0;
 
         }
 
+        clock.stop();
+        logger.info("Resampling time: {} [ms]", clock.getElapsedTime());
+
+
+//        // assert expected vs actual
+//        for (int i = 0; i < correlMasterSlaveArray.length; i++) {
+//            float[] floats = correlMasterSlaveArray[i];
+//            Assert.assertArrayEquals(floats, correlateFloatArray[i], (float) DELTA_04);
+//        }
+
 
     }
+
 
     /*public static ComplexDoubleMatrix readCplxIntData(final String fileName,
                                                       final int rows, final int columns,
