@@ -35,6 +35,8 @@ public class CoregistrationTest {
     private static final double DELTA_08 = 1e-08;
     private static final double DELTA_06 = 1e-06;
     private static final double DELTA_04 = 1e-04;
+    private static final double DELTA_01 = 1e-01;
+    private static final double DELTA_00 = 1e-00;
 
     private String dataPath;
     private String processingPath;
@@ -70,7 +72,6 @@ public class CoregistrationTest {
 
     }
 
-    @Ignore
     @Test
     public void firstTest_MagSpace() throws Exception {
 
@@ -183,7 +184,6 @@ public class CoregistrationTest {
 
     }
 
-    @Ignore
     @Test
     public void secondTest_MagFFT() throws Exception {
 
@@ -235,7 +235,6 @@ public class CoregistrationTest {
     }
 
 
-    @Ignore
     @Test
     public void secondTest_fineMagFFT() throws Exception {
 
@@ -291,7 +290,6 @@ public class CoregistrationTest {
 
     }
 
-    @Ignore
     @Test
     public void thirdTest_shiftSpectrum() throws Exception {
 
@@ -357,7 +355,6 @@ public class CoregistrationTest {
 
     }
 
-    @Ignore
     @Test
     public void fourthTest_shiftSpectrumAndMagFFT() throws Exception {
 
@@ -444,7 +441,6 @@ public class CoregistrationTest {
 
     }
 
-    @Ignore
     @Test
     public void fifthTest_coherenceSpace() throws Exception {
 
@@ -500,11 +496,11 @@ public class CoregistrationTest {
         dataPath = "rsmp/";
 
         SLCImage master = new SLCImage();
-        master.parseResFile(new File(processingPath + "01486.res"));
+        master.parseResFile(new File(processingPath + dataPath + "01486.res"));
         master.setOriginalWindow(new Window(1, 26292, 1, 4900));
 
         SLCImage slave = new SLCImage();
-        slave.parseResFile(new File(processingPath + "21159.res"));
+        slave.parseResFile(new File(processingPath + dataPath + "21159.res"));
 /*
         // Estimated during CPM step: where inverse estimation is performed :
         // ...not really clear why estimation is performed?
@@ -639,7 +635,6 @@ public class CoregistrationTest {
                 line + polyval(normalize2(line, minL, maxL), normPixHi, cpmL))))
                 - Npoints);
 
-//        final int line2 = line + tileLines - 1;
         final int line2 = (int) (line + tileOverlap.lines() - 1);
         lastTileLine = (int) ((ceil(min(line2 + polyval(normalize2(line2, minL, maxL),
                 normPixLo, cpmL), line2 + polyval(normalize2(line2, minL, maxL), normPixHi, cpmL))))
@@ -651,13 +646,11 @@ public class CoregistrationTest {
                 line + polyval(normLinHi, normalize2(pixel, minP, maxP), cpmP))))
                 - Npoints);
 
-//        int pixel2 = pixel + tilePixels - 1;
         int pixel2 = (int) (pixel + tileOverlap.pixels() - 1);
         lastTilePixel = (int) ((ceil(min(pixel2 + polyval(normLinLo, normalize2(pixel2, minP, maxP), cpmP),
                 pixel2 + polyval(normLinHi, normalize2(pixel2, minP, maxP), cpmP))))
                 - Npoints);
 
-        //final int FORSURE = 5;
         final int FORSURE = 25; // buffer larger 2 x FORSURE start/end
         // azimuth direction + extra
         firstTileLine -= FORSURE;
@@ -680,9 +673,6 @@ public class CoregistrationTest {
             lastTilePixel = (int) slave.getCurrentWindow().pixhi;
 
         // Fill slave BUFFER from data pool
-//                Window winSlaveFile = new Window(firstBufferLine, lastBufferLine, // part of slave loaded
-//                        slave.getCurrentWindow().pixlo, // from file in BUFFER.
-//                        slave.getCurrentWindow().pixhi);
 
         // part of slave loaded
         Window winSlaveFile = new Window(firstTileLine, lastTileLine, firstTilePixel, lastTilePixel);
@@ -704,10 +694,7 @@ public class CoregistrationTest {
 
         // -------------------- slave tile management stop here -----------------
 
-
         /* SET OUTPUT/RESULT TILE */
-        final int tileLines = (int) (slave.getCurrentWindow().lines()); // buffer bufferLines
-        final int tilePixels = (int) (slave.getCurrentWindow().pixels()); // buffer bufferLines
 
 //        ComplexDoubleMatrix RESULT = ComplexDoubleMatrix.zeros(bufferLines, (int) (overlap.pixhi - overlap.pixlo + 1));
         ComplexDoubleMatrix RESULT = ComplexDoubleMatrix.zeros((int) tileOverlap.lines(), (int) tileOverlap.pixels());
@@ -789,8 +776,6 @@ public class CoregistrationTest {
 //                logger.debug("Result (line,pixel): {},{}", line, pixel);
 //                logger.debug("Result (line,pixel): {},{}", lineCnt, pixelCnt);
 
-//                    RESULT.put(lineCnt, (int) (pixel - overlap.pixlo), LinearAlgebraUtils.matTxmat(PART.mul(kernelP), kernelL).get(0, 0));
-//                RESULT.put(line, pixel, LinearAlgebraUtils.matTxmat(PART.mmul(kernelP.transpose()), kernelL.transpose()).get(0, 0));
                 RESULT.put(lineCnt, pixelCnt, LinearAlgebraUtils.matTxmat(PART.mmul(kernelP.transpose()), kernelL.transpose()).get(0, 0));
                 pixelCnt++;
 
@@ -805,13 +790,57 @@ public class CoregistrationTest {
         logger.info("Resampling time: {} [ms]", clock.getElapsedTime());
 
 
-//        // assert expected vs actual
-//        for (int i = 0; i < correlMasterSlaveArray.length; i++) {
-//            float[] floats = correlMasterSlaveArray[i];
-//            Assert.assertArrayEquals(floats, correlateFloatArray[i], (float) DELTA_04);
+//        /* UNIT TEST */
+//        // ..this will fail, the numbers are approx the same, but because of rounding error and small differences in
+//        // ..the actual application the values are different on 0.1 - 0.01 scale
+//
+//        /* LOAD EXPECTED DATA */
+//        String resampledSlaveFileName = "21159.rsmp.SWAP";
+//
+//        // load binary data
+//        ComplexDoubleMatrix resampledSlave = DataReader.readCplxFloatData(processingPath + dataPath + resampledSlaveFileName, (int) tileOverlap.lines(), (int) tileOverlap.pixels(), ByteOrder.BIG_ENDIAN);
+//
+//        /* ASSERT PHASE */
+//        // assert Phase of resampled image
+//        double[][] phaseArray_EXPECTED = computeAbsPhase(resampledSlave);
+//        double[][] phaseArray_ACTUAL = computeAbsPhase(RESULT);
+//
+//        for (int i = 0; i < phaseArray_ACTUAL.length; i++) {
+//            double[] doubles_ACTUAL = phaseArray_ACTUAL[i];
+//            double[] doubles_EXPECTED = phaseArray_EXPECTED[i];
+//            Assert.assertArrayEquals(doubles_EXPECTED, doubles_ACTUAL, DELTA_01);
 //        }
 
+    }
 
+    private double[][] computePhase(ComplexDoubleMatrix complexDoubleMatrix) {
+
+        int nRows = complexDoubleMatrix.rows;
+        int nCols = complexDoubleMatrix.columns;
+        double[][] phaseArray = new double[nRows][nCols];
+        ComplexDouble complexDouble;
+        for (int i = 0; i < nRows; i++) {
+            for (int j = 0; j < nCols; j++) {
+                complexDouble = complexDoubleMatrix.get(i, j);
+                phaseArray[i][j] = Math.atan2(complexDouble.imag(), complexDouble.real());
+            }
+        }
+        return phaseArray;
+    }
+
+    private double[][] computeAbsPhase(ComplexDoubleMatrix complexDoubleMatrix) {
+
+        int nRows = complexDoubleMatrix.rows;
+        int nCols = complexDoubleMatrix.columns;
+        double[][] phaseArray = new double[nRows][nCols];
+        ComplexDouble complexDouble;
+        for (int i = 0; i < nRows; i++) {
+            for (int j = 0; j < nCols; j++) {
+                complexDouble = complexDoubleMatrix.get(i, j);
+                phaseArray[i][j] = Math.abs(Math.atan2(complexDouble.imag(), complexDouble.real()));
+            }
+        }
+        return phaseArray;
     }
 
 
