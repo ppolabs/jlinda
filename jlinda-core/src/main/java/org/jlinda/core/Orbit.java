@@ -189,7 +189,7 @@ public final class Orbit {
             partialsXYZ[1][2] = 2 * dsat_P.z;
             partialsXYZ[2][0] = (2 * ellipsoidPosition.x) / (Math.pow(ell_a + height, 2));
             partialsXYZ[2][1] = (2 * ellipsoidPosition.y) / (Math.pow(ell_a + height, 2));
-            partialsXYZ[2][2] = (2 * ellipsoidPosition.z) / (Math.pow(ell_a + height, 2));
+            partialsXYZ[2][2] = (2 * ellipsoidPosition.z) / (Math.pow(ell_b + height, 2));
 
             // solve system [NOTE!] orbit has to be normalized, otherwise close to singular
             // DoubleMatrix ellipsoidPositionSolution = Solve.solve(partialsXYZ, equationSet);
