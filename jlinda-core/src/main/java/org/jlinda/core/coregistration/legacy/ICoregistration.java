@@ -1,4 +1,4 @@
-package org.jlinda.core.coregistration;
+package org.jlinda.core.coregistration.legacy;
 
 import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;

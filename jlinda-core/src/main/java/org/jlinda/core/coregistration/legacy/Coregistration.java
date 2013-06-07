@@ -1,8 +1,9 @@
-package org.jlinda.core.coregistration;
+package org.jlinda.core.coregistration.legacy;
 
 import org.apache.log4j.Logger;
 import org.jblas.*;
 import org.jlinda.core.*;
+import org.jlinda.core.coregistration.LUT;
 import org.jlinda.core.todo_classes.Input;
 import org.jlinda.core.todo_classes.todo_classes;
 import org.jlinda.core.utils.*;

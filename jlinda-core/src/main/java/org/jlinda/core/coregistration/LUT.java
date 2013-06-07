@@ -45,7 +45,7 @@ public class LUT {
         return INTERVAL;
     }
 
-    LUT(String method, int kernelLength) {
+    public LUT(String method, int kernelLength) {
         this.method = method;
         this.kernelLength = kernelLength;
 

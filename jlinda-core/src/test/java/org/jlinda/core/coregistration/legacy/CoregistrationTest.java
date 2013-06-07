@@ -1,4 +1,4 @@
-package org.jlinda.core.coregistration;
+package org.jlinda.core.coregistration.legacy;
 
 
 import ch.qos.logback.classic.Level;
@@ -7,6 +7,7 @@ import org.jblas.*;
 import org.jlinda.core.Constants;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
+import org.jlinda.core.coregistration.LUT;
 import org.jlinda.core.io.DataReader;
 import org.jlinda.core.utils.LinearAlgebraUtils;
 import org.jlinda.core.utils.MathUtils;
