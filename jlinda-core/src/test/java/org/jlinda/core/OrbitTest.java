@@ -2,10 +2,7 @@ package org.jlinda.core;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -22,12 +19,11 @@ public class OrbitTest {
     private static final SLCImage slcimage = new SLCImage();
 
     private static final double[] crGEO_EXPECTED = new double[]{51.9903894167, 4.3896355000, 41.670};
-    //    private static final double[] crXYZ_EXPECTED = {3.92428342070434e+06, 3.01243077763538e+05, 5.00217775318444e+06};
     private static final Point crXYZ_EXPECTED = new Point(3.92428342070434e+06, 3.01243077763538e+05, 5.00217775318444e+06);
 
     private static final Point pixelXYZ_EXPECTED = new Point(3924267.875114853, 301323.1099883879, 5002132.192287684);
     private static final Point pixel_EXPECTED = new Point(3615, 18094);
-    private static final Point subPixel_EXPECTED = new Point(3614.52218889146, 18093.3381301418, crGEO_EXPECTED[2]); // for crGEO_EXPECTED
+    private static final Point subPixel_EXPECTED = new Point(3614.522, 18093.390, crGEO_EXPECTED[2]); // for crGEO_EXPECTED
 
     private static final Point pixelTime_EXPECTED = new Point(0.002864458452552312, 36487.95443126317);
 
@@ -285,8 +281,8 @@ public class OrbitTest {
     @Test
     public void testLph2ell() throws Exception {
         final double[] crGEO_ACTUAL = orbit_ACTUAL.lph2ell(subPixel_EXPECTED.y, subPixel_EXPECTED.x, subPixel_EXPECTED.z, slcimage);
-        Assert.assertEquals(crGEO_EXPECTED[0], crGEO_ACTUAL[0] * Constants.RTOD, eps_05);
-        Assert.assertEquals(crGEO_EXPECTED[1], crGEO_ACTUAL[1] * Constants.RTOD, eps_05);
+        Assert.assertEquals(crGEO_EXPECTED[0], crGEO_ACTUAL[0] * Constants.RTOD, eps_06);
+        Assert.assertEquals(crGEO_EXPECTED[1], crGEO_ACTUAL[1] * Constants.RTOD, eps_06);
         Assert.assertEquals(crGEO_EXPECTED[2], crGEO_ACTUAL[2], eps_03);
     }
 
