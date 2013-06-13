@@ -69,10 +69,7 @@ public class PolyUtils {
         }
 
         final int numOfObs = x.length;
-        final int numOfUnkn = numberOfCoefficients(degree) + 1;
-
-        DoubleMatrix A = new DoubleMatrix(numOfObs, numOfUnkn); // designmatrix
-
+        DoubleMatrix A = new DoubleMatrix(); // designmatrix
         DoubleMatrix mul;
 
         /** Set up design-matrix */
@@ -108,7 +105,7 @@ public class PolyUtils {
 
         // work out residuals
         DoubleMatrix y_hat = A.mmul(rhs);
-        DoubleMatrix e_hat = y.sub(y_hat);
+        DoubleMatrix e_hat = z.sub(y_hat);
 
         if (e_hat.normmax() > 0.02) {
             logger.warn("WARNING: Max. polyFit2D approximation error at datapoints (x,y,or z?): {}", e_hat.normmax());
