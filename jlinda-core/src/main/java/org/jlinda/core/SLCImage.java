@@ -23,6 +23,7 @@ public final class SLCImage {
     private int formatFlag; // not used
 
     // sensor
+    private String mission;
     private String sensor;
     private String sarProcessor;
     private double radar_wavelength; // TODO: close this modifier
@@ -149,6 +150,10 @@ public final class SLCImage {
     public SLCImage(MetadataElement element) {
 
         this();
+
+        this.sensor = element.getAttributeString(AbstractMetadata.MISSION);
+        this.mission = sensor; // redundant parameter, for legacy use
+
 
         // orbit number
         this.orbitNumber = element.getAttributeInt(AbstractMetadata.REL_ORBIT);
@@ -408,6 +413,15 @@ public final class SLCImage {
     public long getOrbitNumber() {
         return orbitNumber;
     }
+
+    public String getSensor() {
+        return sensor;
+    }
+
+    public String getMission() {
+        return mission;
+    }
+
 
     public class Doppler {
 
