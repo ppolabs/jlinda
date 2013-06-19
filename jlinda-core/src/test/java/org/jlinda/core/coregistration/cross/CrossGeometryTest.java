@@ -186,7 +186,7 @@ public class CrossGeometryTest {
 
         long yMin = lineLo; // = 0;
         long xMin = pixelLo; // = 0;
-        long yMax = lineLo;
+        long yMax = lineHi;
         long xMax = pixelHi;
 
         // Target Geometry Parameters (ENVISAT paramaters)
