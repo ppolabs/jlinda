@@ -99,22 +99,22 @@ public class CrossGeometryTest {
         // -----------------------------------------------
         // distribute points
         // -----------------------------------------------
-        int[][] result = MathUtils.distributePoints(NUM_OF_WINDOWS, asarWindow);
+        double[][] sourceGrid = MathUtils.distributePointsDoubles(NUM_OF_WINDOWS, asarWindow);
 
         // -----------------------------------------------
         // create synthetic offsets
         // -----------------------------------------------
-        double[][] resultMaster = new double[NUM_OF_WINDOWS][2];
+        double[][] targetGrid = new double[NUM_OF_WINDOWS][2];
 
         for (int i = 0; i < NUM_OF_WINDOWS; i++) {
-            resultMaster[i][0] = result[i][0] * ratioPRF;
-            resultMaster[i][1] = result[i][1] * ratioRSR;
+            targetGrid[i][0] = sourceGrid[i][0] * ratioPRF;
+            targetGrid[i][1] = sourceGrid[i][1] * ratioRSR;
         }
 
-        double[][] offset = new double[NUM_OF_WINDOWS][2];
+        double[][] offsetGrid = new double[NUM_OF_WINDOWS][2];
         for (int i = 0; i < NUM_OF_WINDOWS; i++) {
-            offset[i][0] = result[i][0] - resultMaster[i][0];
-            offset[i][1] = result[i][1] - resultMaster[i][1];
+            offsetGrid[i][0] = sourceGrid[i][0] - targetGrid[i][0];
+            offsetGrid[i][1] = sourceGrid[i][1] - targetGrid[i][1];
         }
 
         // -----------------------------------------------
@@ -128,10 +128,10 @@ public class CrossGeometryTest {
 
         // normalize, and store into jblas matrices
         for (int i = 0; i < numOfObs; i++) {
-            linesNorm.put(i, PolyUtils.normalize2(resultMaster[i][0], 1, line));
-            pixelsNorm.put(i, PolyUtils.normalize2(resultMaster[i][1], 1, pixel));
-            offset_lines.put(i, offset[i][0]);
-            offset_pixels.put(i, offset[i][1]);
+            linesNorm.put(i, PolyUtils.normalize2(targetGrid[i][0], 1, line));
+            pixelsNorm.put(i, PolyUtils.normalize2(targetGrid[i][1], 1, pixel));
+            offset_lines.put(i, offsetGrid[i][0]);
+            offset_pixels.put(i, offsetGrid[i][1]);
         }
 
         double[] coeffsAz = PolyUtils.polyFit2D(pixelsNorm, linesNorm, offset_lines, POLY_DEGREE);
