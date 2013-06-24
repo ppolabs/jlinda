@@ -154,6 +154,9 @@ public final class SLCImage {
 
         this();
 
+        this.sensor = element.getAttributeString(AbstractMetadata.MISSION);
+        this.mission = sensor; // redundant parameter, for legacy use
+
         // orbit number
         this.orbitNumber = element.getAttributeInt(AbstractMetadata.REL_ORBIT);
 
