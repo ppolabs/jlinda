@@ -15,9 +15,7 @@ import javax.media.jai.WarpGeneralPolynomial;
 import javax.media.jai.WarpPolynomial;
 import java.awt.geom.Point2D;
 
-import static org.jlinda.core.utils.PolyUtils.normalize2;
-import static org.jlinda.core.utils.PolyUtils.polyFit2D;
-import static org.jlinda.core.utils.PolyUtils.polyval;
+import static org.jlinda.core.utils.PolyUtils.*;
 
 /**
  * User: pmar@ppolabs.com
@@ -46,7 +44,7 @@ public class CrossGeometryTest {
 
     // Estimation Parameters
     private static final int NUM_OF_WINDOWS = 5000;
-    private static final int POLY_DEGREE = 2;
+    private static final int POLY_DEGREE = 1;
 
     @BeforeClass
     public static void setUp() throws Exception {
@@ -57,7 +55,38 @@ public class CrossGeometryTest {
     }
 
     @Test
-    public void testComputeCoefficients() {
+    public void testComputeCoeffsFromOffsets() {
+
+        CrossGeometry crossGeometry = new CrossGeometry();
+
+        crossGeometry.setPrfOriginal(prfERS);
+        crossGeometry.setRsrOriginal(rsrERS);
+
+        crossGeometry.setPrfTarget(prfASAR);
+        crossGeometry.setRsrTarget(rsrASAR);
+
+        crossGeometry.setDataWindow(new Window(lineLo, lineHi, pixelLo, pixelHi));
+
+        // optional!
+        crossGeometry.setNumberOfWindows(NUM_OF_WINDOWS);
+        crossGeometry.setPolyDegree(POLY_DEGREE);
+        crossGeometry.setNormalizeFlag(true);
+
+
+        crossGeometry.computeCoeffsFromOffsets();
+
+        double[] coeffsAz = crossGeometry.getCoeffsAz();
+        double[] coeffsRg = crossGeometry.getCoeffsRg();
+
+        // show polynomials
+        logger.debug("coeffsAZ (from offsets): estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsAz));
+        logger.debug("coeffsRg (from offsets): estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsRg));
+        logger.debug("-----");
+
+    }
+
+    @Test
+    public void testComputeCoeffsFromCoords() {
 
         CrossGeometry crossGeometry = new CrossGeometry();
 
@@ -71,16 +100,18 @@ public class CrossGeometryTest {
 
         // optional!
         // crossGeometry.setNumberOfWindows(NUM_OF_WINDOWS);
-        // crossGeometry.setPolyDegree(POLY_DEGREE);
+        crossGeometry.setPolyDegree(POLY_DEGREE);
+        crossGeometry.setNormalizeFlag(false);
 
-        crossGeometry.computeCoefficients();
+        crossGeometry.computeCoeffsFromCoords();
 
         double[] coeffsAz = crossGeometry.getCoeffsAz();
         double[] coeffsRg = crossGeometry.getCoeffsRg();
 
         // show polynomials
-        logger.debug("coeffsAZ : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsAz));
-        logger.debug("coeffsRg : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsRg));
+        logger.debug("coeffsAZ (from coeffs): estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsAz));
+        logger.debug("coeffsRg (from coeffs): estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsRg));
+        logger.debug("-----");
 
     }
 
@@ -181,8 +212,11 @@ public class CrossGeometryTest {
     *  - note that JAI seems to introduces bias in evaluation of polynomial
     * */
     // ToDo - to be removed after operator committed
-    // @Test
     public void computeAndEvaluateCrossPoly() {
+
+        logger.trace("================================");
+        logger.trace(" Cross InSAR Geometry prototype ");
+        logger.trace("================================");
 
         long yMin = lineLo; // = 0;
         long xMin = pixelLo; // = 0;
@@ -269,14 +303,16 @@ public class CrossGeometryTest {
         double[] coeffsYTemp = polyFit2D(srcY, srcX, txtY, polyDegree);
 
         // show polynomials depending on logger level <- not in production
-        logger.debug("coeffsXNorm : estimated with PolyUtils.polyFit2D : {}", org.apache.commons.lang3.ArrayUtils.toString(coeffsXNorm));
-        logger.debug("coeffsYNorm : estimated with PolyUtils.polyFit2D : {}", org.apache.commons.lang3.ArrayUtils.toString(coeffsYNorm));
+        logger.debug("coeffsXNorm : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsXNorm));
+        logger.debug("coeffsYNorm : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsYNorm));
+        logger.debug("-----");
 
         // show polynomials depending on logger level <- not in production
-        logger.debug("coeffsX : estimated with PolyUtils.polyFit2D : {}", org.apache.commons.lang3.ArrayUtils.toString(coeffsX));
-        logger.debug("coeffsY : estimated with PolyUtils.polyFit2D : {}", org.apache.commons.lang3.ArrayUtils.toString(coeffsY));
+        logger.debug("coeffsX : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsX));
+        logger.debug("coeffsY : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsY));
+        logger.debug("-----");
 
-            /* JAI Example */
+        /* JAI Example */
 
         float[] src1DArray = new float[2 * numberOfObservations];
         float[] tgt1DArray = new float[2 * numberOfObservations];
@@ -303,8 +339,14 @@ public class CrossGeometryTest {
         WarpPolynomial warpTotal = WarpPolynomial.createWarp(tgt1DArray, 0, src1DArray, 0, 2 * numberOfObservations, preScaleX, preScaleY, postScaleX, postScaleY, polyDegree);
 
         // show polynomials depending on logger level <- not in production
-        logger.debug("coeffsAZ : estimated with JAI.WarpPolynomial.createWarp : {}", org.apache.commons.lang3.ArrayUtils.toString(warpTotal.getYCoeffs()));
-        logger.debug("coeffsX : estimated with JAI.WarpPolynomial.createWarp : {}", org.apache.commons.lang3.ArrayUtils.toString(warpTotal.getXCoeffs()));
+        logger.debug("coeffsY : estimated with JAI.WarpPolynomial.createWarp : {}", ArrayUtils.toString(warpTotal.getYCoeffs()));
+        logger.debug("coeffsX : estimated with JAI.WarpPolynomial.createWarp : {}", ArrayUtils.toString(warpTotal.getXCoeffs()));
+        logger.debug("-----");
+
+        // show polynomials depending on logger level <- not in production
+        logger.debug("coeffsY : estimated with PolyFit for JAI : {}", ArrayUtils.toString(coeffsYTemp));
+        logger.debug("coeffsX : estimated with PolyFIt for JAI : {}", ArrayUtils.toString(coeffsXTemp));
+        logger.debug("-----");
 
         float[] xCoeffs = new float[coeffsXTemp.length];
         float[] yCoeffs = new float[coeffsYTemp.length];
@@ -315,7 +357,7 @@ public class CrossGeometryTest {
 
         WarpPolynomial warpInterp = new WarpGeneralPolynomial(xCoeffs, yCoeffs);
 
-        //        Point2D srcPoint = new Point2D.Double(1354, 23214);
+        // Point2D srcPoint = new Point2D.Double(1354, 23214);
         Point2D srcPoint = new Point2D.Double(2523, 2683);
         Point2D tgtPointExp = new Point2D.Double(srcPoint.getX() * ratioX, srcPoint.getY() * ratioY);
 
@@ -351,6 +393,5 @@ public class CrossGeometryTest {
         logger.debug("Error - polyFit-Norm: {}, {}", tgtX_polyfit_norm - tgtPointExp.getX(), tgtY_polyfit_norm - tgtPointExp.getY());
 
     }
-
 
 }
