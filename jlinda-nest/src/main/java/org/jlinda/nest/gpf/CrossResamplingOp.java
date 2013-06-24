@@ -4,7 +4,10 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.bc.ceres.core.ProgressMonitor;
 import org.apache.commons.lang.ArrayUtils;
-import org.esa.beam.framework.datamodel.*;
+import org.esa.beam.framework.datamodel.Band;
+import org.esa.beam.framework.datamodel.MetadataElement;
+import org.esa.beam.framework.datamodel.Product;
+import org.esa.beam.framework.datamodel.ProductData;
 import org.esa.beam.framework.gpf.Operator;
 import org.esa.beam.framework.gpf.OperatorException;
 import org.esa.beam.framework.gpf.OperatorSpi;
@@ -19,6 +22,7 @@ import org.esa.nest.gpf.OperatorUtils;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.coregistration.LUT;
 import org.jlinda.core.coregistration.cross.CrossGeometry;
+import org.jlinda.nest.dat.CrossResamplingOpUI;
 import org.slf4j.LoggerFactory;
 
 import javax.media.jai.*;
@@ -26,7 +30,6 @@ import java.awt.*;
 import java.awt.image.DataBuffer;
 import java.awt.image.RenderedImage;
 import java.awt.image.renderable.ParameterBlock;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -36,9 +39,9 @@ import java.util.regex.Pattern;
  * Image resampling for Cross Interferometry
  */
 @OperatorMetadata(alias = "CrossResampling",
-        category = "InSAR Tools\\Interpolation",
+        category = "InSAR\\Tools",
         authors = "Petar Marinkovic",
-        copyright = "Copyright (C) 2013 by Array Systems Computing Inc.",
+        copyright = "Copyright (C) 2013 by PPO.labs",
         description = "Estimate Resampling Polynomial using SAR Image Geometry, and Resample Input Images")
 public class CrossResamplingOp extends Operator {
 
@@ -58,16 +61,14 @@ public class CrossResamplingOp extends Operator {
     private String interpolationMethod = LUT.CC6P;
 
     // only complex data accepted
-    @Parameter(valueSet = {"ERS 1/2", "Envisat ASAR"}, defaultValue = "ERS 1/2", label = "Target Geometry")
-    private String targetGeometry = "ERS 1/2";
+    @Parameter(valueSet = {"ERS", "Envisat ASAR"}, defaultValue = "ERS", label = "Target Geometry")
+    private String targetGeometry = "ERS";
 
-    private Interpolation interp = null;
     private InterpolationTable interpTable = null;
 
     private Band masterBand = null;
     private Band masterBand2 = null;
-    private boolean complexCoregistration = true;
-    private boolean warpDataAvailable = false;
+    private boolean warpDataAvailable = true;
 
     // Processing Variables
     // target
@@ -78,8 +79,8 @@ public class CrossResamplingOp extends Operator {
     private double sourceRSR;
 
     private SLCImage slcMetadata = null;
-    private double[] coeffsAz;
-    private double[] coeffsRg;
+
+    private WarpPolynomial warpPolynomial;
 
     // PARAMETERS FOR JAI INTERPOLATION KERNEL
     private final static int SUBSAMPLE_BITS = 7;
@@ -95,7 +96,6 @@ public class CrossResamplingOp extends Operator {
 
     private final Map<Band, Band> sourceRasterMap = new HashMap<Band, Band>(10);
     private final Map<Band, Band> complexSrcMap = new HashMap<Band, Band>(10);
-    private final Map<Band, WarpData> warpDataMap = new HashMap<Band, WarpData>(10);
 
     private String processedSlaveBand;
     private String[] masterBandNames = null;
@@ -136,7 +136,6 @@ public class CrossResamplingOp extends Operator {
             // arrange bands
             masterBand = sourceProduct.getBandAt(0);
             if (masterBand.getUnit() != null && masterBand.getUnit().equals(Unit.REAL) && sourceProduct.getNumBands() > 1) {
-                complexCoregistration = true;
                 masterBand2 = sourceProduct.getBandAt(1);
             }
 
@@ -161,30 +160,14 @@ public class CrossResamplingOp extends Operator {
                 targetRSR = ERS_RSR_NOMINAL;
             }
 
-
             constructPolynomial();
             constructInterpolationTable(interpolationMethod);
-
             createTargetProduct();
-
 
         } catch (Throwable e) {
             OperatorUtils.catchOperatorException(getId(), e);
         }
     }
-
-    private int extractNumber(String line) {
-        String numbers = new String();
-
-        Pattern p = Pattern.compile("\\d+");
-        Matcher m = p.matcher(line);
-        while (m.find()) {
-            numbers = numbers + m.group();
-        }
-
-        return Integer.parseInt(numbers);
-    }
-
 
     private void constructPolynomial() {
 
@@ -192,20 +175,28 @@ public class CrossResamplingOp extends Operator {
 
         crossGeometry.setPrfOriginal(sourcePRF);
         crossGeometry.setRsrOriginal(sourceRSR);
-
         crossGeometry.setPrfTarget(targetPRF);
         crossGeometry.setRsrTarget(targetRSR);
+        crossGeometry.setNormalizeFlag(false);
 
-        // used for normalization in estimation
-        crossGeometry.setDataWindow(slcMetadata.getCurrentWindow());
-        crossGeometry.computeCoefficients();
+        // use grids for computing polynomial using JAI Warp
+        crossGeometry.computeCoeffsFromCoords();
 
-        coeffsAz = crossGeometry.getCoeffsAz();
-        coeffsRg = crossGeometry.getCoeffsRg();
-
+        // cast coefficients to floats
+        double[] xCoeffsDouble = crossGeometry.getCoeffsRg();
+        double[] yCoeffsDouble = crossGeometry.getCoeffsAz();
+        float[] xCoeffsFloat = new float[xCoeffsDouble.length];
+        float[] yCoeffsFloat = new float[yCoeffsDouble.length];
+        for (int i = 0; i < xCoeffsFloat.length; i++) {
+            yCoeffsFloat[i] = (float) yCoeffsDouble[i];
+            xCoeffsFloat[i] = (float) xCoeffsDouble[i];
+        }
         // show polynomials
-        logger.debug("coeffsAZ : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsAz));
-        logger.debug("coeffsRg : estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsRg));
+        logger.debug("coeffsY : {}", ArrayUtils.toString(yCoeffsDouble));
+        logger.debug("coeffsX : {}", ArrayUtils.toString(xCoeffsDouble));
+
+        // construct polynomial
+        warpPolynomial = new WarpGeneralPolynomial(xCoeffsFloat, yCoeffsFloat);
 
     }
 
@@ -244,6 +235,7 @@ public class CrossResamplingOp extends Operator {
         // coregistrated image should have the same geo-coding as the master image
         OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
         updateTargetProductMetadata();
+
     }
 
     /**
@@ -252,6 +244,11 @@ public class CrossResamplingOp extends Operator {
     private void updateTargetProductMetadata() {
         final MetadataElement absTgt = AbstractMetadata.getAbstractedMetadata(targetProduct);
         AbstractMetadata.setAttribute(absTgt, AbstractMetadata.coregistered_stack, 1);
+
+        // TODO - here goes update of metadata
+        // 1. RSR of source replaced with RSR of target
+        // 2. PRF of source replaced with PRF of target
+        // 3. resolution cell sampling
     }
 
     /**
@@ -289,18 +286,16 @@ public class CrossResamplingOp extends Operator {
             if (pm.isCanceled())
                 return;
 
-            final WarpData warpData = warpDataMap.get(realSrcBand);
-            if (warpData.notEnoughGCPs)
-                return;
-
+            // get source image
             final RenderedImage srcImage = sourceRaster.getRasterDataNode().getSourceImage();
 
             // get warped image
-            final RenderedOp warpedImage = createWarpImage(warpData.jaiWarp, srcImage);
+            final RenderedOp warpedImage = createWarpImage(warpPolynomial, srcImage);
 
             // copy warped image data to target
             final float[] dataArray = warpedImage.getData(targetRectangle).getSamples(x0, y0, w, h, 0, (float[]) null);
 
+            // set samples in target
             targetTile.setRawSamples(ProductData.createInstance(dataArray));
 
         } catch (Throwable e) {
@@ -308,20 +303,6 @@ public class CrossResamplingOp extends Operator {
         } finally {
             pm.done();
         }
-    }
-
-    /**
-     * Compute WARP polynomial function using master and slave GCP pairs.
-     *
-     * @param warpData            Stores the warp information per band.
-     * @param warpPolynomialOrder The WARP polynimal order.
-     * @param masterGCPGroup      The master GCPs.
-     */
-    public static void computeWARPPolynomial(
-            final WarpData warpData, final int warpPolynomialOrder, final ProductNodeGroup<Placemark> masterGCPGroup) {
-
-        warpData.computeWARP(warpPolynomialOrder);
-
     }
 
     /**
@@ -351,132 +332,19 @@ public class CrossResamplingOp extends Operator {
         return warpOutput;
     }
 
-    public static class WarpData {
+    private int extractNumber(String line) {
+        String numbers = new String();
 
-        public final java.util.List<Placemark> slaveGCPList = new ArrayList<Placemark>();
-        private WarpPolynomial jaiWarp = null;
-        public double[] xCoef = null;
-        public double[] yCoef = null;
-
-        public int numValidGCPs = 0;
-        public boolean notEnoughGCPs = false;
-        public float[] rms = null;
-        public float[] rowResiduals = null;
-        public float[] colResiduals = null;
-        public float[] masterGCPCoords = null;
-        public float[] slaveGCPCoords = null;
-
-        public double rmsStd = 0;
-        public double rmsMean = 0;
-        public double rowResidualStd = 0;
-        public double rowResidualMean = 0;
-        public double colResidualStd = 0;
-        public double colResidualMean = 0;
-
-        public WarpData(ProductNodeGroup<Placemark> slaveGCPGroup) {
-            for (int i = 0; i < slaveGCPGroup.getNodeCount(); ++i) {
-                slaveGCPList.add(slaveGCPGroup.get(i));
-            }
+        Pattern p = Pattern.compile("\\d+");
+        Matcher m = p.matcher(line);
+        while (m.find()) {
+            numbers = numbers + m.group();
         }
 
-        /**
-         * Compute WARP function using master and slave GCPs.
-         *
-         * @param warpPolynomialOrder The WARP polynimal order.
-         */
-        public void computeWARP(final int warpPolynomialOrder) {
-
-            // check if master and slave GCP coordinates are identical, if yes set the warp polynomial coefficients
-            // directly, no need to compute them using JAI function because JAI produces incorrect result due to ill
-            // conditioned matrix.
-            float sum = 0.0f;
-            for (int i = 0; i < slaveGCPCoords.length; i++) {
-                sum += Math.abs(slaveGCPCoords[i] - masterGCPCoords[i]);
-            }
-            if (sum < 0.01) {
-                switch (warpPolynomialOrder) {
-                    case 1: {
-                        xCoef = new double[3];
-                        yCoef = new double[3];
-                        xCoef[0] = 0;
-                        xCoef[1] = 1;
-                        xCoef[2] = 0;
-                        yCoef[0] = 0;
-                        yCoef[1] = 0;
-                        yCoef[2] = 1;
-                        break;
-                    }
-                    case 2: {
-                        xCoef = new double[6];
-                        yCoef = new double[6];
-                        xCoef[0] = 0;
-                        xCoef[1] = 1;
-                        xCoef[2] = 0;
-                        xCoef[3] = 0;
-                        xCoef[4] = 0;
-                        xCoef[5] = 0;
-                        yCoef[0] = 0;
-                        yCoef[1] = 0;
-                        yCoef[2] = 1;
-                        yCoef[3] = 0;
-                        yCoef[4] = 0;
-                        yCoef[5] = 0;
-                        break;
-                    }
-                    case 3: {
-                        xCoef = new double[10];
-                        yCoef = new double[10];
-                        xCoef[0] = 0;
-                        xCoef[1] = 1;
-                        xCoef[2] = 0;
-                        xCoef[3] = 0;
-                        xCoef[4] = 0;
-                        xCoef[5] = 0;
-                        xCoef[6] = 0;
-                        xCoef[7] = 0;
-                        xCoef[8] = 0;
-                        xCoef[9] = 0;
-                        yCoef[0] = 0;
-                        yCoef[1] = 0;
-                        yCoef[2] = 1;
-                        yCoef[3] = 0;
-                        yCoef[4] = 0;
-                        yCoef[5] = 0;
-                        yCoef[6] = 0;
-                        yCoef[7] = 0;
-                        yCoef[8] = 0;
-                        yCoef[9] = 0;
-                        break;
-                    }
-                    default:
-                        throw new OperatorException("Incorrect WARP degree");
-                }
-                return;
-            }
-
-            // ToDo - pre and post scale source and destination with zero mean for numerical stability
-            jaiWarp = WarpPolynomial.createWarp(slaveGCPCoords, //source
-                    0,
-                    masterGCPCoords, // destination
-                    0,
-                    2 * numValidGCPs,
-                    1.0F,
-                    1.0F,
-                    1.0F,
-                    1.0F,
-                    warpPolynomialOrder);
-
-            final float[] jaiXCoefs = jaiWarp.getXCoeffs();
-            final float[] jaiYCoefs = jaiWarp.getYCoeffs();
-            final int size = jaiXCoefs.length;
-            xCoef = new double[size];
-            yCoef = new double[size];
-            for (int i = 0; i < size; ++i) {
-                xCoef[i] = jaiXCoefs[i];
-                yCoef[i] = jaiYCoefs[i];
-            }
-        }
+        return Integer.parseInt(numbers);
     }
+
+
 
     /**
      * The SPI is used to register this operator in the graph processing framework
@@ -490,7 +358,7 @@ public class CrossResamplingOp extends Operator {
     public static class Spi extends OperatorSpi {
         public Spi() {
             super(CrossResamplingOp.class);
-//            super.setOperatorUI(CrossResamplingOpUI.class);
+            super.setOperatorUI(CrossResamplingOpUI.class);
         }
     }
 
