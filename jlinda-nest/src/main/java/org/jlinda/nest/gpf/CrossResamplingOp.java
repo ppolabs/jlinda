@@ -16,13 +16,15 @@ import org.esa.beam.framework.gpf.annotations.OperatorMetadata;
 import org.esa.beam.framework.gpf.annotations.Parameter;
 import org.esa.beam.framework.gpf.annotations.SourceProduct;
 import org.esa.beam.framework.gpf.annotations.TargetProduct;
+import org.esa.beam.util.ProductUtils;
 import org.esa.nest.datamodel.AbstractMetadata;
-import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
+import org.esa.nest.gpf.ReaderUtils;
+import org.jlinda.core.Constants;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.coregistration.LUT;
+import org.jlinda.core.coregistration.SimpleLUT;
 import org.jlinda.core.coregistration.cross.CrossGeometry;
-import org.jlinda.nest.dat.CrossResamplingOpUI;
 import org.slf4j.LoggerFactory;
 
 import javax.media.jai.*;
@@ -32,8 +34,6 @@ import java.awt.image.RenderedImage;
 import java.awt.image.renderable.ParameterBlock;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Image resampling for Cross Interferometry
@@ -66,10 +66,6 @@ public class CrossResamplingOp extends Operator {
 
     private InterpolationTable interpTable = null;
 
-    private Band masterBand = null;
-    private Band masterBand2 = null;
-    private boolean warpDataAvailable = true;
-
     // Processing Variables
     // target
     private double targetPRF;
@@ -82,23 +78,17 @@ public class CrossResamplingOp extends Operator {
 
     private WarpPolynomial warpPolynomial;
 
-    // PARAMETERS FOR JAI INTERPOLATION KERNEL
-    private final static int SUBSAMPLE_BITS = 7;
-    private final static int PRECISION_BITS = 32;
-
     // ERS NOMINAL PRF and RSR
-    private final static double ERS_PRF_NOMINAL = 1679.902; // [Hz]
-    private final static double ERS_RSR_NOMINAL = 18.962468 * 1000; // [Hz]
+    private final static double ERS_PRF_NOMINAL = 1679.902;  // [Hz]
+    private final static double ERS_RSR_NOMINAL = 18.962468; // [MHz]
 
     // ASAR NOMINAL PRF and RSR
-    private final static double ASAR_PRF_NOMINAL = 1652.4156494140625;       // [Hz]
-    private final static double ASAR_RSR_NOMINAL = 19.20768 * 1000;  // [Hz]
+    private final static double ASAR_PRF_NOMINAL = 1652.4156494140625;  // [Hz]
+    private final static double ASAR_RSR_NOMINAL = 19.20768;            // [MHz]
 
     private final Map<Band, Band> sourceRasterMap = new HashMap<Band, Band>(10);
-    private final Map<Band, Band> complexSrcMap = new HashMap<Band, Band>(10);
 
-    private String processedSlaveBand;
-    private String[] masterBandNames = null;
+    private CrossGeometry crossGeometry;
 
     /**
      * Default constructor. The graph processing framework
@@ -131,31 +121,28 @@ public class CrossResamplingOp extends Operator {
             final MetadataElement absRoot = AbstractMetadata.getAbstractedMetadata(sourceProduct);
             slcMetadata = new SLCImage(absRoot);
 
-            final String mission = slcMetadata.getMission();
+            final String mission = slcMetadata.getMission().toLowerCase();
 
-            // arrange bands
-            masterBand = sourceProduct.getBandAt(0);
-            if (masterBand.getUnit() != null && masterBand.getUnit().equals(Unit.REAL) && sourceProduct.getNumBands() > 1) {
-                masterBand2 = sourceProduct.getBandAt(1);
-            }
+            boolean ersMission = mission.contains("ers");
+            boolean asarMission = mission.contains("asar") || mission.contains("envisat");
 
-            if (!mission.equals("ERS") || !mission.equals("ASAR")) {
+            if (!ersMission && !asarMission) {
                 throw new OperatorException("The Cross Interferometry operator is for ERS 1/2 and Envisat ASAR products only");
             }
 
-            if (mission.equals(targetGeometry)) {
-                throw new OperatorException("Some smart warning / exception message here");
+            if (mission.contains(targetGeometry.toLowerCase())) {
+                throw new OperatorException("You selected the same geometry as of input image");
             }
 
             // declare source
             sourcePRF = slcMetadata.getPRF();
-            sourceRSR = slcMetadata.getRsr2x();
+            sourceRSR = slcMetadata.getRsr2x() / 2 / Constants.MEGA;
 
-            // declare target conditionally
-            if (mission.equals("ERS")) {
+            // declare target ~ conditionally
+            if (ersMission) {
                 targetPRF = ASAR_PRF_NOMINAL;
                 targetRSR = ASAR_RSR_NOMINAL;
-            } else if (mission.equals("ASAR")) {
+            } else if (asarMission) {
                 targetPRF = ERS_PRF_NOMINAL;
                 targetRSR = ERS_RSR_NOMINAL;
             }
@@ -171,16 +158,20 @@ public class CrossResamplingOp extends Operator {
 
     private void constructPolynomial() {
 
-        CrossGeometry crossGeometry = new CrossGeometry();
+        crossGeometry = new CrossGeometry();
 
         crossGeometry.setPrfOriginal(sourcePRF);
         crossGeometry.setRsrOriginal(sourceRSR);
         crossGeometry.setPrfTarget(targetPRF);
         crossGeometry.setRsrTarget(targetRSR);
+
+        crossGeometry.setDataWindow(slcMetadata.getOriginalWindow());
+
+        crossGeometry.setPolyDegree(warpPolynomialOrder);
         crossGeometry.setNormalizeFlag(false);
 
         // use grids for computing polynomial using JAI Warp
-        crossGeometry.computeCoeffsFromCoords();
+        crossGeometry.computeCoeffsFromCoords_JAI();
 
         // cast coefficients to floats
         double[] xCoeffsDouble = crossGeometry.getCoeffsRg();
@@ -203,11 +194,12 @@ public class CrossResamplingOp extends Operator {
     private void constructInterpolationTable(String interpolationMethod) {
 
         // construct interpolation LUT
-        int kernelLength = extractNumber(interpolationMethod);
-        LUT lut = new LUT(interpolationMethod, kernelLength);
+        SimpleLUT lut = new SimpleLUT(interpolationMethod);
         lut.constructLUT();
 
-        // get lut and cast to float
+        int kernelLength = lut.getKernelLength();
+
+        // get LUT and cast it to float for JAI
         double[] lutArrayDoubles = lut.getKernel().toArray();
         float lutArrayFloats[] = new float[lutArrayDoubles.length];
         int i = 0;
@@ -217,8 +209,6 @@ public class CrossResamplingOp extends Operator {
 
         // construct interpolation table for JAI resampling
         int padding = kernelLength / 2 - 1;
-        interpTable = new InterpolationTable(padding, kernelLength, SUBSAMPLE_BITS, PRECISION_BITS, lutArrayFloats);
-
 
     }
 
@@ -227,13 +217,53 @@ public class CrossResamplingOp extends Operator {
      */
     private void createTargetProduct() {
 
+        final int offsetX = 0;
+        final int offsetY = 0;
+
+        int sourceWidth = sourceProduct.getSceneRasterWidth();
+        int sourceHeight = sourceProduct.getSceneRasterHeight();
+
+        int targetWidth = (int) Math.ceil(sourceWidth * crossGeometry.getRatioRSR());
+        int targetHeight = (int) Math.ceil(sourceHeight * crossGeometry.getRatioPRF());
+
+        // trim to extent
+        if (targetWidth > sourceWidth) {
+            targetWidth = sourceWidth - offsetX;
+        } else {
+            targetWidth -= offsetX;
+        }
+
+        if (targetHeight > sourceHeight) {
+            targetHeight = sourceHeight - offsetY;
+        } else {
+            targetHeight -= offsetY;
+        }
+
         targetProduct = new Product(sourceProduct.getName(),
                 sourceProduct.getProductType(),
-                sourceProduct.getSceneRasterWidth(),
-                sourceProduct.getSceneRasterHeight());
+                targetWidth, targetHeight);
 
-        // coregistrated image should have the same geo-coding as the master image
         OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
+
+        for (final Band band : targetProduct.getBands()) {
+            targetProduct.removeBand(band);
+        }
+
+        Band srcBandI = sourceProduct.getBandAt(0);
+        Band srcBandQ = sourceProduct.getBandAt(1);
+
+        Band targetBandI = targetProduct.addBand(sourceProduct.getBandAt(0).getName(), ProductData.TYPE_FLOAT32);
+        Band targetBandQ = targetProduct.addBand(sourceProduct.getBandAt(1).getName(), ProductData.TYPE_FLOAT32);
+
+        sourceRasterMap.put(targetBandI, srcBandI);
+        sourceRasterMap.put(targetBandQ, srcBandQ);
+
+        ProductUtils.copyRasterDataNodeProperties(srcBandI, targetBandI);
+        ProductUtils.copyRasterDataNodeProperties(srcBandQ, targetBandQ);
+
+        ReaderUtils.createVirtualIntensityBand(targetProduct, targetBandI, targetBandQ, "_cross");
+        ReaderUtils.createVirtualPhaseBand(targetProduct, targetBandI, targetBandQ, "_cross");
+
         updateTargetProductMetadata();
 
     }
@@ -242,13 +272,16 @@ public class CrossResamplingOp extends Operator {
      * Update metadata in the target product.
      */
     private void updateTargetProductMetadata() {
-        final MetadataElement absTgt = AbstractMetadata.getAbstractedMetadata(targetProduct);
-        AbstractMetadata.setAttribute(absTgt, AbstractMetadata.coregistered_stack, 1);
 
         // TODO - here goes update of metadata
         // 1. RSR of source replaced with RSR of target
         // 2. PRF of source replaced with PRF of target
         // 3. resolution cell sampling
+        // 4. update of geocodings to allow 'old' coregistration to work
+
+//        final MetadataElement absTgt = AbstractMetadata.getAbstractedMetadata(targetProduct);
+//        AbstractMetadata.setAttribute(absTgt, AbstractMetadata.coregistered_stack, 1);
+
     }
 
     /**
@@ -269,19 +302,15 @@ public class CrossResamplingOp extends Operator {
         final int y0 = targetRectangle.y;
         final int w = targetRectangle.width;
         final int h = targetRectangle.height;
-        //System.out.println("CrossResamplingOperator: x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
+        System.out.println("CrossResamplingOperator: x0 = " + x0 + ", y0 = " + y0 + ", w = " + w + ", h = " + h);
+
+        final BorderExtender borderExtender = BorderExtender.createInstance(BorderExtender.BORDER_ZERO);
 
         try {
 
             final Band srcBand = sourceRasterMap.get(targetBand);
-            if (srcBand == null)
-                return;
-            Band realSrcBand = complexSrcMap.get(srcBand);
-            if (realSrcBand == null)
-                realSrcBand = srcBand;
 
-            // create source image
-            final Tile sourceRaster = getSourceTile(srcBand, targetRectangle);
+            final Tile sourceRaster = getSourceTile(srcBand, targetRectangle, borderExtender);
 
             if (pm.isCanceled())
                 return;
@@ -293,7 +322,7 @@ public class CrossResamplingOp extends Operator {
             final RenderedOp warpedImage = createWarpImage(warpPolynomial, srcImage);
 
             // copy warped image data to target
-            final float[] dataArray = warpedImage.getData(targetRectangle).getSamples(x0, y0, w, h, 0, (float[]) null);
+            float[] dataArray = warpedImage.getData(targetRectangle).getSamples(x0, y0, w, h, 0, (float[]) null);
 
             // set samples in target
             targetTile.setRawSamples(ProductData.createInstance(dataArray));
@@ -332,20 +361,6 @@ public class CrossResamplingOp extends Operator {
         return warpOutput;
     }
 
-    private int extractNumber(String line) {
-        String numbers = new String();
-
-        Pattern p = Pattern.compile("\\d+");
-        Matcher m = p.matcher(line);
-        while (m.find()) {
-            numbers = numbers + m.group();
-        }
-
-        return Integer.parseInt(numbers);
-    }
-
-
-
     /**
      * The SPI is used to register this operator in the graph processing framework
      * via the SPI configuration file
@@ -358,7 +373,6 @@ public class CrossResamplingOp extends Operator {
     public static class Spi extends OperatorSpi {
         public Spi() {
             super(CrossResamplingOp.class);
-            super.setOperatorUI(CrossResamplingOpUI.class);
         }
     }
 
