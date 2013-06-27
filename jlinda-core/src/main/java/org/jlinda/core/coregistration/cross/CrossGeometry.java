@@ -186,8 +186,8 @@ public class CrossGeometry {
             targetGrid[i][1] = sourceGrid[i][1] * ratioRSR;
 
             // semantic of jLinda is always : offset = (source - target)
-            offsetGrid[i][0] = sourceGrid[i][0] - targetGrid[i][0];
-            offsetGrid[i][1] = sourceGrid[i][1] - targetGrid[i][1];
+            offsetGrid[i][0] = targetGrid[i][0] - sourceGrid[i][0];
+            offsetGrid[i][1] = targetGrid[i][1] - sourceGrid[i][1];
         }
 
     }
@@ -233,7 +233,7 @@ public class CrossGeometry {
     }
 
     // compute coefficients from Coordinates - for NEST/BEAM/JAI semantics
-    public void computeCoeffsFromCoords() {
+    public void computeCoeffsFromCoords_JAI() {
 
         constructGrids();
 
@@ -262,8 +262,8 @@ public class CrossGeometry {
 
         // compute coefficients using polyFit2D
         // ...NOTE: order in which input axis are given => (x,y,z) <=
-        coeffsAz = PolyUtils.polyFit2D(sourceY, sourceX, targetY, polyDegree);
-        coeffsRg = PolyUtils.polyFit2D(sourceY, sourceX, targetX, polyDegree);
+        coeffsAz = PolyUtils.polyFit2D(sourceX, sourceY, targetY, polyDegree);
+        coeffsRg = PolyUtils.polyFit2D(sourceX, sourceY, targetX, polyDegree);
 
         // show polynomials depending on logger level <- not in production
         logger.debug("coeffsAZ (coords): estimated with PolyUtils.polyFit2D : {}", ArrayUtils.toString(coeffsAz));
@@ -272,8 +272,8 @@ public class CrossGeometry {
     }
 
     private void computeFrequencyRatios() {
-        ratioPRF = prfOriginal / prfTarget;
-        ratioRSR = rsrOriginal / rsrTarget;
+        ratioPRF = 1 / (prfOriginal / prfTarget);
+        ratioRSR = 1 / (rsrOriginal / rsrTarget);
 
         ratiosComputed = true;
     }
