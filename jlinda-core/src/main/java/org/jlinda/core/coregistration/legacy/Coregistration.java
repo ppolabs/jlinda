@@ -1427,7 +1427,7 @@ public class Coregistration implements ICoregistration {
          */
         LUT lut = new LUT(LUT.RECT, Npoints);
         lut.constructLUT();
-        lut.overviewOfLut();
+        lut.overviewLUT();
 
         final ComplexDoubleMatrix pntKernelAz = new ComplexDoubleMatrix(lut.getKernel());
         final ComplexDoubleMatrix pntKernelRg = new ComplexDoubleMatrix(lut.getKernel());
