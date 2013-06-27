@@ -31,14 +31,6 @@ public class LUT {
     public static final String TS8P = "Truncated sinc (8 points)";
     public static final String TS16P = "Truncated sinc (16 points)";
 
-    private enum ResampleKernels {
-        RECT, TRI,
-        TS6P, TS8P, TS16P,
-        CC4P, CC6P,
-        RS_KNAB4P, RS_KNAB6P, RS_KNAB8P, RS_KNAB10P, RS_KNAB16P,
-        RS_RC6P, RS_RC12P
-    }
-
     private static final int INTERVAL = 127;            // precision: 1./interval [pixel]
     protected final int nInterval = INTERVAL + 1;   // size of lookup table
     protected final double dx = 1.0 / INTERVAL;       // interval look up table
