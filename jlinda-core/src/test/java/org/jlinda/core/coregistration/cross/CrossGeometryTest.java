@@ -6,7 +6,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.jblas.DoubleMatrix;
 import org.jlinda.core.Window;
 import org.jlinda.core.utils.MathUtils;
-import org.jlinda.core.utils.PolyUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
@@ -35,12 +34,12 @@ public class CrossGeometryTest {
     private static long pixelHi = 5100;
 
     // ORIGINAL GEOMETRY : ENVISAT paramaters
-    private static double prfASAR = 1652.4156494140625;       // [Hz]
-    private static double rsrASAR = 19.20768 * 1000;  // [Hz]
+    private static double prfASAR = 1652.4156494140625; // [Hz]
+    private static double rsrASAR = 19.20768; // [MHz]
 
     // TARGET GEOMETRY : ERS2 paramaters
-    private static double prfERS = 1679.902; // 1679.95828476786;      // [Hz]
-    private static double rsrERS = 18.962468 * 1000; //18.96245929824155 * 1000; // [Hz]
+    private static double prfERS = 1679.902; // 1679.95828476786;  // [Hz]
+    private static double rsrERS = 18.962468; //18.96245929824155; // [MHz]
 
     // Estimation Parameters
     private static final int NUM_OF_WINDOWS = 5000;
@@ -103,7 +102,7 @@ public class CrossGeometryTest {
         crossGeometry.setPolyDegree(POLY_DEGREE);
         crossGeometry.setNormalizeFlag(false);
 
-        crossGeometry.computeCoeffsFromCoords();
+        crossGeometry.computeCoeffsFromCoords_JAI();
 
         double[] coeffsAz = crossGeometry.getCoeffsAz();
         double[] coeffsRg = crossGeometry.getCoeffsRg();
@@ -116,91 +115,6 @@ public class CrossGeometryTest {
     }
 
 
-    /* Prototype implementation:
-    *  - based on matlab code
-    *  - there is a small ~10^-8 numerical difference between prototype and class implementation
-    *  - this difference is due to different (and in prototype inconsistent) use of data windows for normalization and estimation
-    * */
-    public void computeCrossPolynomial() {
-
-        // estimation parameters
-        int numOfObs = NUM_OF_WINDOWS;
-
-        // ratios of frequencies
-        double ratioRSR = rsrERS / rsrASAR;
-        double ratioPRF = prfERS / prfASAR;
-
-        // -----------------------------------------------
-        // define solution spaces - ASAR geometry is 'slave' : SLAVE - MASTER
-        // -----------------------------------------------
-        // Window ersWindow = new Window(1, lineERS, 1, pixERS);
-        Window asarWindow = new Window(0, lineHi - 1, 0, pixelHi - 1); // start from 0 pixelHi
-
-        // -----------------------------------------------
-        // distribute points
-        // -----------------------------------------------
-        double[][] sourceGrid = MathUtils.distributePointsDoubles(NUM_OF_WINDOWS, asarWindow);
-
-        // -----------------------------------------------
-        // create synthetic offsets
-        // -----------------------------------------------
-        double[][] targetGrid = new double[NUM_OF_WINDOWS][2];
-
-        for (int i = 0; i < NUM_OF_WINDOWS; i++) {
-            targetGrid[i][0] = sourceGrid[i][0] * ratioPRF;
-            targetGrid[i][1] = sourceGrid[i][1] * ratioRSR;
-        }
-
-        double[][] offsetGrid = new double[NUM_OF_WINDOWS][2];
-        for (int i = 0; i < NUM_OF_WINDOWS; i++) {
-            offsetGrid[i][0] = sourceGrid[i][0] - targetGrid[i][0];
-            offsetGrid[i][1] = sourceGrid[i][1] - targetGrid[i][1];
-        }
-
-        // -----------------------------------------------
-        // estimation of (dummy) coregistration polynomial
-        // -----------------------------------------------
-
-        DoubleMatrix linesNorm = new DoubleMatrix(numOfObs, 1);
-        DoubleMatrix pixelsNorm = new DoubleMatrix(numOfObs, 1);
-        DoubleMatrix offset_lines = new DoubleMatrix(numOfObs, 1);
-        DoubleMatrix offset_pixels = new DoubleMatrix(numOfObs, 1);
-
-        // normalize, and store into jblas matrices
-        for (int i = 0; i < numOfObs; i++) {
-            linesNorm.put(i, PolyUtils.normalize2(targetGrid[i][0], 1, lineHi));
-            pixelsNorm.put(i, PolyUtils.normalize2(targetGrid[i][1], 1, pixelHi));
-            offset_lines.put(i, offsetGrid[i][0]);
-            offset_pixels.put(i, offsetGrid[i][1]);
-        }
-
-        double[] coeffsAz = PolyUtils.polyFit2D(pixelsNorm, linesNorm, offset_lines, POLY_DEGREE);
-        double[] coeffsRg = PolyUtils.polyFit2D(pixelsNorm, linesNorm, offset_pixels, POLY_DEGREE);
-
-        // show polynomials
-        logger.debug("coeffsAZ (polyfit) = {}", ArrayUtils.toString(coeffsAz));
-        logger.debug("coeffsRg (polyfit) = {}", ArrayUtils.toString(coeffsRg));
-
-/*
-        // --------------------------------------------------
-        // Internal implementation of coefficients estimation
-        // --------------------------------------------------
-        DoubleMatrix A = SystemOfEquations.constructDesignMatrix(linesNorm, pixelsNorm, POLY_DEGREE);
-        logger.debug("Solving linear system of equations with Cholesky");
-        DoubleMatrix N = A.transpose().mmul(A);
-        DoubleMatrix rhsL = A.transpose().mmul(offset_lines);
-        DoubleMatrix rhsP = A.transpose().mmul(offset_pixels);
-
-        rhsL = Solve.solveSymmetric(N, rhsL);
-        rhsP = Solve.solveSymmetric(N, rhsP);
-
-        logger.debug("coeffsAZ           = {}", ArrayUtils.toString(rhsL.toArray()));
-        logger.debug("coeffsRg           = {}", ArrayUtils.toString(rhsP.toArray()));
-
-*/
-
-    }
-
     /* Prototype and experimental implementation for:
     *  - shoot out between different polynomial estimation and evaluation methods
     *      1st method - jLinda.polyFit2D
@@ -212,6 +126,7 @@ public class CrossGeometryTest {
     *  - note that JAI seems to introduces bias in evaluation of polynomial
     * */
     // ToDo - to be removed after operator committed
+    @Test
     public void computeAndEvaluateCrossPoly() {
 
         logger.trace("================================");
@@ -238,8 +153,8 @@ public class CrossGeometryTest {
         Window win = new Window(yMin, yMax, xMin, xMax);
 
         // ratios of scaling factors
-        double ratioX = sourceFactorX / targetFactorX;
-        double ratioY = sourceFactorY / targetFactorY;
+        double ratioX = 1 / (sourceFactorX / targetFactorX);
+        double ratioY = 1 / (sourceFactorY / targetFactorY);
 
         // distribute points for estimation
         int[][] srcArray = MathUtils.distributePoints(numberOfObservations, win);
@@ -255,8 +170,8 @@ public class CrossGeometryTest {
         // semantics is : source - target
         double[][] dltArray = new double[numberOfObservations][2];
         for (int i = 0; i < numberOfObservations; i++) {
-            dltArray[i][0] = srcArray[i][0] - tgtArray[i][0];
-            dltArray[i][1] = srcArray[i][1] - tgtArray[i][1];
+            dltArray[i][0] = tgtArray[i][0] - srcArray[i][0];
+            dltArray[i][1] = tgtArray[i][1] - srcArray[i][1];
         }
 
             /*
@@ -293,12 +208,13 @@ public class CrossGeometryTest {
 
         // compute coefficients using polyFit2D
         // ...NOTE: order in which input axis are given => (x,y,z) <=
-        double[] coeffsX = polyFit2D(srcY, srcX, dltX, polyDegree);
-        double[] coeffsY = polyFit2D(srcY, srcX, dltY, polyDegree);
+        double[] coeffsX = polyFit2D(srcX, srcY, dltX, polyDegree);
+        double[] coeffsY = polyFit2D(srcX, srcY, dltY, polyDegree);
 
-        double[] coeffsXNorm = polyFit2D(srcYNorm, srcXNorm, dltX, polyDegree);
-        double[] coeffsYNorm = polyFit2D(srcYNorm, srcXNorm, dltY, polyDegree);
+        double[] coeffsXNorm = polyFit2D(srcXNorm, srcYNorm, dltX, polyDegree);
+        double[] coeffsYNorm = polyFit2D(srcXNorm, srcYNorm, dltY, polyDegree);
 
+        // for JAI semantics!
         double[] coeffsXTemp = polyFit2D(srcY, srcX, tgtX, polyDegree);
         double[] coeffsYTemp = polyFit2D(srcY, srcX, txtY, polyDegree);
 
@@ -339,13 +255,13 @@ public class CrossGeometryTest {
         WarpPolynomial warpTotal = WarpPolynomial.createWarp(tgt1DArray, 0, src1DArray, 0, 2 * numberOfObservations, preScaleX, preScaleY, postScaleX, postScaleY, polyDegree);
 
         // show polynomials depending on logger level <- not in production
-        logger.debug("coeffsY : estimated with JAI.WarpPolynomial.createWarp : {}", ArrayUtils.toString(warpTotal.getYCoeffs()));
         logger.debug("coeffsX : estimated with JAI.WarpPolynomial.createWarp : {}", ArrayUtils.toString(warpTotal.getXCoeffs()));
+        logger.debug("coeffsY : estimated with JAI.WarpPolynomial.createWarp : {}", ArrayUtils.toString(warpTotal.getYCoeffs()));
         logger.debug("-----");
 
         // show polynomials depending on logger level <- not in production
-        logger.debug("coeffsY : estimated with PolyFit for JAI : {}", ArrayUtils.toString(coeffsYTemp));
         logger.debug("coeffsX : estimated with PolyFIt for JAI : {}", ArrayUtils.toString(coeffsXTemp));
+        logger.debug("coeffsY : estimated with PolyFit for JAI : {}", ArrayUtils.toString(coeffsYTemp));
         logger.debug("-----");
 
         float[] xCoeffs = new float[coeffsXTemp.length];
@@ -357,8 +273,8 @@ public class CrossGeometryTest {
 
         WarpPolynomial warpInterp = new WarpGeneralPolynomial(xCoeffs, yCoeffs);
 
-        // Point2D srcPoint = new Point2D.Double(1354, 23214);
-        Point2D srcPoint = new Point2D.Double(2523, 2683);
+        Point2D srcPoint = new Point2D.Double(1354, 23214);
+//        Point2D srcPoint = new Point2D.Double(2523, 2683);
         Point2D tgtPointExp = new Point2D.Double(srcPoint.getX() * ratioX, srcPoint.getY() * ratioY);
 
         Point2D srcPointNorm = new Point2D.Double(
@@ -368,17 +284,17 @@ public class CrossGeometryTest {
         Point2D tgtPoint_JAI_1 = warpTotal.mapDestPoint(srcPoint);
         Point2D tgtPoint_JAI_2 = warpInterp.mapDestPoint(srcPoint);
 
-        double tgtX_polyfit = srcPoint.getX() - polyval(srcPoint.getX(), srcPoint.getY(), coeffsX);
-        double tgtY_polyfit = srcPoint.getY() - polyval(srcPoint.getX(), srcPoint.getY(), coeffsY);
+        double tgtX_polyfit = srcPoint.getX() + polyval(srcPoint.getY(), srcPoint.getX(), coeffsX);
+        double tgtY_polyfit = srcPoint.getY() + polyval(srcPoint.getY(), srcPoint.getX(), coeffsY);
 
-        double tgtX_polyfit_norm = srcPoint.getX() - polyval(srcPointNorm.getX(), srcPointNorm.getY(), coeffsXNorm);
-        double tgtY_polyfit_norm = srcPoint.getY() - polyval(srcPointNorm.getX(), srcPointNorm.getY(), coeffsYNorm);
+        double tgtX_polyfit_norm = srcPoint.getX() + polyval(srcPointNorm.getY(), srcPointNorm.getX(), coeffsXNorm);
+        double tgtY_polyfit_norm = srcPoint.getY() + polyval(srcPointNorm.getY(), srcPointNorm.getX(), coeffsYNorm);
 
         logger.debug("============ ");
         logger.debug("Input Test Point (x,y): {}, {}", srcPoint.getX(), srcPoint.getY());
         logger.debug("============ ");
         logger.debug("Target Expected: {}, {}", tgtPointExp.getX(), tgtPointExp.getY());
-        logger.debug("Offset Expected: {}, {}", srcPoint.getX() - tgtPointExp.getX(), srcPoint.getY() - tgtPointExp.getY());
+        logger.debug("Offset Expected: {}, {}", tgtPointExp.getX() - srcPoint.getX(), tgtPointExp.getY() - srcPoint.getY());
         logger.debug("============ ");
         logger.debug("Target - JAI-Impl-1: {}, {}", tgtPoint_JAI_1.getX(), tgtPoint_JAI_1.getY());
         logger.debug("Target - JAI-Impl-2: {}, {}", tgtPoint_JAI_2.getX(), tgtPoint_JAI_2.getY());
