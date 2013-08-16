@@ -33,7 +33,7 @@
             <version>${beam.version}</version>
         </dependency>
         <dependency>
-            <groupId>org</groupId>
+            <groupId>org.jblas</groupId>
             <artifactId>jblas</artifactId>
             <version>${jblas.version}</version>
         </dependency>

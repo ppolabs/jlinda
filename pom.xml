@@ -14,9 +14,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jlinda.version>0.5</jlinda.version>
-        <nest.version>5.0</nest.version>
+        <nest.version>5.0.1</nest.version>
         <beam.version>5.0-4.10.4</beam.version>
-        <jblas.version>1.2.0</jblas.version>
+        <jblas.version>1.2.3</jblas.version>
         <junit.version>4.10</junit.version>
         <outputdir>../../output</outputdir>
     </properties>
@@ -57,7 +57,7 @@
         <repository>
             <id>ppolabs-mvn-repo</id>
             <name>Public Maven Repository of PPO.labs</name>
-            <url>http://94.209.52.167/mvn</url>
+            <url>http://nexus.ppolabs.me</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
