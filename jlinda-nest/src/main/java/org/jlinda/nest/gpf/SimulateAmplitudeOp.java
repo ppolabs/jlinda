@@ -20,18 +20,19 @@ import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
 import org.esa.nest.gpf.ReaderUtils;
 import org.jblas.ComplexDoubleMatrix;
-import org.jdoris.core.Constants;
-import org.jdoris.core.Orbit;
-import org.jdoris.core.SLCImage;
-import org.jdoris.core.geom.DemTile;
-import org.jdoris.core.geom.SimAmpTile;
-import org.jdoris.core.geom.ThetaTile;
-import org.jdoris.core.utils.GeoUtils;
-import org.jdoris.core.utils.MathUtils;
-import org.jdoris.nest.utils.BandUtilsDoris;
-import org.jdoris.nest.utils.CplxContainer;
-import org.jdoris.nest.utils.ProductContainer;
-import org.jdoris.nest.utils.TileUtilsDoris;
+import org.jlinda.core.Constants;
+import org.jlinda.core.Orbit;
+import org.jlinda.core.SLCImage;
+import org.jlinda.core.Window;
+import org.jlinda.core.geom.DemTile;
+import org.jlinda.core.geom.SimAmpTile;
+import org.jlinda.core.geom.ThetaTile;
+import org.jlinda.core.utils.GeoUtils;
+import org.jlinda.core.utils.MathUtils;
+import org.jlinda.nest.utils.BandUtilsDoris;
+import org.jlinda.nest.utils.CplxContainer;
+import org.jlinda.nest.utils.ProductContainer;
+import org.jlinda.nest.utils.TileUtilsDoris;
 
 import java.awt.*;
 import java.io.File;
@@ -149,6 +150,7 @@ public final class SimulateAmplitudeOp extends Operator {
                 throw new OperatorException("The DEM '" + demName + "' has not been installed.");
 
             demNoDataValue = demDescriptor.getNoDataValue();
+
             demSampling = demDescriptor.getDegreeRes() * (1.0f / demDescriptor.getPixelRes()) * Constants.DTOR;
         }
 
