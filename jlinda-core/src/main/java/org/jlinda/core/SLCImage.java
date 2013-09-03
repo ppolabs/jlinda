@@ -1,10 +1,8 @@
 package org.jlinda.core;
 
-import org.esa.beam.framework.datamodel.GeoPos;
 import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.nest.datamodel.AbstractMetadata;
 import org.esa.nest.eo.Constants;
-import org.esa.nest.eo.GeoUtils;
 import org.jlinda.core.io.ResFile;
 import org.jlinda.core.utils.DateUtils;
 
@@ -189,7 +187,7 @@ public final class SLCImage {
                 element.getAttributeDouble(AbstractMetadata.last_far_long)) / 4);
 
         final double[] xyz = new double[3];
-        GeoUtils.geo2xyz(getApproxGeoCentreOriginal(), xyz);
+        Ellipsoid.ell2xyz(getApproxGeoCentreOriginal(), xyz);
 
         this.approxXYZCentreOriginal.x = xyz[0];
         this.approxXYZCentreOriginal.y = xyz[1];

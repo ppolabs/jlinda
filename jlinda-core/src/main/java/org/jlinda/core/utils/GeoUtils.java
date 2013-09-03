@@ -1,7 +1,7 @@
 package org.jlinda.core.utils;
 
-import org.esa.beam.framework.datamodel.GeoPos;
 import org.jlinda.core.*;
+import org.jlinda.core.GeoPos;
 
 public class GeoUtils {
 

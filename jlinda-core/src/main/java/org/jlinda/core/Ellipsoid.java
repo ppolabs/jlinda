@@ -2,6 +2,8 @@ package org.jlinda.core;
 
 import org.apache.log4j.Logger;
 
+import static org.jlinda.core.Constants.DTOR;
+
 public class Ellipsoid {
 
     Logger logger = Logger.getLogger(Ellipsoid.class.getName());
@@ -127,6 +129,28 @@ public class Ellipsoid {
                 Nph * Math.cos(phi) * Math.cos(lambda),
                 Nph * Math.cos(phi) * Math.sin(lambda),
                 (Nph - e2 * N) * Math.sin(phi));
+    }
+
+    public static Point ell2xyz(final GeoPos geoPos, final double height) {
+        return ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, height);
+    }
+
+    public static Point ell2xyz(final GeoPos geoPos) {
+        return ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, 0.0);
+    }
+
+    public static void ell2xyz(final GeoPos geoPos, double[] xyz) {
+        Point tempPoint = ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, 0.0);
+        xyz[0] = tempPoint.x;
+        xyz[1] = tempPoint.y;
+        xyz[2] = tempPoint.z;
+    }
+
+    public static void ell2xyz(final GeoPos geoPos, final double height, final double[] xyz) {
+        Point tempPoint = ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, height);
+        xyz[0] = tempPoint.x;
+        xyz[1] = tempPoint.y;
+        xyz[2] = tempPoint.z;
     }
 
     private static double computeEllipsoidNormal(final double phi) {

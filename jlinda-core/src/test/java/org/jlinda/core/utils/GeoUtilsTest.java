@@ -1,11 +1,10 @@
 package org.jlinda.core.utils;
 
-import org.esa.beam.framework.datamodel.GeoPos;
+import org.jlinda.core.GeoPos;
 import org.jlinda.core.Orbit;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
 import org.junit.*;
-
 
 import java.io.File;
 
