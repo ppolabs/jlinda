@@ -1,12 +1,12 @@
 package org.jlinda.core;
 
 /**
- * The <code>GeoPos</code> class represents a geographical position measured in longitudes and latitudes.
- * <p>Adapted from org.esa.beam.framework.datamodel.GeoPos(), refactoring to doubles.<p/>
+ * The <code>GeoPoint</code> class represents a geographical position measured in longitudes and latitudes.
+ * <p>Adapted from org.esa.beam.framework.datamodel.GeoPoint(), refactoring to doubles.<p/>
  * @author Norman Fomferra, and adapted by Petar Marinkovic
  * @version $Revision$ $Date$
  */
-public class GeoPos {
+public class GeoPoint {
 
     private static final double _MIN_PER_DEG = 60.0D;
     private static final double _SEC_PER_DEG = _MIN_PER_DEG * 60.0D;
@@ -24,16 +24,16 @@ public class GeoPos {
     /**
      * Constructs a new geo-position with latitude and longitude set to zero.
      */
-    public GeoPos() {
+    public GeoPoint() {
     }
 
     /**
      * Constructs a new geo-position with latitude and longitude set to that of the given geo-position.
      *
-     * @param geoPos the  geo-position providing the latitude and longitude, must not be <code>null</code>
+     * @param geoPoint the  geo-position providing the latitude and longitude, must not be <code>null</code>
      */
-    public GeoPos(GeoPos geoPos) {
-        this(geoPos.lat, geoPos.lon);
+    public GeoPoint(GeoPoint geoPoint) {
+        this(geoPoint.lat, geoPoint.lon);
     }
 
     /**
@@ -42,7 +42,7 @@ public class GeoPos {
      * @param lat the geographical latitude in decimal degree, valid range is -90 to +90
      * @param lon the geographical longitude in decimal degree, valid range is -180 to +180
      */
-    public GeoPos(double lat, double lon) {
+    public GeoPoint(double lat, double lon) {
         this.lat = lat;
         this.lon = lon;
     }
@@ -90,7 +90,7 @@ public class GeoPos {
      *
      * @return true, if so
      */
-    public static boolean areValid(GeoPos[] a) {
+    public static boolean areValid(GeoPoint[] a) {
         for (int i = 0; i < a.length; i++) {
             if (!a[i].isValid()) {
                 return false;
@@ -120,10 +120,10 @@ public class GeoPos {
         if (super.equals(obj)) {
             return true;
         }
-        if (!(obj instanceof GeoPos)) {
+        if (!(obj instanceof GeoPoint)) {
             return false;
         }
-        GeoPos other = (GeoPos) obj;
+        GeoPoint other = (GeoPoint) obj;
         return other.lat == lat && other.lon == lon;
     }
 

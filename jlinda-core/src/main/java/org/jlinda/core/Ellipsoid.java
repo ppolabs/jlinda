@@ -131,23 +131,23 @@ public class Ellipsoid {
                 (Nph - e2 * N) * Math.sin(phi));
     }
 
-    public static Point ell2xyz(final GeoPos geoPos, final double height) {
-        return ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, height);
+    public static Point ell2xyz(final GeoPoint geoPoint, final double height) {
+        return ell2xyz(geoPoint.lat * DTOR, geoPoint.lon * DTOR, height);
     }
 
-    public static Point ell2xyz(final GeoPos geoPos) {
-        return ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, 0.0);
+    public static Point ell2xyz(final GeoPoint geoPoint) {
+        return ell2xyz(geoPoint.lat * DTOR, geoPoint.lon * DTOR, 0.0);
     }
 
-    public static void ell2xyz(final GeoPos geoPos, double[] xyz) {
-        Point tempPoint = ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, 0.0);
+    public static void ell2xyz(final GeoPoint geoPoint, double[] xyz) {
+        Point tempPoint = ell2xyz(geoPoint.lat * DTOR, geoPoint.lon * DTOR, 0.0);
         xyz[0] = tempPoint.x;
         xyz[1] = tempPoint.y;
         xyz[2] = tempPoint.z;
     }
 
-    public static void ell2xyz(final GeoPos geoPos, final double height, final double[] xyz) {
-        Point tempPoint = ell2xyz(geoPos.lat * DTOR, geoPos.lon * DTOR, height);
+    public static void ell2xyz(final GeoPoint geoPoint, final double height, final double[] xyz) {
+        Point tempPoint = ell2xyz(geoPoint.lat * DTOR, geoPoint.lon * DTOR, height);
         xyz[0] = tempPoint.x;
         xyz[1] = tempPoint.y;
         xyz[2] = tempPoint.z;

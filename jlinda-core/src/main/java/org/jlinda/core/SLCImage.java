@@ -30,7 +30,7 @@ public final class SLCImage {
 
     // geo & orientation
     private Point approxRadarCentreOriginal = new Point(); // use PixelPos as double!
-    private GeoPos approxGeoCentreOriginal = new GeoPos();
+    private GeoPoint approxGeoCentreOriginal = new GeoPoint();
     private Point approxXYZCentreOriginal = new Point();
 
     private double averageHeight;
@@ -325,7 +325,7 @@ public final class SLCImage {
         return approxRadarCentreOriginal;
     }
 
-    public GeoPos getApproxGeoCentreOriginal() {
+    public GeoPoint getApproxGeoCentreOriginal() {
         return approxGeoCentreOriginal;
     }
 

@@ -1,6 +1,6 @@
 package org.jlinda.core.utils;
 
-import org.jlinda.core.GeoPos;
+import org.jlinda.core.GeoPoint;
 import org.jlinda.core.Orbit;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
@@ -69,7 +69,7 @@ public class GeoUtilsTest {
     public void testComputeCorners() throws Exception {
 
         long start = System.currentTimeMillis();
-        GeoPos[] corners = GeoUtils.computeCorners(slcimage, orbit_ACTUAL, window, height);
+        GeoPoint[] corners = GeoUtils.computeCorners(slcimage, orbit_ACTUAL, window, height);
         long stop = System.currentTimeMillis();
 
         System.out.println("time = " + (double)(stop - start)/1000);

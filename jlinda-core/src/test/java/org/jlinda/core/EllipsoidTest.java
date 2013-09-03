@@ -50,10 +50,10 @@ public class EllipsoidTest {
     @Test
     public void testEll2xyz_ARRAYS() throws Exception {
 
-        GeoPos geoPos_EXPECTED = new GeoPos(cr_GEO_expected[0], cr_GEO_expected[1]);
+        GeoPoint geoPoint_EXPECTED = new GeoPoint(cr_GEO_expected[0], cr_GEO_expected[1]);
 
         double[] xyz_ACTUAL = new double[3];
-        Ellipsoid.ell2xyz(geoPos_EXPECTED, cr_GEO_expected[2], xyz_ACTUAL);
+        Ellipsoid.ell2xyz(geoPoint_EXPECTED, cr_GEO_expected[2], xyz_ACTUAL);
 
         for (int i = 0; i < cr_XYZ_expected.length; i++) {
             Assert.assertEquals(cr_XYZ_expected[i], xyz_ACTUAL[i], deltaXYZ);
