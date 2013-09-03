@@ -2,13 +2,13 @@ package org.jlinda.core;
 
 import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.nest.datamodel.AbstractMetadata;
-import org.esa.nest.eo.Constants;
 import org.jlinda.core.io.ResFile;
 import org.jlinda.core.utils.DateUtils;
 
 import java.io.File;
 
 import static org.jlinda.core.Constants.EPS;
+import static org.jlinda.core.Constants.LIGHT_SPEED;
 import static org.jlinda.core.Constants.MEGA;
 
 public final class SLCImage {
@@ -152,7 +152,7 @@ public final class SLCImage {
         this.orbitNumber = element.getAttributeInt(AbstractMetadata.REL_ORBIT);
 
         // units [meters]
-        this.radar_wavelength = (Constants.lightSpeed / MEGA) / element.getAttributeDouble(AbstractMetadata.radar_frequency);
+        this.radar_wavelength = (LIGHT_SPEED / MEGA) / element.getAttributeDouble(AbstractMetadata.radar_frequency);
 
         // units [Hz]
         this.PRF = element.getAttributeDouble(AbstractMetadata.pulse_repetition_frequency);
@@ -169,7 +169,7 @@ public final class SLCImage {
         this.rsr2x = (element.getAttributeDouble(AbstractMetadata.range_sampling_rate) * MEGA * 2);
 
         // one way (!!!) time to first range pixels [sec]
-        this.tRange1 = element.getAttributeDouble(AbstractMetadata.slant_range_to_first_pixel) / Constants.lightSpeed;
+        this.tRange1 = element.getAttributeDouble(AbstractMetadata.slant_range_to_first_pixel) / LIGHT_SPEED;
 
         this.approxRadarCentreOriginal.x = element.getAttributeDouble(AbstractMetadata.num_samples_per_line) / 2.0d;  // x direction is range!
         this.approxRadarCentreOriginal.y = element.getAttributeDouble(AbstractMetadata.num_output_lines) / 2.0d;  // y direction is azimuth
@@ -292,7 +292,7 @@ public final class SLCImage {
 
     // Convert pixel number to range (1 is first pixel)
     public double pix2range(double pixel) {
-        return Constants.lightSpeed * pix2tr(pixel);
+        return LIGHT_SPEED * pix2tr(pixel);
     }
 
     // Convert range time to pixel number (1 is first pixel)
