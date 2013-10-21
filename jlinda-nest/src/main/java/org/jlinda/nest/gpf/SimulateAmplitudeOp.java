@@ -20,9 +20,7 @@ import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
 import org.esa.nest.gpf.ReaderUtils;
 import org.jblas.ComplexDoubleMatrix;
-import org.jlinda.core.Constants;
-import org.jlinda.core.Orbit;
-import org.jlinda.core.SLCImage;
+import org.jlinda.core.*;
 import org.jlinda.core.Window;
 import org.jlinda.core.geom.DemTile;
 import org.jlinda.core.geom.SimAmpTile;
@@ -333,28 +331,28 @@ public final class SimulateAmplitudeOp extends Operator {
                 /// get dem of tile ///
 
                 // compute tile geo-corners ~ work on ellipsoid
-                GeoPos[] geoCorners = GeoUtils.computeCorners(product.sourceMaster.metaData,
+                GeoPoint[] geoCorners = GeoUtils.computeCorners(product.sourceMaster.metaData,
                         product.sourceMaster.orbit,
                         tileWindow);
 
                 // get corners as DEM indices
                 PixelPos[] pixelCorners = new PixelPos[2];
-                pixelCorners[0] = dem.getIndex(geoCorners[0]);
-                pixelCorners[1] = dem.getIndex(geoCorners[1]);
+                pixelCorners[0] = dem.getIndex(new GeoPos((float) geoCorners[0].lat, (float) geoCorners[0].lon));
+                pixelCorners[1] = dem.getIndex(new GeoPos((float) geoCorners[1].lat, (float) geoCorners[1].lon));
 
                 // get max/min height of tile ~ uses 'fast' GCP based interpolation technique
                 double[] tileHeights = computeMaxHeight(pixelCorners, targetRectangle);
 
                 // compute extra lat/lon for dem tile
-                GeoPos geoExtent = GeoUtils.defineExtraPhiLam(tileHeights[0], tileHeights[1],
+                GeoPoint geoExtent = GeoUtils.defineExtraPhiLam(tileHeights[0], tileHeights[1],
                         tileWindow, product.sourceMaster.metaData, product.sourceMaster.orbit);
 
                 // extend corners
                 geoCorners = GeoUtils.extendCorners(geoExtent, geoCorners);
 
                 // update corners
-                pixelCorners[0] = dem.getIndex(geoCorners[0]);
-                pixelCorners[1] = dem.getIndex(geoCorners[1]);
+                pixelCorners[0] = dem.getIndex(new GeoPos((float) geoCorners[0].lat, (float) geoCorners[0].lon));
+                pixelCorners[1] = dem.getIndex(new GeoPos((float) geoCorners[1].lat, (float) geoCorners[1].lon));
 
                 pixelCorners[0] = new PixelPos((float) Math.ceil(pixelCorners[0].x), (float) Math.floor(pixelCorners[0].y));
                 pixelCorners[1] = new PixelPos((float) Math.floor(pixelCorners[1].x), (float) Math.ceil(pixelCorners[1].y));
