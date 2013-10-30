@@ -63,6 +63,8 @@ public class CPM {
     TDoubleArrayList xSlaveGeometry = new TDoubleArrayList();
     public TDoubleArrayList yOffset = new TDoubleArrayList();
     public TDoubleArrayList xOffset = new TDoubleArrayList();
+    TDoubleArrayList yOffsetGeometry = new TDoubleArrayList();
+    TDoubleArrayList xOffsetGeometry = new TDoubleArrayList();
     TDoubleArrayList yError = new TDoubleArrayList();
     TDoubleArrayList xError = new TDoubleArrayList();
     TDoubleArrayList coherence = new TDoubleArrayList();
@@ -206,11 +208,14 @@ public class CPM {
             Point masterXYZ = masterOrbit.lph2xyz(yMaster.get(i), xMaster.get(i), heightMaster.get(i), masterMeta);
             Point slaveLP = slaveOrbit.xyz2lp(masterXYZ, slaveMeta);
 
-            ySlaveGeometry.set(i, slaveLP.y);
-            xSlaveGeometry.set(i, slaveLP.x);
+            ySlaveGeometry.add(slaveLP.y);
+            xSlaveGeometry.add(slaveLP.x);
 
-            yOffset.replace(i, yOffset.getQuick(i) - slaveLP.y);
-            xOffset.replace(i, xOffset.getQuick(i) - slaveLP.x);
+            yOffsetGeometry.add(yMaster.getQuick(i) - slaveLP.y);
+            xOffsetGeometry.add(xMaster.getQuick(i) - slaveLP.x);
+
+            yOffset.replace(i, yOffset.getQuick(i) - yOffsetGeometry.getQuick(i));
+            xOffset.replace(i, xOffset.getQuick(i) - xOffsetGeometry.getQuick(i));
 
         }
 
