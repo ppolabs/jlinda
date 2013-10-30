@@ -150,7 +150,7 @@ public class CPM {
                 // check if master and slave coordinates are identical, if yes CPM coefficients will be set
                 // directly, no need to compute them using estimators because most likely they would produce
                 // incorrect result due to ill conditioned matrix.
-                tempSum += Math.abs(xOffset.get(i) + yOffset.get(i));
+                tempSum += Math.abs(xOffset.getQuick(i) + yOffset.getQuick(i));
             }
 
             if (tempSum < 0.01) {
@@ -209,8 +209,8 @@ public class CPM {
             ySlaveGeometry.set(i, slaveLP.y);
             xSlaveGeometry.set(i, slaveLP.x);
 
-            yOffset.replace(i, yOffset.get(i) - slaveLP.y);
-            xOffset.replace(i, xOffset.get(i) - slaveLP.x);
+            yOffset.replace(i, yOffset.getQuick(i) - slaveLP.y);
+            xOffset.replace(i, xOffset.getQuick(i) - slaveLP.x);
 
         }
 
@@ -270,8 +270,8 @@ public class CPM {
         TDoubleArrayList yMasterNorm = new TDoubleArrayList();
         TDoubleArrayList xMasterNorm = new TDoubleArrayList();
         for (int i = 0; i < yMaster.size(); i++) {
-            yMasterNorm.add(PolyUtils.normalize2(yMaster.get(i), normWin.linelo, normWin.linehi));
-            xMasterNorm.add(PolyUtils.normalize2(xMaster.get(i), normWin.pixlo, normWin.pixhi));
+            yMasterNorm.add(PolyUtils.normalize2(yMaster.getQuick(i), normWin.linelo, normWin.linehi));
+            xMasterNorm.add(PolyUtils.normalize2(xMaster.getQuick(i), normWin.pixlo, normWin.pixhi));
         }
 
 
@@ -483,12 +483,12 @@ public class CPM {
             // azimuth
             winL = absArgmax(wTest_L);
             double maxWinL = Math.abs(wTest_L.get(winL));
-            logger.debug("maximum wtest statistic azimuth = {} for window number: {} ", maxWinL, index.get(winL));
+            logger.debug("maximum wtest statistic azimuth = {} for window number: {} ", maxWinL, index.getQuick(winL));
 
             // range
             winP = absArgmax(wTest_P);
             double maxWinP = Math.abs(wTest_P.get(winP));
-            logger.debug("maximum wtest statistic range = {} for window number: {} ", maxWinP, index.get(winP));
+            logger.debug("maximum wtest statistic range = {} for window number: {} ", maxWinP, index.getQuick(winP));
 
             /** use summed wTest in Azimuth and Range direction for outlier detection */
             DenseMatrix64F wTestSum = new DenseMatrix64F(numObservations);
@@ -498,7 +498,7 @@ public class CPM {
 
             maxWSum_idx = absArgmax(wTest_P);
             double maxWSum = wTest_P.get(winP);
-            logger.debug("Detected outlier: summed sqr.wtest = {}; observation: {}", maxWSum, index.get(maxWSum_idx));
+            logger.debug("Detected outlier: summed sqr.wtest = {}; observation: {}", maxWSum, index.getQuick(maxWSum_idx));
 
             /** Test if we are estimationDone yet */
             // check on number of observations
@@ -561,15 +561,15 @@ public class CPM {
         // work only with survived points!
         for (int i = 0; i < numObservations; i++) {
             final int j = 2 * i;
-            xyMaster[j] = (float) xMaster.get(i);
-            xyMaster[j + 1] = (float) yMaster.get(i);
+            xyMaster[j] = (float) xMaster.getQuick(i);
+            xyMaster[j + 1] = (float) yMaster.getQuick(i);
 
             if (!demRefinement) {
-                xySlave[j] = (float) (xSlave.get(i));
-                xySlave[j + 1] = (float) (ySlave.get(i));
+                xySlave[j] = (float) (xSlave.getQuick(i));
+                xySlave[j + 1] = (float) (ySlave.getQuick(i));
             } else {
-                xySlave[j] = (float) (xSlaveGeometry.get(i));
-                xySlave[j + 1] = (float) (ySlaveGeometry.get(i));
+                xySlave[j] = (float) (xSlaveGeometry.getQuick(i));
+                xySlave[j + 1] = (float) (ySlaveGeometry.getQuick(i));
             }
         }
 
@@ -597,19 +597,18 @@ public class CPM {
 
         for (int i = 0; i < numObservations; i++) {
 
-            double dY = yError.get(i);
-            double dX = xError.get(i);
+            double dY = yError.getQuick(i);
+            double dX = xError.getQuick(i);
             rms.add(Math.sqrt(dY * dY + dX * dX));
 
             rmsMean += rms.get(i);
-            yErrorMean += yError.get(i);
-            xErrorMean += xError.get(i);
+            yErrorMean += yError.getQuick(i);
+            xErrorMean += xError.getQuick(i);
 
-            rms2Mean += rms.get(i) * rms.get(i);
-            yError2Mean += yError.get(i) * yError.get(i);
-            xError2Mean += xError.get(i) * xError.get(i);
+            rms2Mean += rms.getQuick(i) * rms.getQuick(i);
+            yError2Mean += yError.getQuick(i) * yError.getQuick(i);
+            xError2Mean += xError.getQuick(i) * xError.getQuick(i);
         }
-
 
         // means
         rmsMean /= numObservations;
