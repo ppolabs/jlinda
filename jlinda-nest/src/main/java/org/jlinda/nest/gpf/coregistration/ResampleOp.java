@@ -154,13 +154,13 @@ public class ResampleOp extends Operator {
             //   ....or
             //   norminv(1-alpha2/2)
             switch (cpmAlphaValue) {
-                case "93%":
+                case "0.001":
                     cpmWtestCriticalValue = 3.2905267314919f;
                     break;
-                case "95%":
+                case "0.05":
                     cpmWtestCriticalValue = 1.95996398454005f;
                     break;
-                case "99%":
+                case "0.1":
                     cpmWtestCriticalValue = 1.64485362695147f;
                     break;
                 default:
