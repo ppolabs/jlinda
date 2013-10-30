@@ -2,6 +2,10 @@ package org.jlinda.nest.gpf.coregistration;
 
 import com.bc.ceres.core.ProgressMonitor;
 import org.esa.beam.framework.datamodel.*;
+import org.esa.beam.framework.dataop.dem.ElevationModel;
+import org.esa.beam.framework.dataop.dem.ElevationModelDescriptor;
+import org.esa.beam.framework.dataop.dem.ElevationModelRegistry;
+import org.esa.beam.framework.dataop.resamp.ResamplingFactory;
 import org.esa.beam.framework.gpf.Operator;
 import org.esa.beam.framework.gpf.OperatorException;
 import org.esa.beam.framework.gpf.OperatorSpi;
@@ -20,6 +24,8 @@ import org.esa.nest.gpf.OperatorUtils;
 import org.esa.nest.gpf.ReaderUtils;
 import org.esa.nest.gpf.StackUtils;
 import org.esa.nest.util.ResourceUtils;
+import org.jlinda.core.Orbit;
+import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
 import org.jlinda.core.coregistration.CPM;
 import org.jlinda.core.coregistration.SimpleLUT;
@@ -31,6 +37,7 @@ import java.awt.image.DataBuffer;
 import java.awt.image.RenderedImage;
 import java.awt.image.renderable.ParameterBlock;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -83,7 +90,6 @@ public class ResampleOp extends Operator {
             label = "Show Residuals")
     private boolean openResidualsFile = false;
 
-
     // band fields
     private Band masterBand = null;
     private Band masterBand2 = null;
@@ -108,7 +114,10 @@ public class ResampleOp extends Operator {
     public static final String TS8P = SimpleLUT.TS8P;
     public static final String TS16P = SimpleLUT.TS16P;
 
-    // outlier removal
+    // DEM refinement
+    private static final int ORBIT_INTERP_DEGREE = 3;
+    float demNoDataValue = 0;
+    private ElevationModel dem = null;
 
 
     /**
@@ -166,8 +175,6 @@ public class ResampleOp extends Operator {
                 default:
                     cpmWtestCriticalValue = 1.95996398454005f;
             }
-
-
 
             // Construct interpolation LUT
             switch (cpmInterpKernel) {
@@ -293,7 +300,10 @@ public class ResampleOp extends Operator {
         try {
 
             // get & compute CPM
-            if(!cpmAvailable) {
+            if (!cpmAvailable) {
+                if (cpmDemRefinement) {
+                    createDEM();
+                }
                 computeCPM();
             }
 
@@ -308,12 +318,12 @@ public class ResampleOp extends Operator {
             // create source image
             final Tile sourceRaster = getSourceTile(srcBand, targetRectangle);
 
-            if(pm.isCanceled())
+            if (pm.isCanceled())
                 return;
 
             // pull CPM from map for source bands
             final CPM cpmData = cpmMap.get(realSrcBand);
-            if(cpmData.noRedundancy)
+            if (cpmData.noRedundancy)
                 return;
 
             // get source image
@@ -334,8 +344,25 @@ public class ResampleOp extends Operator {
         }
     }
 
+    private synchronized void createDEM() throws IOException {
+
+        if (dem != null) return;
+
+        final ElevationModelRegistry elevationModelRegistry = ElevationModelRegistry.getInstance();
+        final ElevationModelDescriptor demDescriptor = elevationModelRegistry.getDescriptor("SRTM 3Sec");
+
+        if (demDescriptor.isInstallingDem()) {
+            throw new OperatorException("The DEM is currently being installed.");
+        }
+
+        dem = demDescriptor.createDem(ResamplingFactory.createResampling(ResamplingFactory.BILINEAR_INTERPOLATION_NAME));
+        demNoDataValue = demDescriptor.getNoDataValue();
+
+    }
+
+
     // CPM: Coregistration PolynoMial
-    private synchronized void computeCPM() throws OperatorException, FileNotFoundException {
+    private synchronized void computeCPM() throws Exception {
 
         if (cpmAvailable) {
             return;
@@ -348,6 +375,19 @@ public class ResampleOp extends Operator {
         boolean appendFlag = false;
         final ProductNodeGroup<Placemark> masterGCPGroup = sourceProduct.getGcpGroup(masterBand);
 
+        final Window masterWindow = new Window(0, sourceProduct.getSceneRasterHeight(), 0, sourceProduct.getSceneRasterWidth());
+
+        // setup master metadata
+        SLCImage masterMeta = null;
+        Orbit masterOrbit = null;
+        if (cpmDemRefinement) {
+            final MetadataElement absRoot = AbstractMetadata.getAbstractedMetadata(targetProduct);
+            masterMeta = new SLCImage(absRoot);
+            masterOrbit = new Orbit(absRoot,ORBIT_INTERP_DEGREE);
+        }
+
+
+        int slaveMetaCnt = 0;
         for (int i = 0; i < numSrcBands; i += inc) {
 
             final Band srcBand = sourceProduct.getBandAt(i);
@@ -356,7 +396,8 @@ public class ResampleOp extends Operator {
                 continue;
 
             ProductNodeGroup<Placemark> slaveGCPGroup = sourceProduct.getGcpGroup(srcBand);
-            if (slaveGCPGroup.getNodeCount() < 3) {
+            final int nodeCount = slaveGCPGroup.getNodeCount();
+            if (nodeCount < 3) {
                 // find others for same slave product
                 final String slvProductName = StackUtils.getSlaveProductName(sourceProduct, srcBand, null);
                 for(Band band : sourceProduct.getBands()) {
@@ -364,7 +405,7 @@ public class ResampleOp extends Operator {
                         final String productName = StackUtils.getSlaveProductName(sourceProduct, band, null);
                         if(slvProductName != null && slvProductName.equals(productName)) {
                             slaveGCPGroup = sourceProduct.getGcpGroup(band);
-                            if (slaveGCPGroup.getNodeCount() >= 3)
+                            if (nodeCount >= 3)
                                 break;
                         }
                     }
@@ -372,13 +413,47 @@ public class ResampleOp extends Operator {
             }
 
 
-            Window masterWindow = new Window(0, sourceProduct.getSceneRasterHeight(), 0, sourceProduct.getSceneRasterWidth());
             final CPM cpm = new CPM(cpmDegree, cpmMaxIterations, cpmWtestCriticalValue, masterWindow, masterGCPGroup, slaveGCPGroup);
             cpmMap.put(srcBand, cpm);
 
-            if (slaveGCPGroup.getNodeCount() < 3) {
+            if (nodeCount < 3) {
                 cpm.noRedundancy = true;
                 continue;
+            }
+
+            // setup slave metadata
+            if (cpmDemRefinement && !cpm.noRedundancy) {
+
+                // get height for corresponding points
+                double[] heightArray = new double[nodeCount];
+                final java.util.List<Placemark> slaveGCPList = new ArrayList<>();
+
+                for (int j = 0; j < nodeCount; j++) {
+
+                    // work only with windows that survived threshold for this slave
+                    slaveGCPList.add(slaveGCPGroup.get(j));
+                    final Placemark sPin = slaveGCPList.get(j);
+                    final Placemark mPin = masterGCPGroup.get(sPin.getName());
+                    final PixelPos mGCPPos = mPin.getPixelPos();
+                    //System.out.println("ResampleOp: master gcp[" + j + "] = " + "(" + mGCPPos.x + "," + mGCPPos.y + ")");
+
+                    float height = dem.getSample(mGCPPos.x, mGCPPos.y);
+
+                    if (Float.isNaN(height) && height == demNoDataValue) {
+                        height = demNoDataValue;
+                    }
+
+                    heightArray[j] = height;
+
+                }
+
+
+                final MetadataElement slaveRoot = targetProduct.getMetadataRoot().getElement(AbstractMetadata.SLAVE_METADATA_ROOT).getElementAt(slaveMetaCnt);
+                final SLCImage slaveMeta = new SLCImage(slaveRoot);
+                final Orbit slaveOrbit = new Orbit(slaveRoot, ORBIT_INTERP_DEGREE);
+                cpm.setDemNoDataValue(demNoDataValue);
+                cpm.setUpDEMRefinement(masterMeta, masterOrbit, slaveMeta, slaveOrbit, heightArray);
+                cpm.setUpDemOffset();
             }
 
             cpm.computeCPM();

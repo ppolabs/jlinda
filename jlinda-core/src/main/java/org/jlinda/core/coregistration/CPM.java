@@ -69,8 +69,8 @@ public class CPM {
     TDoubleArrayList xError = new TDoubleArrayList();
     TDoubleArrayList coherence = new TDoubleArrayList();
 
-    public TDoubleArrayList heightMaster = new TDoubleArrayList();
-
+    private TDoubleArrayList heightMaster = new TDoubleArrayList();
+    private double heightMean;
 
     // statistics -- for legacy
     public TDoubleArrayList rms = new TDoubleArrayList();
@@ -88,14 +88,17 @@ public class CPM {
     public double[] yCoefJai = null;
 
     // allocated cpm arrays
-    double[] xCoef;
-    double[] yCoef;
+    private double[] xCoef;
+    private double[] yCoef;
 
     // metadata needed for dem refinement
-    SLCImage masterMeta;
-    SLCImage slaveMeta;
-    Orbit masterOrbit;
-    Orbit slaveOrbit;
+    private SLCImage masterMeta;
+    private SLCImage slaveMeta;
+    private Orbit masterOrbit;
+    private Orbit slaveOrbit;
+
+    // dem parameters
+    private float demNoDataValue;
 
     public CPM(final int cpmDegree, final int maxIterations, final float criticalValue, final Window normalWindow,
                final ProductNodeGroup<Placemark> masterGCPGroup, ProductNodeGroup<Placemark> slaveGCPGroup) {
@@ -186,6 +189,10 @@ public class CPM {
         heightMaster.addAll(heightArray);
     }
 
+    public void setDemNoDataValue(float demNoDataValue) {
+        this.demNoDataValue = demNoDataValue;
+    }
+
     public void setUpDEMRefinement(SLCImage masterMeta, Orbit masterOrbit, SLCImage slaveMeta, Orbit slaveOrbit, double[] heightArray) {
 
         // master metadata
@@ -199,13 +206,24 @@ public class CPM {
         // reference height for master acquistion
         setHeightMaster(heightArray);
 
+        heightMean = heightMaster.sum() / heightMaster.size();
+
     }
 
     public void setUpDemOffset() throws Exception {
 
         for (int i = 0; i < numObservations; i++) {
 
-            Point masterXYZ = masterOrbit.lph2xyz(yMaster.get(i), xMaster.get(i), heightMaster.get(i), masterMeta);
+            Point masterXYZ;
+
+            double height = heightMaster.getQuick(i);
+            if (height != demNoDataValue) {
+                masterXYZ = masterOrbit.lph2xyz(yMaster.getQuick(i), xMaster.getQuick(i), height, masterMeta);
+            } else {
+                // TODO: work with mean values if nodata for this point, am not sure how smart is this?!
+                masterXYZ = masterOrbit.lph2xyz(yMaster.getQuick(i), xMaster.getQuick(i), heightMean, masterMeta);
+            }
+
             Point slaveLP = slaveOrbit.xyz2lp(masterXYZ, slaveMeta);
 
             ySlaveGeometry.add(slaveLP.y);
