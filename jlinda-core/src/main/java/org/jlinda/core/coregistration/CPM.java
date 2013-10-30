@@ -13,6 +13,9 @@ import org.esa.beam.framework.datamodel.PixelPos;
 import org.esa.beam.framework.datamodel.Placemark;
 import org.esa.beam.framework.datamodel.ProductNodeGroup;
 import org.esa.beam.framework.gpf.OperatorException;
+import org.jlinda.core.Orbit;
+import org.jlinda.core.Point;
+import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
 import org.jlinda.core.coregistration.estimation.SystemOfEquations;
 import org.jlinda.core.utils.PolyUtils;
@@ -39,8 +42,10 @@ public class CPM {
     public double criticalValue;
     public String cpmWeight;
 
+    // control flags
     public boolean doEstimation = true;
     public boolean noRedundancy = false;
+    public boolean demRefinement = false;
 
     /** Empirically pre-calculated values - See lecture series on 'estimation theory' of PT */
     private final static double SIGMA_L = 0.15;
@@ -54,11 +59,16 @@ public class CPM {
     public TDoubleArrayList xMaster = new TDoubleArrayList();
     public TDoubleArrayList ySlave = new TDoubleArrayList();
     public TDoubleArrayList xSlave = new TDoubleArrayList();
+    TDoubleArrayList ySlaveGeometry = new TDoubleArrayList();
+    TDoubleArrayList xSlaveGeometry = new TDoubleArrayList();
     public TDoubleArrayList yOffset = new TDoubleArrayList();
     public TDoubleArrayList xOffset = new TDoubleArrayList();
     TDoubleArrayList yError = new TDoubleArrayList();
     TDoubleArrayList xError = new TDoubleArrayList();
     TDoubleArrayList coherence = new TDoubleArrayList();
+
+    public TDoubleArrayList heightMaster = new TDoubleArrayList();
+
 
     // statistics -- for legacy
     public TDoubleArrayList rms = new TDoubleArrayList();
@@ -78,6 +88,12 @@ public class CPM {
     // allocated cpm arrays
     double[] xCoef;
     double[] yCoef;
+
+    // metadata needed for dem refinement
+    SLCImage masterMeta;
+    SLCImage slaveMeta;
+    Orbit masterOrbit;
+    Orbit slaveOrbit;
 
     public CPM(final int cpmDegree, final int maxIterations, final float criticalValue, final Window normalWindow,
                final ProductNodeGroup<Placemark> masterGCPGroup, ProductNodeGroup<Placemark> slaveGCPGroup) {
@@ -143,6 +159,63 @@ public class CPM {
 
         }
     }
+
+    public void setSlaveMeta(SLCImage slaveMeta) {
+        this.slaveMeta = slaveMeta;
+    }
+
+    public void setSlaveOrbit(Orbit slaveOrbit) {
+        this.slaveOrbit = slaveOrbit;
+    }
+
+    public void setMasterMeta(SLCImage masterMeta) {
+        this.masterMeta = masterMeta;
+    }
+
+    public void setMasterOrbit(Orbit masterOrbit) {
+        this.masterOrbit = masterOrbit;
+    }
+
+    public void setDemRefinement(boolean flag) {
+        this.demRefinement = flag;
+    }
+
+    public void setHeightMaster(double[] heightArray) {
+        heightMaster.addAll(heightArray);
+    }
+
+    public void setUpDEMRefinement(SLCImage masterMeta, Orbit masterOrbit, SLCImage slaveMeta, Orbit slaveOrbit, double[] heightArray) {
+
+        // master metadata
+        setMasterMeta(masterMeta);
+        setSlaveMeta(slaveMeta);
+
+        // slave metadata
+        setMasterOrbit(masterOrbit);
+        setSlaveOrbit(slaveOrbit);
+
+        // reference height for master acquistion
+        setHeightMaster(heightArray);
+
+    }
+
+    public void setUpDemOffset() throws Exception {
+
+        for (int i = 0; i < numObservations; i++) {
+
+            Point masterXYZ = masterOrbit.lph2xyz(yMaster.get(i), xMaster.get(i), heightMaster.get(i), masterMeta);
+            Point slaveLP = slaveOrbit.xyz2lp(masterXYZ, slaveMeta);
+
+            ySlaveGeometry.set(i, slaveLP.y);
+            xSlaveGeometry.set(i, slaveLP.x);
+
+            yOffset.replace(i, yOffset.get(i) - slaveLP.y);
+            xOffset.replace(i, xOffset.get(i) - slaveLP.x);
+
+        }
+
+    }
+
 
     public void computeCPM() {
 
@@ -236,6 +309,12 @@ public class CPM {
 
                 // also take care of slave pins
                 slaveGCPList.remove(maxWSum_idx);
+
+                if (demRefinement) {
+                    ySlaveGeometry.removeAt(maxWSum_idx);
+                    xSlaveGeometry.removeAt(maxWSum_idx);
+                }
+
             }
 
             /** Check redundancy */
@@ -484,8 +563,14 @@ public class CPM {
             final int j = 2 * i;
             xyMaster[j] = (float) xMaster.get(i);
             xyMaster[j + 1] = (float) yMaster.get(i);
-            xySlave[j] = (float) (xSlave.get(i));
-            xySlave[j + 1] = (float) (ySlave.get(i));
+
+            if (!demRefinement) {
+                xySlave[j] = (float) (xSlave.get(i));
+                xySlave[j + 1] = (float) (ySlave.get(i));
+            } else {
+                xySlave[j] = (float) (xSlaveGeometry.get(i));
+                xySlave[j + 1] = (float) (ySlaveGeometry.get(i));
+            }
         }
 
         jaiWarp = WarpPolynomial.createWarp(xySlave, 0, xyMaster, 0, 2 * numObservations, 1f, 1f, 1f, 1f, cpmDegree);
