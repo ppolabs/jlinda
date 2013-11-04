@@ -109,7 +109,7 @@
         <action>
             <id>SimulateAmplitudeOp</id>
             <helpId>SimulateAmplitudeOp</helpId>
-            <class>org.jdoris.nest.dat.SimulateAmplitudeAction</class>
+            <class>org.jlinda.nest.dat.SimulateAmplitudeAction</class>
             <text>Simulate Amplitude</text>
             <shortDescr>Simulate Amplitude</shortDescr>
             <placeAfter>CoherenceOp</placeAfter>
