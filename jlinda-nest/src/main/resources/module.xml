@@ -237,8 +237,8 @@
     <extension point="beam-ui:helpSets">
         <helpSet>
             <parent>beam-help</parent>
-            <id>dorisproductsHelp</id>
-            <path>doc/help/doris-products.hs</path>
+            <id>jLindaHelp</id>
+            <path>doc/help/jlinda.hs</path>
         </helpSet>
     </extension>
 
