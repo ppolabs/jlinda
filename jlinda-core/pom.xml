@@ -105,5 +105,15 @@
             <artifactId>wvlpsolver</artifactId>
             <version>1.0</version>
         </dependency>
+        <dependency>
+            <groupId>scpsolver</groupId>
+            <artifactId>scpsolver</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>scpsolver</groupId>
+            <artifactId>glpksolver</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 </project>
