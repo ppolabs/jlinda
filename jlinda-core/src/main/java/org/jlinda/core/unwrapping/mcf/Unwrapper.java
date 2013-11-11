@@ -176,10 +176,10 @@ public class Unwrapper {
         // ...    dimension of Aeq (equality constraints) matrix for 30x30 input is 1521x6240 matrix
         // ...    dimension of Aeq (                    ) matrix for 50x50 input is 2401x9800
         // ...    dimension of Aeq (                    ) matrix for 512x512 input is 261121x1046528
-        DoubleMatrix S1p = JblasUtils.setMatrixFromIdx(nS0, nS1, ROW_I_J, COL_I_JP1, 1).sub(JblasUtils.setMatrixFromIdx(nS0, nS1, ROW_I_J, COL_IJ_1, 1));
+        DoubleMatrix S1p = JblasUtils.setUpMatrixFromIdx(nS0, nS1, ROW_I_J, COL_I_JP1, 1).sub(JblasUtils.setUpMatrixFromIdx(nS0, nS1, ROW_I_J, COL_IJ_1, 1));
         DoubleMatrix S1m = S1p.neg();
 
-        DoubleMatrix S2p = JblasUtils.setMatrixFromIdx(nS0, nS2, ROW_I_J, COL_IP1_J, 1).neg().add(JblasUtils.setMatrixFromIdx(nS0, nS2, ROW_I_J, COL_IJ_2, 1));
+        DoubleMatrix S2p = JblasUtils.setUpMatrixFromIdx(nS0, nS2, ROW_I_J, COL_IP1_J, 1).neg().add(JblasUtils.setUpMatrixFromIdx(nS0, nS2, ROW_I_J, COL_IJ_2, 1));
         DoubleMatrix S2m = S2p.neg();
 
         DoubleMatrix Aeq = concatHorizontally(concatHorizontally(S1p, S1m), concatHorizontally(S2p, S2m));
