@@ -3,7 +3,10 @@ package org.jlinda.core.unwrapping.mcf;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.winvector.linalg.DenseVec;
+import com.winvector.linalg.LinalgFactory;
 import com.winvector.linalg.Matrix;
+import com.winvector.linalg.colt.ColtMatrix;
+import com.winvector.linalg.colt.NativeMatrix;
 import com.winvector.linalg.jblas.JBlasMatrix;
 import com.winvector.lp.LPEQProb;
 import com.winvector.lp.LPException;
@@ -35,16 +38,35 @@ public class Unwrapper {
     private DoubleMatrix wrappedPhase;
     private DoubleMatrix unwrappedPhase;
 
+    private String factoryName = "jblas";
+    private LinalgFactory<?> factory;
+
+    public Unwrapper(DoubleMatrix wrappedPhase) {
+        logger.setLevel(Level.TRACE);
+
+        this.wrappedPhase = wrappedPhase;
+
+        switch (factoryName) {
+            case ("jblas"):
+                factory = JBlasMatrix.factory;
+                break;
+            case ("colt"):
+                factory = ColtMatrix.factory;
+                break;
+            case ("native"):
+                factory = NativeMatrix.factory;
+                break;
+            default:
+                factory = JBlasMatrix.factory;
+        }
+    }
+
     public void setWrappedPhase(DoubleMatrix wrappedPhase) {
         this.wrappedPhase = wrappedPhase;
     }
 
     public DoubleMatrix getUnwrappedPhase() {
         return unwrappedPhase;
-    }
-
-    public Unwrapper(DoubleMatrix wrappedPhase) {
-        this.wrappedPhase = wrappedPhase;
     }
 
     // for now only one method - this should be facade like call
@@ -186,7 +208,6 @@ public class Unwrapper {
 
         int nVars = Aeq.columns;
 
-
         DoubleMatrix c1 = JblasUtils.getMatrixFromRange(1, ny - 1, 1, weight.columns, weight, 1).add(JblasUtils.getMatrixFromRange(1, ny - 1, 1, weight.columns, weight, 1)).mul(0.5);
         DoubleMatrix c2 = JblasUtils.getMatrixFromRange(1, weight.rows, 1, nx - 1, weight, 1).add(JblasUtils.getMatrixFromRange(1, weight.rows, 1, nx - 1, weight, 1)).mul(0.5);
 
@@ -197,15 +218,15 @@ public class Unwrapper {
 
         logger.info("Minimum network flow resolution");
 
-        final Matrix<?> m = JBlasMatrix.factory.newMatrix(Aeq.rows, Aeq.columns, true);
+        final Matrix<?> m = factory.newMatrix(Aeq.rows, Aeq.columns, true);
         for (int k = 0; k < Aeq.rows; k++) {
             m.setRow(k, Aeq.getRow(k).data);
         }
         final LPEQProb prob = new LPEQProb(m.columnMatrix(), beq.data, new DenseVec(cost.data));
-        //        prob.printCPLEX(System.out);
+//        prob.printCPLEX(System.out);
         final RevisedSimplexSolver solver = new RevisedSimplexSolver();
 
-        final LPSoln soln = solver.solve(prob, null, tol, maxRounds, JBlasMatrix.factory);
+        final LPSoln soln = solver.solve(prob, null, tol, maxRounds, factory);
 
         // ToDo: integrate LP solution - move code from closed source branch
     }
@@ -215,9 +236,7 @@ public class Unwrapper {
         final int rows = 40;
         final int cols = rows;
 
-        logger.setLevel(Level.TRACE);
         logger.trace("Start Unwrapping");
-
         logger.info("Simulate Data");
         SimulateData simulateData = new SimulateData(rows, cols);
         simulateData.peaks();
