@@ -100,8 +100,8 @@ public class Unwrapper {
         i = DoubleMatrix.linspace(1, ny - 1, ny - 1);
         j = DoubleMatrix.linspace(1, nx, nx);
         ROWS = grid2D(i, j);
-        I_J = sub2ind(wrappedPhase.rows, wrappedPhase.columns, ROWS[0], ROWS[1]);
-        IP1_J = sub2ind(wrappedPhase.rows, wrappedPhase.columns, ROWS[0].add(1), ROWS[1]);
+        I_J = sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1]);
+        IP1_J = sub2ind(wrappedPhase.rows, ROWS[0].add(1), ROWS[1]);
         Psi1 = JblasUtils.getMatrixFromIdx(wrappedPhase, IP1_J, 1).sub(JblasUtils.getMatrixFromIdx(wrappedPhase, I_J, 1));
         Psi1 = UnwrapUtils.wrapDoubleMatrix(Psi1);
 
@@ -109,8 +109,8 @@ public class Unwrapper {
         i = DoubleMatrix.linspace(1, ny, ny);
         j = DoubleMatrix.linspace(1, nx - 1, nx - 1);
         ROWS = grid2D(i, j);
-        I_J = sub2ind(wrappedPhase.rows, wrappedPhase.columns, ROWS[0], ROWS[1]);
-        I_JP1 = sub2ind(wrappedPhase.rows, wrappedPhase.columns, ROWS[0], ROWS[1].add(1));
+        I_J = sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1]);
+        I_JP1 = sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1].add(1));
         Psi2 = JblasUtils.getMatrixFromIdx(wrappedPhase, I_JP1, 1).sub(JblasUtils.getMatrixFromIdx(wrappedPhase, I_J, 1));
         Psi2 = UnwrapUtils.wrapDoubleMatrix(Psi2);
 
@@ -118,8 +118,8 @@ public class Unwrapper {
         i = DoubleMatrix.linspace(1, ny - 1, ny - 1);
         j = DoubleMatrix.linspace(1, nx - 1, nx - 1);
         ROWS = grid2D(i, j);
-        I_J = sub2ind(Psi1.rows, Psi1.columns, ROWS[0], ROWS[1]);
-        I_JP1 = sub2ind(Psi1.rows, Psi1.columns, ROWS[0], ROWS[1].add(1));
+        I_J = sub2ind(Psi1.rows, ROWS[0], ROWS[1]);
+        I_JP1 = sub2ind(Psi1.rows, ROWS[0], ROWS[1].add(1));
         DoubleMatrix beq = DoubleMatrix.zeros(I_JP1.rows, I_JP1.columns);
         beq.addi(JblasUtils.getMatrixFromIdx(wrappedPhase, I_JP1, 1).sub(JblasUtils.getMatrixFromIdx(wrappedPhase, I_J, 1)));
         beq.muli(-1 / (2 * Constants._PI));
@@ -140,23 +140,23 @@ public class Unwrapper {
         i = DoubleMatrix.linspace(1, ny - 1, ny - 1);
         j = DoubleMatrix.linspace(1, nx - 1, nx - 1);
         ROWS = grid2D(i, j);
-        DoubleMatrix ROW_I_J = sub2ind(i.length, j.length, ROWS[0], ROWS[1]);
+        DoubleMatrix ROW_I_J = sub2ind(i.length, ROWS[0], ROWS[1]);
 
         double nS0 = (nx - 1) * (ny - 1);
 
         // Use by S1p, S1m
         DoubleMatrix[] COLS;
         COLS = grid2D(i, j);
-        DoubleMatrix COL_IJ_1 = sub2ind(i.length, j.length + 1, COLS[0], COLS[1]);
+        DoubleMatrix COL_IJ_1 = sub2ind(i.length, COLS[0], COLS[1]);
         COLS = grid2D(i, j.add(1));
-        DoubleMatrix COL_I_JP1 = sub2ind(i.length, j.length + 1, COLS[0], COLS[1]);
+        DoubleMatrix COL_I_JP1 = sub2ind(i.length, COLS[0], COLS[1]);
         double nS1 = (nx) * (ny - 1);
 
         // SOAPBinding.Use by S2p, S2m
         COLS = grid2D(i, j);
-        DoubleMatrix COL_IJ_2 = sub2ind(i.length + 1, j.length, COLS[0], COLS[1]);
+        DoubleMatrix COL_IJ_2 = sub2ind(i.length + 1, COLS[0], COLS[1]);
         COLS = grid2D(i.add(1), j);
-        DoubleMatrix COL_IP1_J = sub2ind(i.length + 1, j.length, COLS[0], COLS[1]);
+        DoubleMatrix COL_IP1_J = sub2ind(i.length + 1, COLS[0], COLS[1]);
 
         double nS2 = (nx - 1) * (ny);
 
@@ -202,7 +202,7 @@ public class Unwrapper {
             m.setRow(k, Aeq.getRow(k).data);
         }
         final LPEQProb prob = new LPEQProb(m.columnMatrix(), beq.data, new DenseVec(cost.data));
-//        prob.printCPLEX(System.out);
+        //        prob.printCPLEX(System.out);
         final RevisedSimplexSolver solver = new RevisedSimplexSolver();
 
         final LPSoln soln = solver.solve(prob, null, tol, maxRounds, JBlasMatrix.factory);

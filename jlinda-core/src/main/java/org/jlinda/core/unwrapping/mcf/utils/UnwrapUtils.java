@@ -122,8 +122,11 @@ public class UnwrapUtils {
         return linspaceInt(min, max, numelems, 1); // starts at zero!
     }
 
-    public static DoubleMatrix sub2ind(int nRows, int nCols, DoubleMatrix rowMatrix, DoubleMatrix colMatrix) {
-        return rowMatrix.add(colMatrix.sub(1).mmul(nRows));
+    public static DoubleMatrix sub2ind(int nRows, DoubleMatrix rowMatrix, DoubleMatrix colMatrix, int offset) {
+        return rowMatrix.add(colMatrix.sub(offset).mmul(nRows));
     }
 
+    public static DoubleMatrix sub2ind(int nRows, DoubleMatrix rowMatrix, DoubleMatrix colMatrix) {
+        return rowMatrix.add(colMatrix.mmul(nRows));
+    }
 }
