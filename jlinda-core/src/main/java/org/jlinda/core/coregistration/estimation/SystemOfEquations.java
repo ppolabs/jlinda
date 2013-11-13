@@ -3,7 +3,7 @@ package org.jlinda.core.coregistration.estimation;
 import ch.qos.logback.classic.Level;
 import gnu.trove.list.array.TFloatArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.jblas.DoubleMatrix;
 import org.jblas.FloatMatrix;
 import org.jblas.MatrixFunctions;
