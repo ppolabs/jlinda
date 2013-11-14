@@ -1,6 +1,7 @@
 package org.jlinda.core.unwrapping.mcf.utils;
 
 import org.jblas.DoubleMatrix;
+import org.jlinda.core.Constants;
 
 import static org.jlinda.core.Constants._PI;
 import static org.jlinda.core.Constants._TWO_PI;
@@ -78,6 +79,29 @@ public class UnwrapUtils {
     // wrap [deg] angle to [0..360)
     private static double wrap360(double fAng) {
         return mod(fAng, 360.);
+    }
+
+    public static double unwrap(double reference, double wrapped) {
+
+        double po = 0.0D;
+        double dp = wrapped - reference;
+
+        if (dp > Constants._PI) {
+            while (dp > Constants._PI) {
+                po -= Constants._TWO_PI;
+                dp -= Constants._TWO_PI;
+            }
+        }
+
+        if (dp < -Constants._PI) {
+            while (dp < -Constants._PI) {
+                po += Constants._TWO_PI;
+                dp += Constants._TWO_PI;
+            }
+        }
+
+        return wrapped + po;
+
     }
 
 }
