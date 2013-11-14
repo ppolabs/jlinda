@@ -119,4 +119,32 @@ public class JblasUtils {
     public static DoubleMatrix sub2ind(int nRows, DoubleMatrix rowMatrix, DoubleMatrix colMatrix) {
         return rowMatrix.add(colMatrix.mmul(nRows));
     }
+
+    public static DoubleMatrix cumsum(DoubleMatrix input, int dimension) throws IllegalArgumentException {
+
+        // override dimnsions if column or row vectors are parsed
+        if (input.isVector()) {
+            return input.cumulativeSum();
+        }
+
+        if (dimension == 1) {
+            // column wise cumsum
+            DoubleMatrix output = new DoubleMatrix(input.rows, input.columns);
+            for (int i = 0; i < input.columns; i++) {
+                output.putColumn(i, input.getColumn(i).cumulativeSum());
+            }
+            return output;
+        } else if (dimension == 2) {
+            // row-wise cumsum
+            DoubleMatrix output = new DoubleMatrix(input.rows, input.columns);
+            for (int i = 0; i < input.rows; i++) {
+                output.putRow(i, input.getRow(i).cumulativeSum());
+            }
+            return output;
+        } else {
+            throw new IllegalArgumentException();
+        }
+
+    }
+
 }
