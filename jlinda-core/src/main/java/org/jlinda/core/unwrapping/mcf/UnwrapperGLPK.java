@@ -17,8 +17,7 @@ import scpsolver.lpsolver.SolverFactory;
 import scpsolver.problems.LinearProgram;
 
 import static org.jblas.DoubleMatrix.concatHorizontally;
-import static org.jlinda.core.unwrapping.mcf.utils.UnwrapUtils.grid2D;
-import static org.jlinda.core.unwrapping.mcf.utils.UnwrapUtils.sub2ind;
+import static org.jlinda.core.unwrapping.mcf.utils.JblasUtils.grid2D;
 
 /**
  * Description: Implementation of Linear Programming Unwrapping. Heavily based on Matlab package
@@ -79,8 +78,8 @@ public class UnwrapperGLPK {
         i = DoubleMatrix.linspace(0, ny - 1, ny);
         j = DoubleMatrix.linspace(0, nx, nx + 1);
         ROWS = grid2D(i, j);
-        I_J = sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1]);
-        IP1_J = sub2ind(wrappedPhase.rows, ROWS[0].add(1), ROWS[1]);
+        I_J = JblasUtils.sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1]);
+        IP1_J = JblasUtils.sub2ind(wrappedPhase.rows, ROWS[0].add(1), ROWS[1]);
         Psi1 = JblasUtils.getMatrixFromIdx(wrappedPhase, IP1_J).sub(JblasUtils.getMatrixFromIdx(wrappedPhase, I_J));
         Psi1 = UnwrapUtils.wrapDoubleMatrix(Psi1);
 
@@ -88,8 +87,8 @@ public class UnwrapperGLPK {
         i = DoubleMatrix.linspace(0, ny, ny + 1);
         j = DoubleMatrix.linspace(0, nx - 1, nx);
         ROWS = grid2D(i, j);
-        I_J = sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1]);
-        I_JP1 = sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1].add(1));
+        I_J = JblasUtils.sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1]);
+        I_JP1 = JblasUtils.sub2ind(wrappedPhase.rows, ROWS[0], ROWS[1].add(1));
         Psi2 = JblasUtils.getMatrixFromIdx(wrappedPhase, I_JP1).sub(JblasUtils.getMatrixFromIdx(wrappedPhase, I_J));
         Psi2 = UnwrapUtils.wrapDoubleMatrix(Psi2);
 
@@ -98,11 +97,11 @@ public class UnwrapperGLPK {
         i = DoubleMatrix.linspace(0, ny - 1, ny);
         j = DoubleMatrix.linspace(0, nx - 1, nx);
         ROWS = grid2D(i, j);
-        I_J = sub2ind(Psi1.rows, ROWS[0], ROWS[1]);
-        I_JP1 = sub2ind(Psi1.rows, ROWS[0], ROWS[1].add(1));
+        I_J = JblasUtils.sub2ind(Psi1.rows, ROWS[0], ROWS[1]);
+        I_JP1 = JblasUtils.sub2ind(Psi1.rows, ROWS[0], ROWS[1].add(1));
         beq.addi(JblasUtils.getMatrixFromIdx(Psi1, I_JP1).sub(JblasUtils.getMatrixFromIdx(Psi1, I_J)));
-        I_J = sub2ind(Psi2.rows, ROWS[0], ROWS[1]);
-        I_JP1 = sub2ind(Psi2.rows, ROWS[0].add(1), ROWS[1]);
+        I_J = JblasUtils.sub2ind(Psi2.rows, ROWS[0], ROWS[1]);
+        I_JP1 = JblasUtils.sub2ind(Psi2.rows, ROWS[0].add(1), ROWS[1]);
         beq.subi(JblasUtils.getMatrixFromIdx(Psi2, I_JP1).sub(JblasUtils.getMatrixFromIdx(Psi2, I_J)));
         beq.muli(-1 / (2 * Constants._PI));
         for (int k = 0; k < beq.length; k++) {
@@ -114,23 +113,23 @@ public class UnwrapperGLPK {
         i = DoubleMatrix.linspace(0, ny - 1, ny);
         j = DoubleMatrix.linspace(0, nx - 1, nx);
         ROWS = grid2D(i, j);
-        DoubleMatrix ROW_I_J = sub2ind(i.length, ROWS[0], ROWS[1]);
-        double nS0 = nx * ny;
+        DoubleMatrix ROW_I_J = JblasUtils.sub2ind(i.length, ROWS[0], ROWS[1]);
+        int nS0 = nx * ny;
 
         // Use by S1p, S1m
         DoubleMatrix[] COLS;
         COLS = grid2D(i, j);
-        DoubleMatrix COL_IJ_1 = sub2ind(i.length, COLS[0], COLS[1]);
+        DoubleMatrix COL_IJ_1 = JblasUtils.sub2ind(i.length, COLS[0], COLS[1]);
         COLS = grid2D(i, j.add(1));
-        DoubleMatrix COL_I_JP1 = sub2ind(i.length, COLS[0], COLS[1]);
-        double nS1 = (nx + 1) * (ny);
+        DoubleMatrix COL_I_JP1 = JblasUtils.sub2ind(i.length, COLS[0], COLS[1]);
+        int nS1 = (nx + 1) * (ny);
 
         // SOAPBinding.Use by S2p, S2m
         COLS = grid2D(i, j);
-        DoubleMatrix COL_IJ_2 = sub2ind(i.length + 1, COLS[0], COLS[1]);
+        DoubleMatrix COL_IJ_2 = JblasUtils.sub2ind(i.length + 1, COLS[0], COLS[1]);
         COLS = grid2D(i.add(1), j);
-        DoubleMatrix COL_IP1_J = sub2ind(i.length + 1, COLS[0], COLS[1]);
-        double nS2 = nx * (ny + 1);
+        DoubleMatrix COL_IP1_J = JblasUtils.sub2ind(i.length + 1, COLS[0], COLS[1]);
+        int nS2 = nx * (ny + 1);
 
         // Equality constraint matrix (Aeq)
         /*
@@ -236,3 +235,4 @@ public class UnwrapperGLPK {
     }
 
 }
+
