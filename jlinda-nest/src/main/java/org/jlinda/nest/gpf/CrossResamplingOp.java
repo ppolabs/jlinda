@@ -3,7 +3,7 @@ package org.jlinda.nest.gpf;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.bc.ceres.core.ProgressMonitor;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.esa.beam.framework.datamodel.Band;
 import org.esa.beam.framework.datamodel.MetadataElement;
 import org.esa.beam.framework.datamodel.Product;
