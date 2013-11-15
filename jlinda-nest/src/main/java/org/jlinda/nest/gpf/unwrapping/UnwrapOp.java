@@ -12,7 +12,6 @@ import org.esa.beam.framework.gpf.Tile;
 import org.esa.beam.framework.gpf.annotations.OperatorMetadata;
 import org.esa.beam.framework.gpf.annotations.SourceProduct;
 import org.esa.beam.framework.gpf.annotations.TargetProduct;
-import org.esa.beam.util.ProductUtils;
 import org.esa.nest.datamodel.AbstractMetadata;
 import org.esa.nest.datamodel.Unit;
 import org.esa.nest.gpf.OperatorUtils;
@@ -21,7 +20,7 @@ import org.jblas.ComplexDoubleMatrix;
 import org.jblas.DoubleMatrix;
 import org.jlinda.core.Orbit;
 import org.jlinda.core.SLCImage;
-import org.jlinda.core.unwrapping.mcf.UnwrapperGLPK;
+import org.jlinda.core.unwrapping.mcf.Unwrapper;
 import org.jlinda.core.utils.SarUtils;
 import org.jlinda.nest.utils.BandUtilsDoris;
 import org.jlinda.nest.utils.CplxContainer;
@@ -38,7 +37,7 @@ import java.util.Map;
         internal = false)
 public class UnwrapOp extends Operator {
 
-    @SourceProduct(alias="source")
+    @SourceProduct(alias = "source")
     private Product sourceProduct;
     @TargetProduct
     private Product targetProduct;
@@ -55,8 +54,8 @@ public class UnwrapOp extends Operator {
     private static final String PRODUCT_NAME = "unw_ifgs";
     public static final String PRODUCT_TAG = "_ifg_unw";
     private static final String UNW_PHASE_BAND_NAME = "unwrapped_phase";
-    private int tileWidth = 256;
-    private int tileHeight = 256;
+    private int tileWidth = 16;
+    private int tileHeight = 16;
 
 
     @Override
@@ -147,8 +146,8 @@ public class UnwrapOp extends Operator {
                 final CplxContainer slave = slaveMap.get(keySlave);
                 final ProductContainer product = new ProductContainer(productName, master, slave, true);
 
-                product.targetBandName_I = "i" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
-                product.targetBandName_Q = "q" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
+                product.targetBandName_I = master.realBand.getName(); // "i" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
+                product.targetBandName_Q = master.imagBand.getName(); // "q" + PRODUCT_TAG + "_" + master.date + "_" + slave.date;
 
                 product.masterSubProduct.name = UNW_PHASE_BAND_NAME;
                 product.masterSubProduct.targetBandName_I = UNW_PHASE_BAND_NAME + "_" + master.date + "_" + slave.date;
@@ -168,25 +167,15 @@ public class UnwrapOp extends Operator {
                 sourceProduct.getSceneRasterWidth(),
                 sourceProduct.getSceneRasterHeight());
 
-        OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
-
-        for (final Band band : targetProduct.getBands()) {
-            targetProduct.removeBand(band);
-        }
-
-        Band srcBand;
-
         for (String key : targetMap.keySet()) {
 
-            String targetBandName_I = targetMap.get(key).targetBandName_I;
-            srcBand = sourceProduct.getBand(targetBandName_I);
-            ProductUtils.copyBand(targetBandName_I, sourceProduct, targetProduct, false);
-            targetProduct.getBand(targetBandName_I).setSourceImage(srcBand.getSourceImage());
+            final String targetBandName_I = targetMap.get(key).targetBandName_I;
+            targetProduct.addBand(targetBandName_I, ProductData.TYPE_FLOAT64);
+            targetProduct.getBand(targetBandName_I).setUnit(Unit.REAL);
 
-            String targetBandName_Q = targetMap.get(key).targetBandName_Q;
-            srcBand = sourceProduct.getBand(targetBandName_Q);
-            ProductUtils.copyBand(targetBandName_Q, sourceProduct, targetProduct, false);
-            targetProduct.getBand(targetBandName_Q).setSourceImage(srcBand.getSourceImage());
+            final String targetBandName_Q = targetMap.get(key).targetBandName_Q;
+            targetProduct.addBand(targetBandName_Q, ProductData.TYPE_FLOAT64);
+            targetProduct.getBand(targetBandName_Q).setUnit(Unit.IMAGINARY);
 
             final String tag0 = targetMap.get(key).sourceMaster.date;
             final String tag1 = targetMap.get(key).sourceSlave.date;
@@ -205,34 +194,40 @@ public class UnwrapOp extends Operator {
         }
 
         targetProduct.setPreferredTileSize(tileWidth, tileHeight);
-    }
+        OperatorUtils.copyProductNodes(sourceProduct, targetProduct);
 
+    }
 
     @Override
     public void computeTileStack(Map<Band, Tile> targetTileMap, Rectangle targetRectangle, ProgressMonitor pm) throws OperatorException {
         try {
 
-            Band unwPhaseBand;
-
             for (String ifgKey : targetMap.keySet()) {
 
-                ProductContainer product = targetMap.get(ifgKey);
+                final ProductContainer product = targetMap.get(ifgKey);
 
-                /// check out results from source ///
-                Tile tileReal = getSourceTile(product.sourceMaster.realBand, targetRectangle);
-                Tile tileImag = getSourceTile(product.sourceMaster.imagBand, targetRectangle);
-                ComplexDoubleMatrix cplxData = TileUtilsDoris.pullComplexDoubleMatrix(tileReal, tileImag);
+                final Tile tileReal = getSourceTile(product.sourceMaster.realBand, targetRectangle);
+                final Tile tileImag = getSourceTile(product.sourceMaster.imagBand, targetRectangle);
 
+                final ComplexDoubleMatrix cplxData = TileUtilsDoris.pullComplexDoubleMatrix(tileReal, tileImag);
                 DoubleMatrix phaseData = SarUtils.angle(cplxData);
 
-                UnwrapperGLPK unwrapper = new UnwrapperGLPK(phaseData);
+                Unwrapper unwrapper = new Unwrapper(phaseData);
                 unwrapper.unwrap();
                 phaseData = unwrapper.getUnwrappedPhase();
 
-                unwPhaseBand = targetProduct.getBand(product.masterSubProduct.targetBandName_I);
-                Tile tileOutUnwPhase = targetTileMap.get(unwPhaseBand);
-                TileUtilsDoris.pushDoubleMatrix(phaseData, tileOutUnwPhase, targetRectangle);
+                // commit to target
+                final Band targetBand_I = targetProduct.getBand(product.targetBandName_I);
+                final Tile tileOutReal = targetTileMap.get(targetBand_I);
+                TileUtilsDoris.pushDoubleMatrix(cplxData.real(), tileOutReal, targetRectangle);
 
+                final Band targetBand_Q = targetProduct.getBand(product.targetBandName_Q);
+                final Tile tileOutImag = targetTileMap.get(targetBand_Q);
+                TileUtilsDoris.pushDoubleMatrix(cplxData.imag(), tileOutImag, targetRectangle);
+
+                final Band targetBand_UnwPhase = targetProduct.getBand(product.masterSubProduct.targetBandName_I);
+                final Tile tileOutUnwPhase = targetTileMap.get(targetBand_UnwPhase);
+                TileUtilsDoris.pushDoubleMatrix(phaseData, tileOutUnwPhase, targetRectangle);
             }
         } catch (Exception e) {
             throw new OperatorException(e);
