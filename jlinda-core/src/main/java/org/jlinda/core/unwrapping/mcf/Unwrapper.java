@@ -43,7 +43,7 @@ public class Unwrapper {
     private boolean roundK = true;
 
     public Unwrapper(DoubleMatrix wrappedPhase) {
-        logger.setLevel(Level.TRACE);
+        logger.setLevel(Level.INFO);
 
         this.wrappedPhase = wrappedPhase;
 
