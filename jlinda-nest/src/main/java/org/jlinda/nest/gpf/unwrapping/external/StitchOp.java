@@ -56,8 +56,8 @@ public class StitchOp extends Operator {
 
     private static final String UNW_PHASE_BAND_NAME = "unwrapped_phase";
 
-    private int tileWidth = 256;
-    private int tileHeight = 256;
+    private int tileWidth = 16;
+    private int tileHeight = 16;
 
     /**
      * Initializes this operator and sets the one and only target product.
@@ -147,7 +147,7 @@ public class StitchOp extends Operator {
             final int numBands = targetBands.length;
             Tile targetTile = null;
             for (int i = 0; i < numBands; i++) {
-                if (targetBands[i].getUnit().equals("phase")) {
+                if (targetBands[i].getUnit().equals(Unit.ABS_PHASE)) {
                     targetTile = targetTileMap.get(targetBands[i]);
                     break;
                 }
@@ -160,13 +160,13 @@ public class StitchOp extends Operator {
             final Tile phaseRaster = getSourceTile(phaseBand, targetRectangle);
             final ProductData phaseData = phaseRaster.getRawSamples();
             final int num = phaseData.getNumElems();
-            final double[] unWrapped = new double[num];
+            final float[] unWrapped = new float[num];
             final double solutionValue = solution[tileIndexY][tileIndexX];
             for (int i = 0; i < num; ++i) {
-                unWrapped[i] = phaseData.getElemDoubleAt(i) + solutionValue;
+                unWrapped[i] = (float) (phaseData.getElemDoubleAt(i) + solutionValue);
             }
 
-            targetTile.setRawSamples(new ProductData.Double(unWrapped));
+            targetTile.setRawSamples(new ProductData.Float(unWrapped));
 
         } catch (Exception e) {
             throw new OperatorException(e);
