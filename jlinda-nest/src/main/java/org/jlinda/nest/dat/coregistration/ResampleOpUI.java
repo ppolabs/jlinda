@@ -71,8 +71,8 @@ public class ResampleOpUI extends BaseOperatorUI {
 
         paramMap.put("cpmDegree", Integer.parseInt((String) cpmDegree.getSelectedItem()));
         paramMap.put("cpmInterpKernel", cpmInterpKernel.getSelectedItem());
-        paramMap.put("cpmMaxIterations", Float.parseFloat(cpmMaxIterations.getText()));
-        paramMap.put("cpmAlphaValue", Float.parseFloat((String) cpmAlphaValue.getSelectedItem()));
+        paramMap.put("cpmMaxIterations", Integer.parseInt(cpmMaxIterations.getText()));
+        paramMap.put("cpmAlphaValue", cpmAlphaValue.getSelectedItem());
 
         paramMap.put("cpmDemRefinement", cpmDemRefinement);
         paramMap.put("openResidualsFile", openResidualsFile);
