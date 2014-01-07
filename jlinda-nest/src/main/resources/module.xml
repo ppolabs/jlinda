@@ -232,6 +232,18 @@
             <graphFile>CreateInSARStackGraph.xml</graphFile>
         </action>
 
+        <action>
+	        <id>InSARCoregistrationGraph</id>
+	        <helpId>InSARCoregistration</helpId>
+	        <class>org.esa.nest.dat.actions.GraphAction</class>
+            <icon>esaIcon</icon>
+            <parent>insar_coregistration</parent>
+	        <text>InSAR Coregistration</text>
+            <shortDescr>Perform InSAR Optimized Automatic Coregistration</shortDescr>
+	        <dialogTitle>InSAR Coregistration</dialogTitle>
+            <graphFile>InSARCoregistrationGraph.xml</graphFile>
+        </action>
+        
     </extension>
 
     <extension point="beam-ui:helpSets">
