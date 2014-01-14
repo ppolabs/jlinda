@@ -209,10 +209,14 @@ public class CoarseFineCoregOp extends Operator {
                             final GeoCoding targetGeoCoding) {
 
         // Construct overlap window - work in absolute master geometry, this should take care for borders
-        final int l0 = (int) (0 + 0.5 + coarseWin.height + coarseWin.accY + EXTRA_BORDER);
-        final int lN = (int) (height - 0.5 + coarseWin.height + coarseWin.accY + EXTRA_BORDER);
-        final int p0 = (int) (0 + 0.5 + coarseWin.width + coarseWin.accX + EXTRA_BORDER);
-        final int pN = (int) (width - 0.5 + coarseWin.width + coarseWin.accX + EXTRA_BORDER);
+        // azimuth
+        final double extraAzimuthBorder = 0.5 + coarseWin.height + coarseWin.accY + EXTRA_BORDER;
+        final int l0 = (int) (0 + extraAzimuthBorder);
+        final int lN = (int) (height - extraAzimuthBorder);
+        // range
+        final double extraRangeBorder = 0.5 + coarseWin.width + coarseWin.accX + EXTRA_BORDER;
+        final int p0 = (int) (0 + extraRangeBorder);
+        final int pN = (int) (width - extraRangeBorder);
 
         final Window overlapWindow = new Window(l0, lN, p0, pN);
 
