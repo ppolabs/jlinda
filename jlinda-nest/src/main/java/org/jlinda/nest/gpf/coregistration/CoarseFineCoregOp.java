@@ -149,6 +149,7 @@ public class CoarseFineCoregOp extends Operator {
      * requires that an operator has a default constructor.
      */
     public CoarseFineCoregOp() {
+        logger.setLevel(Level.WARN);
     }
 
     /**
@@ -167,8 +168,6 @@ public class CoarseFineCoregOp extends Operator {
     @Override
     public void initialize() throws OperatorException {
         
-        logger.setLevel(Level.WARN);
-
         try {
 
             // parameters: Image
