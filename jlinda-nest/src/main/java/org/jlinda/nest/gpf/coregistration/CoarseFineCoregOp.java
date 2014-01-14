@@ -577,7 +577,7 @@ public class CoarseFineCoregOp extends Operator {
             System.out.println("Initial sGCP = (" + sGCPPixelPos.x + ", " + sGCPPixelPos.y + ")");
 
             ComplexDoubleMatrix mI = getComplexDoubleMatrix(masterBand1, masterBand2, mGCPPixelPos, fineWin);
-            ComplexDoubleMatrix sI = getComplexDoubleMatrix(slaveBand1, slaveBand2, mGCPPixelPos, fineWin);
+            ComplexDoubleMatrix sI = getComplexDoubleMatrix(slaveBand1, slaveBand2, sGCPPixelPos, fineWin);
 
             final double[] fineOffset = {sGCPPixelPos.x, sGCPPixelPos.y};
 
