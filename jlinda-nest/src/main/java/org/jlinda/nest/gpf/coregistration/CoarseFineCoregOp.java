@@ -556,8 +556,7 @@ public class CoarseFineCoregOp extends Operator {
 
             double coherence = CoregistrationUtils.crossCorrelateFFT(coarseOffset, mI, sI, coarseWin.ovsFactor, coarseWin.accY, coarseWin.accX);
 
-            System.out.println("Coarse sGCP = (" + coarseOffset[0] + ", " + coarseOffset[1] + "), coherence = " + coherence);
-
+            System.out.println("Coarse sGCP = (" + coarseOffset[1] + ", " + coarseOffset[0] + "), coherence = " + coherence);
 
             sGCPPixelPos.x += (float) coarseOffset[1];
             sGCPPixelPos.y += (float) coarseOffset[0];
@@ -577,7 +576,6 @@ public class CoarseFineCoregOp extends Operator {
             System.out.println("mGCP = (" + mGCPPixelPos.x + ", " + mGCPPixelPos.y + ")");
             System.out.println("Initial sGCP = (" + sGCPPixelPos.x + ", " + sGCPPixelPos.y + ")");
 
-
             ComplexDoubleMatrix mI = getComplexDoubleMatrix(masterBand1, masterBand2, mGCPPixelPos, fineWin);
             ComplexDoubleMatrix sI = getComplexDoubleMatrix(slaveBand1, slaveBand2, mGCPPixelPos, fineWin);
 
@@ -585,14 +583,14 @@ public class CoarseFineCoregOp extends Operator {
 
             final double coherence = CoregistrationUtils.crossCorrelateFFT(fineOffset, mI, sI, fineWin.ovsFactor, fineWin.accY, fineWin.accX);
 
-            System.out.println("Final sGCP = (" + fineOffset[0] + ", " + fineOffset[1] + "), coherence = " + coherence);
+            System.out.println("Final sGCP = (" + fineOffset[1] + ", " + fineOffset[0] + "), coherence = " + coherence);
 
             if (coherence < coherenceThreshold) {
                 //System.out.println("Invalid GCP");
                 return false;
             } else {
-                sGCPPixelPos.x += (float) fineOffset[0];
-                sGCPPixelPos.y += (float) fineOffset[1];
+                sGCPPixelPos.x += (float) fineOffset[1];
+                sGCPPixelPos.y += (float) fineOffset[0];
                 //System.out.println("Valid GCP");
                 return true;
             }
@@ -653,12 +651,12 @@ public class CoarseFineCoregOp extends Operator {
 
         public Rectangle defineRectangleMask(int x, int y) {
             Window temp = defineWindowMask(x, y);
-            return new Rectangle((int) temp.linelo, (int) temp.pixlo, (int) temp.lines(), (int) temp.pixels());
+            return new Rectangle((int) temp.pixlo, (int) temp.linelo, (int) temp.pixels(), (int) temp.lines());
         }
 
         public Rectangle defineRectangleMask(PixelPos pos) {
             Window temp = defineWindowMask(pos);
-            return new Rectangle((int) temp.linelo, (int) temp.pixlo, (int) temp.lines(), (int) temp.pixels());
+            return new Rectangle((int) temp.pixlo, (int) temp.linelo, (int) temp.pixels(), (int) temp.lines());
         }
 
     }
