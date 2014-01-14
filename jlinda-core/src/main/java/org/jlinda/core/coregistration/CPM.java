@@ -65,8 +65,8 @@ public class CPM {
     public TDoubleArrayList xOffset = new TDoubleArrayList();
     TDoubleArrayList yOffsetGeometry = new TDoubleArrayList();
     TDoubleArrayList xOffsetGeometry = new TDoubleArrayList();
-    TDoubleArrayList yError = new TDoubleArrayList();
-    TDoubleArrayList xError = new TDoubleArrayList();
+    double[] yError;
+    double[] xError;
     TDoubleArrayList coherence = new TDoubleArrayList();
 
     private TDoubleArrayList heightMaster = new TDoubleArrayList();
@@ -148,8 +148,6 @@ public class CPM {
                 xSlave.add(sGCPPos.x);
                 yOffset.add(sGCPPos.y - mGCPPos.y);
                 xOffset.add(sGCPPos.x - mGCPPos.x);
-                yError.add(0);
-                xError.add(0);
                 coherence.add(1);
 
                 // check if master and slave coordinates are identical, if yes CPM coefficients will be set
@@ -566,8 +564,8 @@ public class CPM {
 
         } // only warn when iterating
 
-        yError.addAll(eL_hat.getData());
-        xError.addAll(eP_hat.getData());
+        yError = eL_hat.getData();
+        xError = eP_hat.getData();
 
         yCoef = rhsL.getData();
         xCoef = rhsP.getData();
@@ -620,17 +618,17 @@ public class CPM {
 
         for (int i = 0; i < numObservations; i++) {
 
-            double dY = yError.getQuick(i);
-            double dX = xError.getQuick(i);
+            double dY = yError[i];
+            double dX = xError[i];
             rms.add(Math.sqrt(dY * dY + dX * dX));
 
             rmsMean += rms.get(i);
-            yErrorMean += yError.getQuick(i);
-            xErrorMean += xError.getQuick(i);
+            yErrorMean += yError[i];
+            xErrorMean += xError[i];
 
             rms2Mean += rms.getQuick(i) * rms.getQuick(i);
-            yError2Mean += yError.getQuick(i) * yError.getQuick(i);
-            xError2Mean += xError.getQuick(i) * xError.getQuick(i);
+            yError2Mean += yError[i] * yError[i];
+            xError2Mean += xError[i] * xError[i];
         }
 
         // means
