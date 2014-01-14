@@ -94,6 +94,7 @@ public class ResampleOp extends Operator {
     private Band masterBand = null;
     private Band masterBand2 = null;
     private String[] masterBandNames = null;
+    private String processedSlaveBand;
 
     // maps
     private final Map<Band, Band> sourceRasterMap = new HashMap<Band, Band>(10);
@@ -200,8 +201,8 @@ public class ResampleOp extends Operator {
 
             createTargetProduct();
 
-//            final MetadataElement absRoot = AbstractMetadata.getAbstractedMetadata(sourceProduct);
-//            processedSlaveBand = absRoot.getAttributeString("processed_slave");
+            final MetadataElement absRoot = AbstractMetadata.getAbstractedMetadata(sourceProduct);
+            processedSlaveBand = absRoot.getAttributeString("processed_slave");
 
         } catch (Throwable e) {
             openResidualsFile = true;
@@ -304,7 +305,8 @@ public class ResampleOp extends Operator {
                 if (cpmDemRefinement) {
                     createDEM();
                 }
-                computeCPM();
+                // Most likely not needed
+                computeCPM(targetRectangle);
             }
 
             // get source bands
@@ -362,11 +364,14 @@ public class ResampleOp extends Operator {
 
 
     // CPM: Coregistration PolynoMial
-    private synchronized void computeCPM() throws Exception {
-
+    private synchronized void computeCPM(final Rectangle targetRectangle) throws Exception {
+        
         if (cpmAvailable) {
             return;
         }
+
+        final Band targetBand = targetProduct.getBand(processedSlaveBand);
+        final Tile sourceRaster = getSourceTile(sourceRasterMap.get(targetBand), targetRectangle);
 
         // for all slave band pairs compute a CPM
         final int numSrcBands = sourceProduct.getNumBands();
@@ -374,7 +379,6 @@ public class ResampleOp extends Operator {
 
         boolean appendFlag = false;
         final ProductNodeGroup<Placemark> masterGCPGroup = sourceProduct.getGcpGroup(masterBand);
-
         final Window masterWindow = new Window(0, sourceProduct.getSceneRasterHeight(), 0, sourceProduct.getSceneRasterWidth());
 
         // setup master metadata
@@ -446,7 +450,6 @@ public class ResampleOp extends Operator {
                     heightArray[j] = height;
 
                 }
-
 
                 final MetadataElement slaveRoot = targetProduct.getMetadataRoot().getElement(AbstractMetadata.SLAVE_METADATA_ROOT).getElementAt(slaveMetaCnt);
                 final SLCImage slaveMeta = new SLCImage(slaveRoot);
