@@ -35,6 +35,12 @@ public class ResampleOpUI extends BaseOperatorUI {
         final JComponent panel = createPanel();
         initParameters();
 
+        cpmDemRefinementCheckBox.addItemListener(new ItemListener() {
+            public void itemStateChanged(ItemEvent e) {
+                cpmDemRefinement = (e.getStateChange() == ItemEvent.SELECTED);
+            }
+        });
+
         openResidualsFileCheckBox.addItemListener(new ItemListener() {
             public void itemStateChanged(ItemEvent e) {
                 openResidualsFile = (e.getStateChange() == ItemEvent.SELECTED);
