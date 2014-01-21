@@ -24,6 +24,7 @@ import org.esa.nest.gpf.OperatorUtils;
 import org.esa.nest.gpf.ReaderUtils;
 import org.esa.nest.gpf.StackUtils;
 import org.esa.nest.util.ResourceUtils;
+import org.jlinda.core.Constants;
 import org.jlinda.core.Orbit;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.Window;
@@ -439,11 +440,13 @@ public class ResampleOp extends Operator {
                     final Placemark sPin = slaveGCPList.get(j);
                     final Placemark mPin = masterGCPGroup.get(sPin.getName());
                     final PixelPos mGCPPos = mPin.getPixelPos();
-                    //System.out.println("ResampleOp: master gcp[" + j + "] = " + "(" + mGCPPos.x + "," + mGCPPos.y + ")");
 
-                    float height = dem.getSample(mGCPPos.x, mGCPPos.y);
+                    double[] phiLamPoint = masterOrbit.lph2ell(mGCPPos.y, mGCPPos.x, 0, masterMeta);
+                    PixelPos demIndexPoint = dem.getIndex(new GeoPos((float) (phiLamPoint[0] * Constants.RTOD), (float) (phiLamPoint[1] * Constants.RTOD)));
+                    
+                    float height = dem.getSample(demIndexPoint.x, demIndexPoint.y);
 
-                    if (Float.isNaN(height) && height == demNoDataValue) {
+                    if (Float.isNaN(height) || height == demNoDataValue) {
                         height = demNoDataValue;
                     }
 
@@ -696,6 +699,12 @@ public class ResampleOp extends Operator {
             if (appendFlag) {
                 p.println();
                 p.format("W-test critical value: %5.3f", cpm.criticalValue);
+                p.println();
+            }
+
+            if (appendFlag) {
+                p.println();
+                p.format("Geometry based offset refinement: %B", cpm.demRefinement);
                 p.println();
             }
 
