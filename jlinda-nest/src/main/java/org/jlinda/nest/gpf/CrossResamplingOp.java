@@ -95,6 +95,7 @@ public class CrossResamplingOp extends Operator {
      * requires that an operator has a default constructor.
      */
     public CrossResamplingOp() {
+        logger.setLevel(Level.TRACE);
     }
 
     /**
@@ -113,8 +114,6 @@ public class CrossResamplingOp extends Operator {
 
     @Override
     public void initialize() throws OperatorException {
-
-        logger.setLevel(Level.TRACE);
 
         try {
 
