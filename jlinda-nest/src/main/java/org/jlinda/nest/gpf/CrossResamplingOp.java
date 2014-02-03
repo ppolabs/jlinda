@@ -200,7 +200,7 @@ public class CrossResamplingOp extends Operator {
         int kernelLength = lut.getKernelLength();
 
         // get LUT and cast it to float for JAI
-        double[] lutArrayDoubles = lut.getKernel().toArray();
+        double[] lutArrayDoubles = lut.getKernelAsArray();
         float lutArrayFloats[] = new float[lutArrayDoubles.length];
         int i = 0;
         for (double lutElement : lutArrayDoubles) {
@@ -208,7 +208,11 @@ public class CrossResamplingOp extends Operator {
         }
 
         // construct interpolation table for JAI resampling
+        final int subsampleBits = 7;
+        final int precisionBits = 32;
         int padding = kernelLength / 2 - 1;
+
+        interpTable = new InterpolationTable(padding, kernelLength, subsampleBits, precisionBits, lutArrayFloats);
 
     }
 
