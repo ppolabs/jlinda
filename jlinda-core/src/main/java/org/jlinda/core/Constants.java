@@ -14,10 +14,11 @@ public class Constants {
     public static final double SOL = 2.99792458E8; // speed-of-light
     public static final double LIGHT_SPEED = 299792458.0; //  m / s
 
-    public static final double DTOR = Math.PI / 180.0;
-    public static final double RTOD = 180.0 / Math.PI;
+    public static final double DTOR = Constants._PI / 180.0;
+    public static final double RTOD = 180.0 / Constants._PI;
 
-    public static final long MEGA = 1000000; // Math.pow(10,6)
+    public static final long MEGA = 1_000_000; // Math.pow(10,6)
+    public static final long GIGA = 1_000_000_000; // Math.pow(10,9)
 
     public static final double PI = 3.14159265358979323846264338327950288;
     public static final double _PI = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
