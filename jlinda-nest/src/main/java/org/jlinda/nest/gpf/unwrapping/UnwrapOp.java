@@ -21,6 +21,7 @@ import org.jblas.DoubleMatrix;
 import org.jlinda.core.Orbit;
 import org.jlinda.core.SLCImage;
 import org.jlinda.core.unwrapping.mcf.Unwrapper;
+import org.jlinda.core.unwrapping.mcf.UnwrapperGLPK;
 import org.jlinda.core.utils.SarUtils;
 import org.jlinda.nest.utils.BandUtilsDoris;
 import org.jlinda.nest.utils.CplxContainer;
@@ -56,6 +57,9 @@ public class UnwrapOp extends Operator {
     private static final String UNW_PHASE_BAND_NAME = "unwrapped_phase";
     private int tileWidth = 16;
     private int tileHeight = 16;
+
+    // method selector
+    private boolean nativeMethod = true;
 
 
     @Override
@@ -212,9 +216,16 @@ public class UnwrapOp extends Operator {
                 final ComplexDoubleMatrix cplxData = TileUtilsDoris.pullComplexDoubleMatrix(tileReal, tileImag);
                 DoubleMatrix phaseData = SarUtils.angle(cplxData);
 
-                Unwrapper unwrapper = new Unwrapper(phaseData);
-                unwrapper.unwrap();
-                phaseData = unwrapper.getUnwrappedPhase();
+                // TODO: this cries for interface!
+                if (nativeMethod) {
+                    UnwrapperGLPK unwrapperGLPK = new UnwrapperGLPK(phaseData);
+                    unwrapperGLPK.unwrap();
+                    phaseData = unwrapperGLPK.getUnwrappedPhase();
+                } else {
+                    Unwrapper unwrapper = new Unwrapper(phaseData);
+                    unwrapper.unwrap();
+                    phaseData = unwrapper.getUnwrappedPhase();
+                }
 
                 // commit to target
                 final Band targetBand_I = targetProduct.getBand(product.targetBandName_I);
