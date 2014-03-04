@@ -55,8 +55,8 @@ public class UnwrapOp extends Operator {
     private static final String PRODUCT_NAME = "unw_ifgs";
     public static final String PRODUCT_TAG = "_ifg_unw";
     private static final String UNW_PHASE_BAND_NAME = "unwrapped_phase";
-    private int tileWidth = 16;
-    private int tileHeight = 16;
+    private int tileWidth = 32;
+    private int tileHeight = 32;
 
     // method selector
     private boolean nativeMethod = true;
