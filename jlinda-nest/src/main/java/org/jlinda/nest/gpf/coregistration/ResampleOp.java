@@ -5,6 +5,7 @@ import org.esa.beam.framework.datamodel.*;
 import org.esa.beam.framework.dataop.dem.ElevationModel;
 import org.esa.beam.framework.dataop.dem.ElevationModelDescriptor;
 import org.esa.beam.framework.dataop.dem.ElevationModelRegistry;
+import org.esa.beam.framework.dataop.resamp.Resampling;
 import org.esa.beam.framework.dataop.resamp.ResamplingFactory;
 import org.esa.beam.framework.gpf.Operator;
 import org.esa.beam.framework.gpf.OperatorException;
@@ -85,6 +86,12 @@ public class ResampleOp extends Operator {
             defaultValue = "false",
             label = "Offset Refinement Based on DEM")
     private boolean cpmDemRefinement = false;
+
+    @Parameter(valueSet = {"ACE", "GETASSE30", "SRTM 3Sec", "ASTER 1sec GDEM"},
+            description = "The digital elevation model.",
+            defaultValue = "SRTM 3Sec", 
+            label = "Digital Elevation Model")
+    private String demName = "SRTM 3Sec";
 
     @Parameter(description = "Show the Residuals file in a text viewer",
             defaultValue = "false",
@@ -349,16 +356,28 @@ public class ResampleOp extends Operator {
 
     private synchronized void createDEM() throws IOException {
 
+        final Resampling resampling = ResamplingFactory.createResampling(ResamplingFactory.BILINEAR_INTERPOLATION_NAME);
+
         if (dem != null) return;
 
         final ElevationModelRegistry elevationModelRegistry = ElevationModelRegistry.getInstance();
-        final ElevationModelDescriptor demDescriptor = elevationModelRegistry.getDescriptor("SRTM 3Sec");
+        final ElevationModelDescriptor demDescriptor = elevationModelRegistry.getDescriptor(demName);
 
-        if (demDescriptor.isInstallingDem()) {
-            throw new OperatorException("The DEM is currently being installed.");
+        if (demDescriptor == null) {
+            throw new OperatorException("The DEM '" + demName + "' is not supported.");
         }
 
-        dem = demDescriptor.createDem(ResamplingFactory.createResampling(ResamplingFactory.BILINEAR_INTERPOLATION_NAME));
+        if (!demDescriptor.isInstallingDem() && !demDescriptor.isDemInstalled()) {
+            if (!demDescriptor.installDemFiles(VisatApp.getApp())) {
+                throw new OperatorException("DEM " + demName + " must be installed first");
+            }
+        }
+
+        dem = demDescriptor.createDem(resampling);
+        if (dem == null) {
+            throw new OperatorException("The DEM '" + demName + "' has not been installed.");
+        }
+
         demNoDataValue = demDescriptor.getNoDataValue();
 
     }
