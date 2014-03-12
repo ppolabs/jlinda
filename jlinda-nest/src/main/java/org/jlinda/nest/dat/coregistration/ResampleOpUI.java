@@ -3,6 +3,7 @@ package org.jlinda.nest.dat.coregistration;
 import org.esa.beam.framework.gpf.ui.BaseOperatorUI;
 import org.esa.beam.framework.gpf.ui.UIValidation;
 import org.esa.beam.framework.ui.AppContext;
+import org.esa.nest.dataio.dem.DEMFactory;
 import org.esa.nest.util.DialogUtils;
 import org.jlinda.nest.gpf.coregistration.ResampleOp;
 
@@ -18,14 +19,13 @@ public class ResampleOpUI extends BaseOperatorUI {
     private final JComboBox cpmInterpKernel = new JComboBox(new String[] {ResampleOp.TRI,
             ResampleOp.CC4P, ResampleOp.CC6P, ResampleOp.TS6P, ResampleOp.TS8P, ResampleOp.TS16P} );
     private final JTextField cpmMaxIterations = new JTextField("");
-
     private final JComboBox cpmAlphaValue = new JComboBox(new String[]{"0.001", "0.05", "0.1"});
+    private final JCheckBox cpmDemRefinementCheckBox = new JCheckBox("Offset Refinement Based on DEM");
+    private final JComboBox demName = new JComboBox<String>(DEMFactory.getDEMNameList());
+    private final JCheckBox openResidualsFileCheckBox = new JCheckBox("Show Residuals");
 
-    final JCheckBox cpmDemRefinementCheckBox = new JCheckBox("Offset Refinement Based on DEM");
-    boolean cpmDemRefinement;
-
-    final JCheckBox openResidualsFileCheckBox = new JCheckBox("Show Residuals");
-    boolean openResidualsFile;
+    private Boolean cpmDemRefinement;
+    private Boolean openResidualsFile;
 
 
     @Override
@@ -35,18 +35,19 @@ public class ResampleOpUI extends BaseOperatorUI {
         final JComponent panel = createPanel();
         initParameters();
 
-        cpmDemRefinementCheckBox.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                cpmDemRefinement = (e.getStateChange() == ItemEvent.SELECTED);
-            }
-        });
-
         openResidualsFileCheckBox.addItemListener(new ItemListener() {
             public void itemStateChanged(ItemEvent e) {
                 openResidualsFile = (e.getStateChange() == ItemEvent.SELECTED);
             }
         });
 
+        cpmDemRefinementCheckBox.addItemListener(new ItemListener() {
+                public void itemStateChanged(ItemEvent e) {
+                    cpmDemRefinement = (e.getStateChange() == ItemEvent.SELECTED);
+                    enableDemFields();
+                }
+        });
+        
         return new JScrollPane(panel);
     }
 
@@ -58,10 +59,16 @@ public class ResampleOpUI extends BaseOperatorUI {
         cpmInterpKernel.setSelectedItem(paramMap.get("cpmInterpKernel"));
         cpmAlphaValue.setSelectedItem(paramMap.get("cpmAlphaValue"));
 
-//        if(sourceProducts != null && sourceProducts.length > 0) {
-//            final boolean isComplex = OperatorUtils.isComplex(sourceProducts[0]);
-//        }
+        cpmDemRefinement = (Boolean)paramMap.get("cpmDemRefinement");
+        cpmDemRefinementCheckBox.setSelected(cpmDemRefinement);
 
+
+        final String demNameParam = (String) paramMap.get("demName");
+        if (demNameParam != null) {
+            demName.setSelectedItem(DEMFactory.appendAutoDEM(demNameParam));
+        }
+        enableDemFields();
+        
     }
 
 
@@ -81,6 +88,10 @@ public class ResampleOpUI extends BaseOperatorUI {
         paramMap.put("cpmAlphaValue", cpmAlphaValue.getSelectedItem());
 
         paramMap.put("cpmDemRefinement", cpmDemRefinement);
+        if (cpmDemRefinement) {
+            paramMap.put("demName", DEMFactory.getProperDEMName((String) demName.getSelectedItem()));
+        }
+        
         paramMap.put("openResidualsFile", openResidualsFile);
     }
 
@@ -98,17 +109,25 @@ public class ResampleOpUI extends BaseOperatorUI {
         DialogUtils.addComponent(contentPane, gbc, "Significance Level for Outlier Removal:", cpmAlphaValue);
         gbc.gridy++;
         DialogUtils.addComponent(contentPane, gbc, "Interpolation Method:", cpmInterpKernel);
+
+        gbc.gridx = 0;
         gbc.gridy++;
         contentPane.add(cpmDemRefinementCheckBox, gbc);
+        gbc.gridy++;
+        DialogUtils.addComponent(contentPane, gbc, "Digital Elevation Model:", demName);
         gbc.gridy++;
 
         gbc.gridx = 0;
         gbc.gridy++;
         contentPane.add(openResidualsFileCheckBox, gbc);
-
+        
         DialogUtils.fillPanel(contentPane, gbc);
 
         return contentPane;
     }
 
+    private void enableDemFields() {
+        demName.setEnabled(cpmDemRefinement);
+    }
+    
 }
