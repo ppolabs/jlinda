@@ -20,4 +20,12 @@
     <mapID target="SnaphuImportOp" url="operators/SnaphuImportOp.html"/>
     <mapID target="InSARMaster" url="operators/InSARMaster.html"/>
 
+    <!--Coregistration Operators-->
+   	<mapID target="CreateInSARStackOp" url="operators/CreateInSARStackOp.html"/>
+    <mapID target="CoarseFineCoregOp" url="operators/CoarseFineCoregOp.html"/>
+    <mapID target="ResampleOp" url="operators/ResampleOp.html"/>
+    
+    <!--Tutorials-->
+   	<mapID target="InSARCoregistration" url="tutorials/insar_coregistration.html"/>
+    
 </map>
