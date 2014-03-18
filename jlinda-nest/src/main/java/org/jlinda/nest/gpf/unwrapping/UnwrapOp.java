@@ -55,21 +55,39 @@ public class UnwrapOp extends Operator {
     private static final String PRODUCT_NAME = "unw_ifgs";
     public static final String PRODUCT_TAG = "_ifg_unw";
     private static final String UNW_PHASE_BAND_NAME = "unwrapped_phase";
-    private int tileWidth = 32;
-    private int tileHeight = 32;
+    private int tileWidth = 16;
+    private int tileHeight = 16;
 
     // method selector
-    private boolean nativeMethod = true;
+    private boolean nativeMethod = false;
 
-
+    // architecture flavor
+    private String name;
+    private String arch;
+    
     @Override
     public void initialize() throws OperatorException {
         try {
+            archFlavor();
             constructSourceMetadata();
             constructTargetMetadata();
             createTargetProduct();
         } catch (Exception e) {
             throw new OperatorException(e);
+        }
+    }
+
+    private void archFlavor() {
+        arch = System.getProperty("os.arch");
+        name = System.getProperty("os.name");
+
+        if (name.startsWith("Linux") && arch.equals("amd64")) {
+
+            nativeMethod = true;
+
+            // extend tiles
+            tileWidth = 64;
+            tileHeight = 64;
         }
     }
 

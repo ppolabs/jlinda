@@ -56,8 +56,12 @@ public class StitchOp extends Operator {
 
     private static final String UNW_PHASE_BAND_NAME = "unwrapped_phase";
 
-    private int tileWidth = 32;
-    private int tileHeight = 32;
+    private int tileWidth = 16;
+    private int tileHeight = 16;
+    
+    // 
+    private String arch;
+    private String name;
 
     /**
      * Initializes this operator and sets the one and only target product.
@@ -76,6 +80,8 @@ public class StitchOp extends Operator {
     public void initialize() throws OperatorException {
         try {
 
+            archFlavor();
+            
             sourceImageWidth = sourceProduct.getSceneRasterWidth();
             sourceImageHeight = sourceProduct.getSceneRasterHeight();
 
@@ -86,6 +92,18 @@ public class StitchOp extends Operator {
         }
     }
 
+    private void archFlavor() {
+        arch = System.getProperty("os.arch");
+        name = System.getProperty("os.name");
+
+        if (name.startsWith("Linux") && arch.equals("amd64")) {
+
+            // extend tiles
+            tileWidth = 64;
+            tileHeight = 64;
+        }
+    }
+    
     private void createTargetProduct() {
 
         targetProduct = new Product(sourceProduct.getName(),
