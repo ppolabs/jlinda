@@ -180,13 +180,29 @@
         </action>
 
         <!--/// UNWRAPPING ///-->
-        <!--<action>-->
-            <!--<id>SnaphuExportOp</id>-->
-            <!--<class>org.jlinda.nest.dat.snaphu.SnaphuExportAction</class>-->
-            <!--<text>Snaphu data export</text>-->
-            <!--<shortDescr>Export data and construct conf file for SNAPHU unwrapping</shortDescr>-->
-            <!--<parent>unwrapping</parent>-->
-        <!--</action>-->
+        
+        <!--/// integrated unwrapping ///-->
+        <action>
+            <id>UnwrapOp</id>
+            <class>org.jlinda.nest.dat.UnwrapAction</class>
+            <text>Unwrap tiles</text>
+            <dialogTitle>Unwrap input per tile</dialogTitle>
+            <shortDescr>Perform independent tile unwrapping of input interferogram</shortDescr>
+            <parent>unwrapping</parent>
+        </action>
+
+        <action>
+            <id>StitchOp</id>
+            <class>org.jlinda.nest.dat.StitchAction</class>
+            <text>Stitch unwrapped tiles</text>
+            <dialogTitle>Stitch unwrapped tiles</dialogTitle>
+            <shortDescr>Perform stitching of independently unwrapped interferogram tiles</shortDescr>
+            <parent>unwrapping</parent>
+            <placeAfter>UnwrapOp</placeAfter>
+            <separatorAfter>true</separatorAfter>
+        </action>
+        
+        <!--/// snaphu unwrapping ///-->
         <action>
             <id>SnaphuExportOp</id>
             <class>org.esa.nest.dat.actions.GraphAction</class>
@@ -197,6 +213,7 @@
             <targetProductNameSuffix>_snaphu</targetProductNameSuffix>
             <shortDescr>Export data and construct conf file for SNAPHU unwrapping</shortDescr>
             <parent>unwrapping</parent>
+            <placeAfter>StitchOp</placeAfter>
         </action>
 
         <action>
