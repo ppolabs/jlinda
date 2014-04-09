@@ -262,7 +262,21 @@
             <shortDescr>Perform InSAR Optimized Automatic Coregistration</shortDescr>
 	        <dialogTitle>InSAR Coregistration</dialogTitle>
             <graphFile>InSARCoregistrationGraph.xml</graphFile>
+            <placeAfter>CreateInSARStackOp</placeAfter>
+            <separatorAfter>true</separatorAfter>
         </action>
+        
+        <action>
+            <id>CrossResamplingOp</id>
+            <helpId>CrossResamplingOp</helpId>
+            <class>org.jlinda.nest.dat.CrossResamplingAction</class>
+            <text>Cross InSAR resampling</text>
+            <shortDescr>Perform resampling of SAR geometries for Cross-InSAR</shortDescr>
+            <placeAfter>InSARCoregistrationGraph</placeAfter>
+            <parent>insar_coregistration</parent>
+        </action>
+        
+        
         
     </extension>
 
