@@ -138,7 +138,7 @@
         <action>
             <id>RangeFilterOp</id>
             <class>org.jlinda.nest.dat.RangeFilterAction</class>
-            <text>Range Filtering...</text>
+            <text>Range Filtering</text>
             <shortDescr>Filter stack of SAR images in RANGE direction</shortDescr>
             <placeBefore>org.jlinda.nest.dat.AzimuthFilterAction</placeBefore>
             <parent>spectral_filtering</parent>
