@@ -188,7 +188,7 @@
             <!--<parent>unwrapping</parent>-->
         <!--</action>-->
         <action>
-            <id>SnaphuExport</id>
+            <id>SnaphuExportOp</id>
             <class>org.esa.nest.dat.actions.GraphAction</class>
             <helpId>Unwrap</helpId>
             <text>Snaphu data export</text>
@@ -206,6 +206,7 @@
             <text>Snaphu data import</text>
             <shortDescr>Import result of Snaphu to InSAR product</shortDescr>
             <parent>unwrapping</parent>
+            <placeAfter>SnaphuExportOp</placeAfter>
         </action>
 
         <action>
