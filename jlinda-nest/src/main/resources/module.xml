@@ -184,6 +184,7 @@
         <!--/// integrated unwrapping ///-->
         <action>
             <id>UnwrapOp</id>
+            <helpId>Unwrap</helpId>
             <class>org.jlinda.nest.dat.UnwrapAction</class>
             <text>Unwrap tiles</text>
             <dialogTitle>Unwrap input per tile</dialogTitle>
@@ -193,6 +194,7 @@
 
         <action>
             <id>StitchOp</id>
+            <helpId>Unwrap</helpId>
             <class>org.jlinda.nest.dat.StitchAction</class>
             <text>Stitch unwrapped tiles</text>
             <dialogTitle>Stitch unwrapped tiles</dialogTitle>
